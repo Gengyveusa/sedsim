@@ -1,5 +1,4 @@
 import { Vitals, Patient, PKState } from '../types';
-import { DRUG_DATABASE } from './drugs';
 
 /**
  * Comprehensive Physiology Engine
