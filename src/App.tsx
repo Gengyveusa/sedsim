@@ -3,6 +3,7 @@ import useSimStore from './store/useSimStore';
 import PatientBanner from './components/PatientBanner';
 import PatientSelector from './components/PatientSelector';
 import DrugPanel from './components/DrugPanel';
+import InterventionPanel from './components/InterventionPanel';
 import MonitorPanel from './components/MonitorPanel';
 import TrendGraph from './components/TrendGraph';
 import ControlBar from './components/ControlBar';
@@ -34,6 +35,7 @@ export default function App() {
         <div className="w-80 border-r border-gray-700 overflow-y-auto p-2 space-y-2">
           <PatientSelector />
           <DrugPanel />
+                    <InterventionPanel />
         </div>
 
         {/* Center - Monitor & Trends */}
