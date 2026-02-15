@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useSimStore } from '../store/useSimStore';
-import type { LogEntry } from '../types';
 
-const severityStyles: Record<LogEntry['severity'], string> = {
+const severityStyles: Record<string, string> = {
   info: 'text-gray-400',
   warning: 'text-yellow-400',
   danger: 'text-red-400 font-bold',
