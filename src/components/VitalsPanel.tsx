@@ -1,4 +1,4 @@
-import { useSimStore } from '../store/useSimStore';
+import useSimStore from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
 
 function VitalBox({ label, value, unit, color = 'text-green-400', alarm = false }: {

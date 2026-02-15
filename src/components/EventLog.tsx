@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useSimStore } from '../store/useSimStore';
+import useSimStore from '../store/useSimStore';
 
 const severityStyles: Record<string, string> = {
   info: 'text-gray-400',

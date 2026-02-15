@@ -1,4 +1,4 @@
-import { useSimStore } from '../store/useSimStore';
+import useSimStore from '../store/useSimStore';
 import { moassLabel } from '../engine/pdModel';
 
 export default function PatientBanner() {

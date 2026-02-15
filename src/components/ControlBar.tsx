@@ -1,4 +1,4 @@
-import { useSimStore } from '../store/useSimStore';
+import useSimStore from '../store/useSimStore';
 const SPEED_OPTIONS = [0.5, 1, 2, 5, 10];
 
 export default  function ControlBar() {

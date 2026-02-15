@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSimStore } from '../store/useSimStore';
+import useSimStore from '../store/useSimStore';
 import { DRUG_LIST } from '../engine/drugs';
 import { DrugParams } from '../types';
 

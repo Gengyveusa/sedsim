@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useSimStore } from '../store/useSimStore';
+import useSimStore from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
 
 export default function TrendGraph() {
