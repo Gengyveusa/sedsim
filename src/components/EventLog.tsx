@@ -5,16 +5,16 @@ import type { LogEntry } from '../types';
 const severityStyles: Record<LogEntry['severity'], string> = {
   info: 'text-gray-400',
   warning: 'text-yellow-400',
-  critical: 'text-red-400 font-bold',
+  danger: 'text-red-400 font-bold',
 };
 
 export function EventLog() {
-  const { log } = useSimStore();
+  const { eventLog } = useSimStore();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [log.length]);
+  }, [eventLog.length]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -26,13 +26,13 @@ export function EventLog() {
     <div className="flex-1 bg-sim-panel overflow-hidden flex flex-col">
       <h3 className="text-xs text-gray-400 uppercase mb-2 px-3 pt-3">Event Log</h3>
       <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
-        {log.length === 0 ? (
+        {eventLog.length === 0 ? (
           <p className="text-gray-500 text-sm">No events yet</p>
         ) : (
-          log.map((entry, i) => (
+          eventLog.map((entry, i) => (
             <div
               key={i}
-              className={`text-xs font-mono flex gap-2 ${severityStyles[entry.severity]}`}
+              className={`text-xs font-mono flex gap-2 ${severityStyles[entry.severity || 'info']}`}
             >
               <span className="text-gray-600 shrink-0">
                 [{formatTime(entry.time)}]
