@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { PKState, Vitals, MOASSLevel, LogEntry, Patient, TrendPoint, DrugParams, InfusionState } from '../types';
+import { PKState, Vitals, MOASSLevel, LogEntry, Patient, TrendPoint, DrugParams, InfusionState, InterventionType } from '../types';
 import { DRUG_DATABASE } from '../engine/drugs';
 import { createInitialPKState, stepPK } from '../engine/pkModel';
-import { combinedEffect, effectToMOASS } from '../engine/pdModel';
-import { calculateVitals, checkAlarms, BASELINE_VITALS } from '../engine/physiology';
+import { combineEffect, effectToMOASS } from '../engine/pdModel';
+import { calculateVitals, checkAlarms, BASELINE_VITALS, PATIENT_ARCHETYPES } from '../engine/physiology';
 
 interface SimState {
   // Time
@@ -13,6 +13,7 @@ interface SimState {
 
   // Patient
   patient: Patient;
+  availableArchetypes: string[];
 
   // Drug PK states
   pkStates: Record<string, PKState>;
@@ -25,9 +26,17 @@ interface SimState {
   moass: MOASSLevel;
   combinedEff: number;
 
-  // History
+  // Interventions
+  interventions: Set<InterventionType>;
+  fio2: number; // 0.21-1.0
+
+  // History for trend graphs (keep last 10 minutes = 600 points at 1 Hz)
   trendData: TrendPoint[];
+  maxTrendPoints: number;
   eventLog: LogEntry[];
+
+  // Alarms
+  activeAlarms: { type: string; message: string; severity: 'warning' | 'danger' }[];
 
   // Actions
   tick: () => void;
@@ -37,6 +46,10 @@ interface SimState {
   changeInfusionRate: (drugName: string, rate: number) => void;
   toggleRunning: () => void;
   setSpeed: (speed: number) => void;
+  selectPatient: (archetypeKey: string) => void;
+  applyIntervention: (intervention: InterventionType) => void;
+  removeIntervention: (intervention: InterventionType) => void;
+  setFiO2: (fio2: number) => void;
   reset: () => void;
 }
 
@@ -46,173 +59,307 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-const initialPKStates: Record<string, PKState> = {};
-for (const key of Object.keys(DRUG_DATABASE)) {
-  initialPKStates[key] = createInitialPKState();
-}
-
-export const useSimStore = create<SimState>((set, get) => ({
+const useSimStore = create<SimState>((set, get) => ({
+  // Initial state
   elapsedSeconds: 0,
   isRunning: false,
   speedMultiplier: 1,
-  patient: { age: 45, weight: 70, height: 170, sex: 'M', asa: 2 },
-  pkStates: { ...initialPKStates },
+
+  patient: PATIENT_ARCHETYPES.healthy_adult,
+  availableArchetypes: Object.keys(PATIENT_ARCHETYPES),
+
+  pkStates: {
+    propofol: createInitialPKState(),
+    midazolam: createInitialPKState(),
+    fentanyl: createInitialPKState(),
+    ketamine: createInitialPKState(),
+  },
+
   infusions: {},
-  vitals: { ...BASELINE_VITALS },
+
+  vitals: BASELINE_VITALS,
   moass: 5,
   combinedEff: 0,
+
+  interventions: new Set(),
+  fio2: 0.21,
+
   trendData: [],
+  maxTrendPoints: 600,
   eventLog: [],
 
+  activeAlarms: [],
+
+  // Tick function - runs every simulation second
   tick: () => {
     const state = get();
-    const dt = 1; // 1 second per tick
-    const newPKStates: Record<string, PKState> = {};
+    if (!state.isRunning) return;
 
-    // Step each drug's PK model
-    for (const [name, drug] of Object.entries(DRUG_DATABASE)) {
-      const currentPK = state.pkStates[name] || createInitialPKState();
-      const infusion = state.infusions[name];
+    const { patient, pkStates, infusions, vitals: prevVitals, fio2 } = state;
+    const dt = 1; // 1 second
+
+    // Step PK models forward
+    const newPkStates: Record<string, PKState> = {};
+    Object.keys(pkStates).forEach(drugName => {
+      const drug = DRUG_DATABASE[drugName];
+      const infusion = infusions[drugName];
       const infusionRate = infusion?.isRunning ? infusion.rate : 0;
-      newPKStates[name] = stepPK(currentPK, drug, 0, infusionRate, dt);
+
+      newPkStates[drugName] = stepPK(
+        pkStates[drugName],
+        drug,
+        0, // no bolus during tick
+        infusionRate,
+        dt
+      );
+    });
+
+    // Calculate combined drug effect
+    const drugEffects: { drug: DrugParams; ce: number }[] = Object.entries(newPkStates).map(
+      ([name, state]) => ({ drug: DRUG_DATABASE[name], ce: state.ce })
+    );
+    const combinedEff = combineEffect(drugEffects);
+    const moass = effectToMOASS(combinedEff);
+
+    // Calculate new vitals using physiology engine
+    const newVitals = calculateVitals(newPkStates, patient, prevVitals, fio2);
+
+    // Check for alarms
+    const activeAlarms = checkAlarms(newVitals);
+
+    // Update trend data
+    const newTime = state.elapsedSeconds + dt;
+    const newTrendPoint: TrendPoint = {
+      time: newTime,
+      vitals: newVitals,
+      ce: Object.fromEntries(
+        Object.entries(newPkStates).map(([name, state]) => [name, state.ce])
+      ),
+      moass,
+    };
+
+    const trendData = [...state.trendData, newTrendPoint];
+    // Keep only last maxTrendPoints
+    if (trendData.length > state.maxTrendPoints) {
+      trendData.shift();
     }
 
-    // Calculate combined PD effect
-    const drugEffects = Object.entries(DRUG_DATABASE).map(([name, drug]) => ({
-      drug,
-      ce: newPKStates[name].ce,
-    })).filter(d => d.ce > 0.0001);
-
-    const effect = combinedEffect(drugEffects);
-    const moass = effectToMOASS(effect);
-    const vitals = calculateVitals(effect);
-
-    // Check alarms
-    const alarms = checkAlarms(vitals);
-    const newLogs = [...state.eventLog];
-    for (const alarm of alarms) {
-      if (state.elapsedSeconds % 10 === 0) {
+    // Log alarms to event log
+    const newLogs: LogEntry[] = [];
+    activeAlarms.forEach(alarm => {
+      // Only log if not already in active alarms (new alarm)
+      const alreadyActive = state.activeAlarms.some(
+        a => a.type === alarm.type && a.severity === alarm.severity
+      );
+      if (!alreadyActive) {
         newLogs.push({
-          time: state.elapsedSeconds + dt,
+          time: newTime,
           type: 'alert',
-          message: alarm,
-          severity: 'danger',
+          message: alarm.message,
+          severity: alarm.severity,
         });
       }
-    }
-
-    // Record trend point every 5 seconds
-    const newTrend = [...state.trendData];
-    if ((state.elapsedSeconds + dt) % 5 === 0) {
-      const ceRecord: Record<string, number> = {};
-      for (const [name] of Object.entries(DRUG_DATABASE)) {
-        ceRecord[name] = newPKStates[name].ce;
-      }
-      newTrend.push({
-        time: state.elapsedSeconds + dt,
-        vitals,
-        ce: ceRecord,
-        moass,
-      });
-    }
+    });
 
     set({
-      elapsedSeconds: state.elapsedSeconds + dt,
-      pkStates: newPKStates,
-      vitals,
+      elapsedSeconds: newTime,
+      pkStates: newPkStates,
+      combinedEff,
       moass,
-      combinedEff: effect,
-      trendData: newTrend,
-      eventLog: newLogs,
+      vitals: newVitals,
+      trendData,
+      eventLog: [...state.eventLog, ...newLogs],
+      activeAlarms,
     });
   },
 
-  administerBolus: (drugName: string, dose: number) => {
+  administerBolus: (drugName, dose) => {
     const state = get();
     const drug = DRUG_DATABASE[drugName];
-    if (!drug) return;
+    const patient = state.patient;
 
-    const currentPK = state.pkStates[drugName] || createInitialPKState();
-    const newPK = stepPK(currentPK, drug, dose, 0, 0);
+    // Step PK forward with bolus
+    const newState = stepPK(
+      state.pkStates[drugName],
+      drug,
+      dose * patient.weight, // convert mg/kg to mg
+      0,
+      1
+    );
+
+    const logEntry: LogEntry = {
+      time: state.elapsedSeconds,
+      type: 'bolus',
+      message: `${drug.name} ${dose} ${drug.unit}/kg (${(dose * patient.weight).toFixed(1)} ${drug.unit} total)`,
+      severity: 'info',
+    };
 
     set({
-      pkStates: { ...state.pkStates, [drugName]: newPK },
-      eventLog: [...state.eventLog, {
-        time: state.elapsedSeconds,
-        type: 'bolus',
-        message: `${drug.name} ${dose}${drug.unit} bolus`,
-        severity: 'info',
-      }],
+      pkStates: { ...state.pkStates, [drugName]: newState },
+      eventLog: [...state.eventLog, logEntry],
     });
   },
 
-  startInfusion: (drugName: string, rate: number) => {
+  startInfusion: (drugName, rate) => {
     const state = get();
     const drug = DRUG_DATABASE[drugName];
-    if (!drug) return;
+
+    const logEntry: LogEntry = {
+      time: state.elapsedSeconds,
+      type: 'infusion_start',
+      message: `${drug.name} infusion started at ${rate} mcg/kg/min`,
+      severity: 'info',
+    };
 
     set({
       infusions: {
         ...state.infusions,
-        [drugName]: { drugName, rate, unit: `${drug.unit}/min`, isRunning: true },
+        [drugName]: { drugName: drug.name, rate, unit: 'mcg/kg/min', isRunning: true },
       },
-      eventLog: [...state.eventLog, {
-        time: state.elapsedSeconds,
-        type: 'infusion_start',
-        message: `${drug.name} infusion started at ${rate} ${drug.unit}/min`,
-        severity: 'info',
-      }],
+      eventLog: [...state.eventLog, logEntry],
     });
   },
 
-  stopInfusion: (drugName: string) => {
+  stopInfusion: (drugName) => {
     const state = get();
-    const drug = DRUG_DATABASE[drugName];
-    const infusions = { ...state.infusions };
-    if (infusions[drugName]) {
-      infusions[drugName] = { ...infusions[drugName], isRunning: false };
-    }
+    const infusion = state.infusions[drugName];
+    if (!infusion) return;
+
+    const logEntry: LogEntry = {
+      time: state.elapsedSeconds,
+      type: 'infusion_stop',
+      message: `${infusion.drugName} infusion stopped`,
+      severity: 'info',
+    };
+
+    const newInfusions = { ...state.infusions };
+    delete newInfusions[drugName];
+
     set({
-      infusions,
-      eventLog: [...state.eventLog, {
-        time: state.elapsedSeconds,
-        type: 'infusion_stop',
-        message: `${drug?.name || drugName} infusion stopped`,
-        severity: 'info',
-      }],
+      infusions: newInfusions,
+      eventLog: [...state.eventLog, logEntry],
     });
   },
 
-  changeInfusionRate: (drugName: string, rate: number) => {
+  changeInfusionRate: (drugName, rate) => {
     const state = get();
-    const drug = DRUG_DATABASE[drugName];
-    const infusions = { ...state.infusions };
-    if (infusions[drugName]) {
-      infusions[drugName] = { ...infusions[drugName], rate };
-    }
+    const infusion = state.infusions[drugName];
+    if (!infusion) return;
+
+    const logEntry: LogEntry = {
+      time: state.elapsedSeconds,
+      type: 'infusion_change',
+      message: `${infusion.drugName} infusion changed to ${rate} mcg/kg/min`,
+      severity: 'info',
+    };
+
     set({
-      infusions,
-      eventLog: [...state.eventLog, {
-        time: state.elapsedSeconds,
-        type: 'infusion_change',
-        message: `${drug?.name || drugName} rate changed to ${rate}`,
-        severity: 'info',
-      }],
+      infusions: {
+        ...state.infusions,
+        [drugName]: { ...infusion, rate },
+      },
+      eventLog: [...state.eventLog, logEntry],
     });
   },
 
-  toggleRunning: () => set((s) => ({ isRunning: !s.isRunning })),
-  setSpeed: (speed: number) => set({ speedMultiplier: speed }),
+  toggleRunning: () => {
+    set(state => ({ isRunning: !state.isRunning }));
+  },
 
-  reset: () => set({
-    elapsedSeconds: 0,
-    isRunning: false,
-    pkStates: { ...initialPKStates },
-    infusions: {},
-    vitals: { ...BASELINE_VITALS },
-    moass: 5,
-    combinedEff: 0,
-    trendData: [],
-    eventLog: [],
-  }),
+  setSpeed: (speed) => {
+    set({ speedMultiplier: speed });
+  },
+
+  selectPatient: (archetypeKey) => {
+    const patient = PATIENT_ARCHETYPES[archetypeKey];
+    if (!patient) return;
+
+    const logEntry: LogEntry = {
+      time: get().elapsedSeconds,
+      type: 'intervention',
+      message: `Patient changed to: ${archetypeKey.replace('_', ' ')}`,
+      severity: 'info',
+    };
+
+    set(state => ({
+      patient,
+      eventLog: [...state.eventLog, logEntry],
+    }));
+  },
+
+  applyIntervention: (intervention) => {
+    const state = get();
+    const newInterventions = new Set(state.interventions);
+    newInterventions.add(intervention);
+
+    const logEntry: LogEntry = {
+      time: state.elapsedSeconds,
+      type: 'intervention',
+      message: `Applied: ${intervention.replace('_', ' ')}`,
+      severity: 'info',
+    };
+
+    set({
+      interventions: newInterventions,
+      eventLog: [...state.eventLog, logEntry],
+    });
+  },
+
+  removeIntervention: (intervention) => {
+    const state = get();
+    const newInterventions = new Set(state.interventions);
+    newInterventions.delete(intervention);
+
+    const logEntry: LogEntry = {
+      time: state.elapsedSeconds,
+      type: 'intervention',
+      message: `Removed: ${intervention.replace('_', ' ')}`,
+      severity: 'info',
+    };
+
+    set({
+      interventions: newInterventions,
+      eventLog: [...state.eventLog, logEntry],
+    });
+  },
+
+  setFiO2: (fio2) => {
+    const state = get();
+    const logEntry: LogEntry = {
+      time: state.elapsedSeconds,
+      type: 'intervention',
+      message: `FiO2 changed to ${Math.round(fio2 * 100)}%`,
+      severity: 'info',
+    };
+
+    set({
+      fio2,
+      eventLog: [...state.eventLog, logEntry],
+    });
+  },
+
+  reset: () => {
+    set({
+      elapsedSeconds: 0,
+      isRunning: false,
+      pkStates: {
+        propofol: createInitialPKState(),
+        midazolam: createInitialPKState(),
+        fentanyl: createInitialPKState(),
+        ketamine: createInitialPKState(),
+      },
+      infusions: {},
+      vitals: BASELINE_VITALS,
+      moass: 5,
+      combinedEff: 0,
+      interventions: new Set(),
+      fio2: 0.21,
+      trendData: [],
+      eventLog: [],
+      activeAlarms: [],
+    });
+  },
 }));
+
+export default useSimStore;
+export { formatTime };
