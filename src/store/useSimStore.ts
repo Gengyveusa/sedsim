@@ -118,7 +118,7 @@ const useSimStore = create<SimState>((set, get) => ({
     const drugEffects: { drug: DrugParams; ce: number }[] = Object.entries(newPkStates).map(
       ([name, state]) => ({ drug: DRUG_DATABASE[name], ce: state.ce })
     );
-    const combinedEff = combineEffect(drugEffects);
+    const combinedEff = combinedEffect(drugEffects);
     const moass = effectToMOASS(combinedEff);
 
     // Calculate new vitals using physiology engine
