@@ -40,7 +40,7 @@ export default function App() {
 
         {/* Center - Monitor & Trends */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <MonitorPanel vitals={useSimStore.getState().vitals} history={trendData} />
+          <MonitorPanel vitals={useSimStore.getState().vitals} history={trendData.map(t => t.vitals)} />
           <div className="flex-1 overflow-hidden p-2">
             <TrendGraph />
           </div>
