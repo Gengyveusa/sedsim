@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { PKState, Vitals, MOASSLevel, LogEntry, Patient, TrendPoint, DrugParams, InfusionState, InterventionType } from '../types';
 import { DRUG_DATABASE } from '../engine/drugs';
 import { createInitialPKState, stepPK } from '../engine/pkModel';
-import { combineEffect, effectToMOASS } from '../engine/pdModel';
+import { combineEdffect, effectToMOASS } from '../engine/pdModel';
 import { calculateVitals, checkAlarms, BASELINE_VITALS, PATIENT_ARCHETYPES } from '../engine/physiology';
 
 interface SimState {
