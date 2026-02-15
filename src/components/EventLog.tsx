@@ -7,7 +7,7 @@ const severityStyles: Record<string, string> = {
   danger: 'text-red-400 font-bold',
 };
 
-export function EventLog() {
+export default function EventLog() {
   const { eventLog } = useSimStore();
   const bottomRef = useRef<HTMLDivElement>(null);
 

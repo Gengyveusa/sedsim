@@ -1,7 +1,7 @@
 import { useSimStore } from '../store/useSimStore';
 import { moassLabel } from '../engine/pdModel';
 
-export function PatientBanner() {
+export default function PatientBanner() {
   const { patient, elapsedSeconds, moass, isRunning } = useSimStore();
 
   const minutes = Math.floor(elapsedSeconds / 60);

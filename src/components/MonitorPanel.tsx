@@ -17,7 +17,7 @@ const COLORS = {
   background: '#111118',
 };
 
-export function MonitorPanel({ vitals, history }: MonitorPanelProps) {
+export default function MonitorPanel({ vitals, history }: MonitorPanelProps) {
   const ecgCanvasRef = useRef<HTMLCanvasElement>(null);
   const plethCanvasRef = useRef<HTMLCanvasElement>(null);
   const capnoCanvasRef = useRef<HTMLCanvasElement>(null);

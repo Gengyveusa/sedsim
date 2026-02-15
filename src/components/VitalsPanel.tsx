@@ -15,7 +15,7 @@ function VitalBox({ label, value, unit, color = 'text-green-400', alarm = false 
   );
 }
 
-export function VitalsPanel() {
+export default function VitalsPanel() {
   const { vitals, pkStates } = useSimStore();
 
   return (

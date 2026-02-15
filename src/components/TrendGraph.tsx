@@ -2,7 +2,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useSimStore } from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
 
-export function TrendGraph() {
+export default function TrendGraph() {
   const { trendData } = useSimStore();
 
   // Show last 120 data points (10 minutes at 5s intervals)
