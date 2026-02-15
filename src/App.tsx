@@ -8,15 +8,19 @@ import { ControlBar } from './components/ControlBar';
 import { EventLog } from './components/EventLog';
 
 export default function App() {
-  const { isRunning, tick } = useSimStore();
+  const { isRunning, speedMultiplier, tick } = useSimStore();
 
   useEffect(() => {
     if (!isRunning) return;
     const interval = setInterval(() => {
-      tick();
-    }, 1000);
+      // Call tick multiple times for speed multiplier
+      const ticks = Math.round(speedMultiplier);
+      for (let i = 0; i < ticks; i++) {
+        tick();
+      }
+    }, 1000 / (speedMultiplier / Math.round(speedMultiplier) || 1));
     return () => clearInterval(interval);
-  }, [isRunning, tick]);
+  }, [isRunning, speedMultiplier, tick]);
 
   return (
     <div className="h-screen flex flex-col bg-sim-bg text-white">
