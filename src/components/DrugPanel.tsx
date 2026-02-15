@@ -81,7 +81,7 @@ function DrugCard({ drug }: { drug: DrugParams }) {
   );
 }
 
-exportdefault  function DrugPanel() {
+export default  function DrugPanel() {
   return (
     <div className="p-3">
       <h2 className="text-sm font-bold text-gray-400 uppercase mb-3">Drug Administration</h2>

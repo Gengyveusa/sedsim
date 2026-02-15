@@ -1,8 +1,8 @@
-import { useSimStore } from '../store/useSimStore';
+export default export defaultimport { useSimStore } from '../store/useSimStore';
 
 const SPEED_OPTIONS = [0.5, 1, 2, 5, 10];
 
-exportdefault  function ControlBar() {
+export default  function ControlBar() {
   const { isRunning, speedMultiplier, elapsedSeconds, toggleRunning, reset, setSpeed } = useSimStore();
 
   const formatTime = (seconds: number) => {
