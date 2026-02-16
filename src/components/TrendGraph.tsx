@@ -53,7 +53,7 @@ export default function TrendGraph() {
       {/* Vital Signs Trend */}
       <h3 className="text-xs text-gray-400 uppercase mb-2">Vital Signs Trend</h3>
       <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={192}>
           <LineChart data={displayData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis dataKey="time" stroke="#9ca3af" tick={{ fontSize: 10 }} />
@@ -71,7 +71,7 @@ export default function TrendGraph() {
       <h3 className="text-xs text-gray-400 uppercase mb-2 mt-2">Plasma (solid) & Effect-Site (dashed) Concentrations</h3>
       <div className="h-48">
         {hasConcentrations ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={192}>
             <LineChart data={displayData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="time" stroke="#9ca3af" tick={{ fontSize: 10 }} />
