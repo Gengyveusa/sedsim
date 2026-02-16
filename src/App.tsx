@@ -10,6 +10,7 @@ import TrendGraph from './components/TrendGraph';
 import ControlBar from './components/ControlBar';
 import EventLog from './components/EventLog';
 import { TutorialMode } from './components/TutorialMode';
+import SedationGauge from './components/SedationGauge';
 
 export default function App() {
   const { isRunning, speedMultiplier, tick, trendData } = useSimStore();
@@ -55,6 +56,9 @@ export default function App() {
           {/* Center - Monitor & Trends */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <MonitorPanel vitals={useSimStore.getState().vitals} history={trendData.map(t => t.vitals)} />
+                          <div className="flex justify-center py-2 border-b border-gray-700">
+                <SedationGauge />
+              </div>
             <div className="flex-1 min-h-0 overflow-auto p-2">
               <TrendGraph />
             </div>
