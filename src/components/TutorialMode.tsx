@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
-import { Play, BookOpen, X } from 'lucide-react';
-import type { Drug, PatientModel } from '../types';
+import { useState } from 'react';
 
 interface Scenario {
   id: string;
   title: string;
   description: string;
-  patient: Partial<PatientModel>;
+  patient: {
+    weight: number;
+    age: number;
+    sex: 'M' | 'F';
+    asa: 1 | 2 | 3 | 4;
+  };
   steps: {
     instruction: string;
-    drug: Drug;
+    drug: string;
     dose: number;
     expectedOutcome: string;
   }[];
@@ -21,12 +24,7 @@ const CLINICAL_SCENARIOS: Scenario[] = [
     id: 'routine-extraction',
     title: 'Routine Extraction',
     description: 'A healthy adult patient scheduled for a routine wisdom tooth extraction.',
-    patient: {
-      weight: 70,
-      age: 28,
-      gender: 'male',
-      asa: 1
-    },
+    patient: { weight: 70, age: 28, sex: 'M', asa: 1 },
     steps: [
       {
         instruction: 'Administer initial midazolam dose for anxiolysis',
@@ -58,12 +56,7 @@ const CLINICAL_SCENARIOS: Scenario[] = [
     id: 'anxious-patient',
     title: 'Highly Anxious Patient',
     description: 'A 45-year-old patient with severe dental anxiety and previous panic attacks.',
-    patient: {
-      weight: 65,
-      age: 45,
-      gender: 'female',
-      asa: 2
-    },
+    patient: { weight: 65, age: 45, sex: 'F', asa: 2 },
     steps: [
       {
         instruction: 'Start with low-dose midazolam and assess response',
@@ -95,12 +88,7 @@ const CLINICAL_SCENARIOS: Scenario[] = [
     id: 'multiple-extractions',
     title: 'Multiple Extractions',
     description: 'A 22-year-old requiring removal of 4 impacted wisdom teeth.',
-    patient: {
-      weight: 80,
-      age: 22,
-      gender: 'male',
-      asa: 1
-    },
+    patient: { weight: 80, age: 22, sex: 'M', asa: 1 },
     steps: [
       {
         instruction: 'Induce with midazolam for baseline sedation',
@@ -151,11 +139,8 @@ export function TutorialMode({ onClose, onSelectScenario }: TutorialModeProps) {
               <h2 className="text-xl font-semibold text-gray-900">{selectedScenario.title}</h2>
               <p className="text-sm text-gray-600">Step {currentStep + 1} of {selectedScenario.steps.length}</p>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="h-5 w-5 text-gray-500" />
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 text-xl">
+              X
             </button>
           </div>
 
@@ -170,19 +155,10 @@ export function TutorialMode({ onClose, onSelectScenario }: TutorialModeProps) {
                 <h4 className="font-semibold text-gray-900 mb-2">Recommended Action</h4>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   <p><span className="font-medium">Drug:</span> {step.drug.charAt(0).toUpperCase() + step.drug.slice(1)}</p>
-                  <p><span className="font-medium">Dose:</span> {step.dose} {step.drug === 'propofol' ? 'mg' : step.drug === 'fentanyl' ? 'mcg' : 'mg'}</p>
+                  <p><span className="font-medium">Dose:</span> {step.dose} {step.drug === 'fentanyl' ? 'mcg' : 'mg'}</p>
                   <p><span className="font-medium">Expected Outcome:</span> {step.expectedOutcome}</p>
                 </div>
               </div>
-
-              {currentStep === 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-amber-900 mb-2">💡 Pro Tip</h4>
-                  <p className="text-amber-800 text-sm">
-                    Always assess baseline vital signs and establish IV access before administering any sedation medications.
-                  </p>
-                </div>
-              )}
             </div>
 
             <div className="border-t border-gray-200 pt-4">
@@ -190,7 +166,7 @@ export function TutorialMode({ onClose, onSelectScenario }: TutorialModeProps) {
               <ul className="space-y-2">
                 {selectedScenario.learningPoints.map((point, index) => (
                   <li key={index} className="flex items-start gap-2 text-sm text-gray-700">
-                    <span className="text-blue-600 mt-0.5">•</span>
+                    <span className="text-blue-600 mt-0.5">*</span>
                     <span>{point}</span>
                   </li>
                 ))}
@@ -214,16 +190,9 @@ export function TutorialMode({ onClose, onSelectScenario }: TutorialModeProps) {
                     setCurrentStep(currentStep + 1);
                   }
                 }}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
-                {isLastStep ? (
-                  <>
-                    <Play className="h-4 w-4" />
-                    Start Simulation
-                  </>
-                ) : (
-                  'Next Step'
-                )}
+                {isLastStep ? 'Start Simulation' : 'Next Step'}
               </button>
             </div>
           </div>
@@ -236,15 +205,9 @@ export function TutorialMode({ onClose, onSelectScenario }: TutorialModeProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BookOpen className="h-6 w-6 text-blue-600" />
-            <h2 className="text-2xl font-semibold text-gray-900">Clinical Scenarios</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="h-5 w-5 text-gray-500" />
+          <h2 className="text-2xl font-semibold text-gray-900">Clinical Scenarios</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 text-xl">
+            X
           </button>
         </div>
 
@@ -263,17 +226,13 @@ export function TutorialMode({ onClose, onSelectScenario }: TutorialModeProps) {
               >
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{scenario.title}</h3>
                 <p className="text-gray-600 mb-4">{scenario.description}</p>
-                
                 <div className="flex items-center justify-between">
                   <div className="flex gap-4 text-sm text-gray-500">
-                    <span>👤 Age {scenario.patient.age}, {scenario.patient.gender}</span>
-                    <span>⚖️ {scenario.patient.weight}kg</span>
-                    <span>🏥 ASA {scenario.patient.asa}</span>
+                    <span>Age {scenario.patient.age}, {scenario.patient.sex}</span>
+                    <span>{scenario.patient.weight}kg</span>
+                    <span>ASA {scenario.patient.asa}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-blue-600 font-medium">
-                    <span>Start Scenario</span>
-                    <Play className="h-4 w-4" />
-                  </div>
+                  <span className="text-blue-600 font-medium">Start Scenario &rarr;</span>
                 </div>
               </div>
             ))}
