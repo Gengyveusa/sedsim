@@ -43,6 +43,23 @@ export const PATIENT_ARCHETYPES: Record<string, Patient> = {
     age: 17, weight: 65, height: 170, sex: 'M', asa: 1,
     mallampati: 1, osa: false, drugSensitivity: 0.9,
   },
+    // Cardiomyopathy archetypes
+  hcm_young: {
+    age: 28, weight: 72, height: 175, sex: 'M', asa: 3,
+    mallampati: 1, osa: false, drugSensitivity: 1.6,
+  },
+  hcm_old: {
+    age: 68, weight: 78, height: 170, sex: 'M', asa: 3,
+    mallampati: 2, osa: false, drugSensitivity: 1.8,
+  },
+  dcm_young: {
+    age: 32, weight: 80, height: 178, sex: 'M', asa: 3,
+    mallampati: 1, osa: false, drugSensitivity: 1.55,
+  },
+  dcm_old: {
+    age: 72, weight: 74, height: 168, sex: 'M', asa: 4,
+    mallampati: 2, osa: false, drugSensitivity: 1.9,
+  },
 };
 
 function noise(base: number, amplitude: number): number {
@@ -255,6 +272,27 @@ export function calculateVitals(
 
   // Calculate respiratory rate first (drives SpO2 and EtCO2)
   const rr = computeRespiratoryRate(baseline.rr, pkStates, patient);
+
+    // Cardiomyopathy adjustments
+const isHCM = (patient.drugSensitivity === 1.6 || patient.drugSensitivity === 1.8) && patient.asa === 3 && !patient.osa;
+  const isDCM = (patient.drugSensitivity === 1.55 || patient.drugSensitivity === 1.9) && patient.asa >= 3 && !patient.osa && !patient.hepaticImpairment;
+
+  if (isHCM) {
+    // HCM: higher resting HR (compensatory), lower BP tolerance
+    // Diastolic dysfunction: narrow pulse pressure, higher dbp
+    baseline.hr += 5;      // Slightly elevated resting HR
+    baseline.sbp -= 5;     // Slightly lower baseline SBP
+    baseline.dbp += 5;     // Elevated diastolic (stiff ventricle)
+  }
+
+  if (isDCM) {
+    // DCM: compensatory tachycardia, lower EF -> lower BP
+    // Sympathetic drive keeps HR up to maintain CO
+    baseline.hr += 15;     // Compensatory tachycardia (low EF)
+    baseline.sbp -= 15;    // Lower SBP (poor contractility)
+    baseline.dbp -= 5;     // Lower DBP (reduced stroke volume)
+    baseline.map = (baseline.sbp + 2 * baseline.dbp) / 3;
+  }
 
   // SpO2 depends on respiratory status
   const spo2 = computeSpO2(rr, baseline.spo2, patient, fio2, prevVitals.spo2);
