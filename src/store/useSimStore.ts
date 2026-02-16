@@ -132,6 +132,7 @@ const useSimStore = create<SimState>((set, get) => ({
     const newTrendPoint: TrendPoint = {
       time: newTime,
       vitals: newVitals,
+            cp: Object.fromEntries(Object.entries(newPkStates).map(([name, s]) => [name, s.c1])),
       ce: Object.fromEntries(
         Object.entries(newPkStates).map(([name, state]) => [name, state.ce])
       ),
