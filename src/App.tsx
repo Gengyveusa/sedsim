@@ -15,6 +15,7 @@ import SedationGauge from './components/SedationGauge';
 export default function App() {
   const { isRunning, speedMultiplier, tick, trendData } = useSimStore();
   const [showTutorial, setShowTutorial] = useState(false);
+  const [trendsExpanded, setTrendsExpanded] = useState(false);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -49,18 +50,40 @@ export default function App() {
           <div className="w-80 border-r border-gray-700 overflow-y-auto p-2 space-y-2">
             <PatientSelector />
             <DrugPanel />
-                    <InterventionPanel />
-                        <LocalAnesthPanel />
+            <InterventionPanel />
+            <LocalAnesthPanel />
           </div>
 
-          {/* Center - Monitor & Trends */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Center - Hero Gauge + Monitor */}
+          <div className="flex-1 flex flex-col overflow-hidden relative">
+            {/* Compact vitals monitor strip at top */}
             <MonitorPanel vitals={useSimStore.getState().vitals} history={trendData.map(t => t.vitals)} />
-                          <div className="flex justify-center py-2 border-b border-gray-700">
-                <SedationGauge />
+
+            {/* HERO: Giant Sedation Gauge - takes up most of center */}
+            <div className="flex-1 flex items-center justify-center relative">
+              <SedationGauge />
+
+              {/* Trend overlay - transparent in background, clickable */}
+              <div
+                className={`absolute inset-0 transition-all duration-500 cursor-pointer ${
+                  trendsExpanded
+                    ? 'bg-sim-bg/95 z-20'
+                    : 'opacity-20 hover:opacity-40 z-10 pointer-events-auto'
+                }`}
+                onClick={() => !trendsExpanded && setTrendsExpanded(true)}
+              >
+                {trendsExpanded && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setTrendsExpanded(false); }}
+                    className="absolute top-2 right-2 z-30 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300"
+                  >
+                    ✕ Close Trends
+                  </button>
+                )}
+                <div className={`h-full overflow-auto p-2 ${trendsExpanded ? '' : 'pointer-events-none'}`}>
+                  <TrendGraph />
+                </div>
               </div>
-            <div className="flex-1 min-h-0 overflow-auto p-2">
-              <TrendGraph />
             </div>
           </div>
 
@@ -75,13 +98,7 @@ export default function App() {
       </div>
 
       {showTutorial && (
-        <TutorialMode
-          onClose={() => setShowTutorial(false)}
-          onSelectScenario={(_scenario) => {
-            // TODO: Apply scenario to simulation
-            setShowTutorial(false);
-          }}
-        />
+        <TutorialMode onClose={() => setShowTutorial(false)} />
       )}
     </>
   );
