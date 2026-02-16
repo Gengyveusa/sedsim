@@ -49,10 +49,10 @@ export default function TrendGraph() {
   }
 
   return (
-    <div className="flex-1 bg-sim-panel p-4 overflow-hidden">
+    <div className="flex-1 bg-sim-panel p-4 overflow-auto">
       {/* Vital Signs Trend */}
       <h3 className="text-xs text-gray-400 uppercase mb-2">Vital Signs Trend</h3>
-      <div className="h-1/3">
+      <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={displayData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -69,7 +69,7 @@ export default function TrendGraph() {
 
       {/* Pharmacokinetic Concentrations */}
       <h3 className="text-xs text-gray-400 uppercase mb-2 mt-2">Plasma (solid) & Effect-Site (dashed) Concentrations</h3>
-      <div className="h-1/3">
+      <div className="h-48">
         {hasConcentrations ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={displayData}>
