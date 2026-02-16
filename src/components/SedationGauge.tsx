@@ -158,7 +158,7 @@ export default function SedationGauge() {
         {/* Synergy dots - pulsing indicators where drug classes overlap */}
         {activeSynergies.length > 0 && (() => {
           const angles = [45, 90, 135, 180];
-          return activeSynergies.slice(0, 4).map((pair, i) => {
+          return activeSynergies.slice(0, 4).map((_pair, i) => {
             const angle = angles[i % angles.length];
             const r = baseR + (activeDrugs.length * ringSpacing) / 2;
             const pos = polarToCartesian(cx, cy, r, angle);
