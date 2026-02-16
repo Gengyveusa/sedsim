@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import useSimStore from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
 
@@ -78,8 +78,7 @@ export default function TrendGraph() {
               <YAxis stroke="#9ca3af" tick={{ fontSize: 10 }} label={{ value: 'mcg/mL', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af', fontSize: 10 } }} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #374151' }}
-                formatter={(value: number, name: string) => {
-                  const parts = name.split(' ');
+                formatter={(value: number, name: string) => {                  
                   return [value.toFixed(4), name];
                 }}
               />
