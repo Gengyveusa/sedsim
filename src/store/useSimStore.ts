@@ -186,7 +186,7 @@ const useSimStore = create<SimState>((set, get) => ({
     const newState = stepPK(
       state.pkStates[drugName],
       drug,
-      dose * patient.weight, // convert mg/kg to mg
+            dose, // flat dose in mg (or mcg for fentanyl)
       0,
       1
     );
@@ -194,7 +194,7 @@ const useSimStore = create<SimState>((set, get) => ({
     const logEntry: LogEntry = {
       time: state.elapsedSeconds,
       type: 'bolus',
-      message: `${drug.name} ${dose} ${drug.unit}/kg (${(dose * patient.weight).toFixed(1)} ${drug.unit} total)`,
+      message: `${drug.name} ${dose} ${drug.unit} bolus`,
       severity: 'info',
     };
 
