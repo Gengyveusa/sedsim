@@ -7,7 +7,7 @@ export default function LocalAnesthPanel() {
   const handleCartridge = (drugKey: string) => {
     const meta = LA_META[drugKey];
     if (!meta) return;
-    
+
     // Administer one full cartridge worth of medication
     administerBolus(drugKey, meta.mgPerCartridge);
   };
@@ -17,12 +17,12 @@ export default function LocalAnesthPanel() {
       <h2 className="text-lg font-semibold text-cyan-400 border-b border-cyan-700 pb-2">
         LOCAL ANESTHETICS
       </h2>
-      
+
       {LA_DRUG_KEYS.map((drugKey) => {
         const meta = LA_META[drugKey];
         const maxDoseMg = patient.weight * meta.maxDosePerKg;
         const maxCartridges = Math.floor(maxDoseMg / meta.mgPerCartridge);
-        
+
         return (
           <div
             key={drugKey}
@@ -51,9 +51,9 @@ export default function LocalAnesthPanel() {
           </div>
         );
       })}
-      
+
       <div className="text-xs text-gray-400 bg-gray-800/50 p-2 rounded">
-        <div className="font-semibold text-yellow-400 mb-1">⚠️ Oral Surgery Context</div>
+        <div className="font-semibold text-yellow-400 mb-1">{"\u26A0\uFE0F"} Oral Surgery Context</div>
         <div>Local anesthetics are administered via infiltration or nerve block for procedures like:</div>
         <ul className="list-disc list-inside ml-2 mt-1">
           <li>Wisdom teeth extractions</li>
@@ -61,7 +61,7 @@ export default function LocalAnesthPanel() {
           <li>Bone grafting</li>
           <li>Complex oral surgery</li>
         </ul>
-        <div className="mt-2">Systemic absorption is modeled with subcutaneous depot pharmacokinetics.</div>
+        <div className="mt-2">All IV sedation drugs use intravenous bolus pharmacokinetics.</div>
       </div>
     </div>
   );
