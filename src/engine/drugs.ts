@@ -64,11 +64,133 @@ export const ketamine: DrugParams = {
   unit: 'mg',
 };
 
+// ============================================
+// LOCAL ANESTHETICS
+// Subcutaneous depot -> systemic absorption PK
+// k12 models absorption from tissue depot
+// k10 models systemic elimination
+// Epinephrine slows absorption (lower k12)
+// ============================================
+
+// 2% Lidocaine with 1:100,000 Epinephrine
+// 20mg/mL, 1.8mL cartridge = 36mg per cartridge
+// Max dose: 7mg/kg with epi (4.5mg/kg without)
+// Toxic plasma level: >5 mcg/mL
+export const lidocaine_epi: DrugParams = {
+  name: 'Lidocaine 2% + Epi',
+  color: '#ef4444',  // red
+  k10: 0.012,   // hepatic elimination t1/2 ~96 min
+  k12: 0.008,   // slow absorption from subQ depot (epi vasoconstriction)
+  k13: 0.001,   // minimal deep peripheral
+  k21: 0.025,   // tissue->central redistribution
+  k31: 0.001,
+  ke0: 0.05,    // slow equilibration to effect site (tissue block)
+  V1: 90.0,     // large Vd for subQ depot (apparent volume)
+  EC50: 5.0,    // mcg/mL (toxic threshold used as reference)
+  gamma: 2.0,
+  unit: 'mg',
+};
+
+// 4% Articaine with 1:100,000 Epinephrine
+// 40mg/mL, 1.8mL cartridge = 72mg per cartridge
+// Max dose: 7mg/kg
+// Toxic plasma level: >5 mcg/mL
+// Faster onset, shorter duration than lidocaine
+// Unique: ester linkage allows tissue hydrolysis
+export const articaine_epi: DrugParams = {
+  name: 'Articaine 4% + Epi',
+  color: '#f97316',  // orange
+  k10: 0.025,   // faster elimination than lidocaine (ester hydrolysis) t1/2 ~27 min
+  k12: 0.010,   // slightly faster absorption (better tissue penetration)
+  k13: 0.001,
+  k21: 0.030,   // faster redistribution
+  k31: 0.001,
+  ke0: 0.08,    // faster onset than lidocaine
+  V1: 85.0,     // large Vd for subQ depot
+  EC50: 5.0,    // mcg/mL toxic threshold
+  gamma: 2.0,
+  unit: 'mg',
+};
+
+// 0.5% Bupivacaine (plain, no epinephrine)
+// 5mg/mL, 1.8mL cartridge = 9mg per cartridge
+// Max dose: 2mg/kg (1.3mg/kg for dental blocks)
+// Toxic plasma level: >1.5 mcg/mL (more cardiotoxic)
+// Long duration, slow onset
+export const bupivacaine: DrugParams = {
+  name: 'Bupivacaine 0.5%',
+  color: '#ec4899',  // pink
+  k10: 0.006,   // very slow elimination t1/2 ~210 min
+  k12: 0.015,   // faster absorption (no epi)
+  k13: 0.002,   // more peripheral distribution
+  k21: 0.018,   // slow redistribution (high protein binding)
+  k31: 0.001,
+  ke0: 0.03,    // slow onset
+  V1: 70.0,     // large Vd (lipophilic)
+  EC50: 1.5,    // mcg/mL (lower toxic threshold - cardiotoxic)
+  gamma: 3.0,   // steep dose-response for toxicity
+  unit: 'mg',
+};
+
+// Local anesthetic metadata for UI and safety calculations
+export interface LAMeta {
+  mgPerMl: number;         // concentration in mg/mL
+  mlPerCartridge: number;  // standard dental cartridge volume
+  mgPerCartridge: number;  // mg per cartridge
+  maxDosePerKg: number;    // mg/kg max recommended dose
+  toxicPlasmaLevel: number; // mcg/mL plasma level for systemic toxicity
+  hasEpi: boolean;          // contains epinephrine
+  epiConcentration: string; // e.g. '1:100,000'
+  onsetMinutes: number;     // typical onset time
+  durationMinutes: number;  // typical duration
+}
+
+export const LA_META: Record<string, LAMeta> = {
+  lidocaine_epi: {
+    mgPerMl: 20,
+    mlPerCartridge: 1.8,
+    mgPerCartridge: 36,
+    maxDosePerKg: 7.0,
+    toxicPlasmaLevel: 5.0,
+    hasEpi: true,
+    epiConcentration: '1:100,000',
+    onsetMinutes: 3,
+    durationMinutes: 60,
+  },
+  articaine_epi: {
+    mgPerMl: 40,
+    mlPerCartridge: 1.8,
+    mgPerCartridge: 72,
+    maxDosePerKg: 7.0,
+    toxicPlasmaLevel: 5.0,
+    hasEpi: true,
+    epiConcentration: '1:100,000',
+    onsetMinutes: 2,
+    durationMinutes: 45,
+  },
+  bupivacaine: {
+    mgPerMl: 5,
+    mlPerCartridge: 1.8,
+    mgPerCartridge: 9,
+    maxDosePerKg: 1.3,
+    toxicPlasmaLevel: 1.5,
+    hasEpi: false,
+    epiConcentration: 'none',
+    onsetMinutes: 6,
+    durationMinutes: 240,
+  },
+};
+
+export const LA_DRUG_KEYS = Object.keys(LA_META);
+
 export const DRUG_DATABASE: Record<string, DrugParams> = {
   propofol,
   midazolam,
   fentanyl,
   ketamine,
+  lidocaine_epi,
+  articaine_epi,
+  bupivacaine,
 };
 
 export const DRUG_LIST = Object.values(DRUG_DATABASE);
