@@ -183,6 +183,7 @@ const useSimStore = create<SimState>((set, get) => ({
 
     // Step PK forward with bolus
     const newState = stepPK(
+              state.pkStates[drugName],
       drug,
             dose, // flat dose in mg (or mcg for fentanyl)
       0,
