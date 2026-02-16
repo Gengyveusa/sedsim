@@ -97,9 +97,11 @@ function findArchetypeKey(patient: typeof PATIENT_ARCHETYPES[keyof typeof PATIEN
   return 'healthy_adult';
 }
 
+const ABBREVIATIONS: Record<string, string> = { hcm: 'HCM', dcm: 'DCM', osa: 'OSA' };
+
 function formatArchetypeName(key: string): string {
   return key
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(word => ABBREVIATIONS[word] || (word.charAt(0).toUpperCase() + word.slice(1)))
     .join(' ');
 }
