@@ -191,8 +191,8 @@ function computeHemodynamics(
   const hypoxiaDrive = currentSpO2 < 90 ? (90 - currentSpO2) * 1.5 : 0;
 
   // Combine HR effects
-  let hr = baseline.hr + propofolHREffect + fentanylHREffect + baroreflexDrive + hypoxiaDrive;
-  hr *= sensitivity;
+  const drugHRDelta = (propofolHREffect + fentanylHREffect) * sensitivity;
+    let hr = baseline.hr + drugHRDelta + baroreflexDrive + hypoxiaDrive;
 
   // Severe hypoxia -> bradycardia (late sign)
   if (currentSpO2 < 75) {
