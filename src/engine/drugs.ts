@@ -64,6 +64,146 @@ export const ketamine: DrugParams = {
   unit: 'mg',
 };
 
+// Dexmedetomidine - Hannivoort 2015 model (alpha-2 agonist)
+// "Cooperative sedation" - sedation WITHOUT respiratory depression
+// Very slow equilibration (15+ min to peak effect)
+export const dexmedetomidine: DrugParams = {
+  name: 'Dexmedetomidine',
+  color: '#06b6d4',  // cyan
+  k10: 0.022,  // slow elimination, t1/2 ~2hr
+  k12: 0.105,
+  k13: 0.032,
+  k21: 0.047,
+  k31: 0.009,
+  ke0: 0.0066,  // VERY slow effect-site equilibration (15+ min)
+  V1: 28.0,
+  EC50: 0.6,  // ng/mL for sedation
+  gamma: 3.5,
+  unit: 'mcg',
+};
+
+// Remifentanil - Minto 1997 model (ultra-short acting opioid)
+// Fast ke0: rapid onset and offset. Mistakes self-correct quickly but stacking is lethal
+export const remifentanil: DrugParams = {
+  name: 'Remifentanil',
+  color: '#fb923c',  // orange
+  k10: 0.23,  // very fast elimination (context-insensitive)
+  k12: 0.64,
+  k13: 0.15,
+  k21: 0.11,
+  k31: 0.017,
+  ke0: 0.595,  // FAST effect-site equilibration (~1 min)
+  V1: 5.1,
+  EC50: 0.002,  // ng/mL (2 ng/mL)
+  gamma: 2.0,
+  unit: 'mcg',
+};
+
+// Naloxone - Opioid reversal agent (mu-receptor competitive antagonist)
+// Shorter duration than fentanyl -> renarcotization risk
+export const naloxone: DrugParams = {
+  name: 'Naloxone',
+  color: '#10b981',  // emerald
+  k10: 0.173,  // t1/2 elimination ~64 min
+  k12: 0.25,
+  k13: 0,  // simplified 2-compartment
+  k21: 0.08,
+  k31: 0,
+  ke0: 0.18,  // moderate effect-site equilibration
+  V1: 5.8,
+  EC50: 0.001,  // ng/mL (competitive antagonism)
+  gamma: 1.0,  // linear competitive inhibition
+  unit: 'mg',
+};
+
+// Flumazenil - Benzodiazepine reversal agent (competitive antagonist)
+// t1/2 ~40-80 min, shorter than midazolam -> renarcotization risk
+export const flumazenil: DrugParams = {
+  name: 'Flumazenil',
+  color: '#14b8a6',  // teal
+  k10: 0.138,  // t1/2 ~60 min
+  k12: 0.18,
+  k13: 0,  // simplified 2-compartment
+  k21: 0.06,
+  k31: 0,
+  ke0: 0.15,
+  V1: 6.5,
+  EC50: 0.02,  // mcg/mL (competitive antagonism)
+  gamma: 1.0,
+  unit: 'mg',
+};
+
+
+// Dexmedetomidine - Alpha-2 agonist for sedation and analgesia
+// Provides conscious sedation without respiratory depression
+export const dexmedetomidine: DrugParams = {
+    name: 'Dexmedetomidine',
+    color: '#9C27B0',  // purple
+    k10: 0.42,  // moderate clearance
+    k12: 0.29,
+    k13: 0.15,
+    k21: 0.19,
+    k31: 0.008,
+    ke0: 0.64,  // moderate onset/offset
+    V1: 28.0,  // L for 70kg
+    EC50: 0.7,  // ng/mL for sedation
+    gamma: 2.5,
+    unit: 'mcg',
+  };
+
+
+// Ketamine - NMDA antagonist dissociative anesthetic
+// Provides analgesia and sedation with maintained airway reflexes
+export const ketamine: DrugParams = {
+    name: 'Ketamine',
+    color: '#FF5722',  // deep orange
+    k10: 0.119,  // relatively slow elimination
+    k12: 0.156,
+    k13: 0.046,
+    k21: 0.064,
+    k31: 0.0026,
+    ke0: 0.52,  // rapid onset
+    V1: 16.1,  // L for 70kg
+    EC50: 0.9,  // mcg/mL for analgesia/sedation
+    gamma: 2.0,
+    unit: 'mg',
+  };
+
+// Etomidate - Induction agent for RSI scenarios
+// Preserves hemodynamics, causes myoclonus, simple Arden model
+export const etomidate: DrugParams = {
+  name: 'Etomidate',
+  color: '#8b5cf6',  // violet
+  k10: 0.071,
+  k12: 0.28,
+  k13: 0.12,
+  k21: 0.042,
+  k31: 0.017,
+  ke0: 0.26,
+  V1: 13.5,
+  EC50: 0.3,  // mcg/mL for sedation
+  gamma: 2.2,
+  unit: 'mg',
+};
+
+// Nitrous Oxide - Inhaled sedation for dental procedures
+// Different PK: wash-in/wash-out via alveolar ventilation
+// Simplified model using wash-in/wash-out kinetics
+export const nitrousOxide: DrugParams = {
+  name: 'Nitrous Oxide',
+  color: '#60a5fa',  // light blue
+  k10: 0.4,  // fast wash-out via ventilation
+  k12: 0,  // minimal tissue distribution (low blood/gas solubility)
+  k13: 0,
+  k21: 0,
+  k31: 0,
+  ke0: 0.8,  // very fast equilibration (low blood/gas partition coefficient)
+  V1: 70.0,  // large "volume" (FRC)
+  EC50: 40.0,  // % concentration for sedation (MAC-awake ~60%)
+  gamma: 1.5,
+  unit: '%',  // percentage concentration
+};
+
 // ============================================
 // LOCAL ANESTHETICS
 // Subcutaneous depot -> systemic absorption PK
@@ -188,6 +328,7 @@ export const DRUG_DATABASE: Record<string, DrugParams> = {
   midazolam,
   fentanyl,
   ketamine,
+    dexmedetomidine,
   lidocaine_epi,
   articaine_epi,
   bupivacaine,
