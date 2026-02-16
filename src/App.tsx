@@ -5,6 +5,7 @@ import PatientSelector from './components/PatientSelector';
 import DrugPanel from './components/DrugPanel';
 import InterventionPanel from './components/InterventionPanel';
 import MonitorPanel from './components/MonitorPanel';
+import LocalAnesthPanel from './components/LocalAnesthPanel';
 import TrendGraph from './components/TrendGraph';
 import ControlBar from './components/ControlBar';
 import EventLog from './components/EventLog';
@@ -36,6 +37,7 @@ export default function App() {
           <PatientSelector />
           <DrugPanel />
                     <InterventionPanel />
+                      <LocalAnesthPanel />
         </div>
 
         {/* Center - Monitor & Trends */}
