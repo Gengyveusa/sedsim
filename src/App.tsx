@@ -20,7 +20,6 @@ export default function App() {
   useEffect(() => {
     if (!isRunning) return;
     const interval = setInterval(() => {
-      // Call tick multiple times for speed multiplier
       const ticks = Math.round(speedMultiplier);
       for (let i = 0; i < ticks; i++) {
         tick();
@@ -63,14 +62,15 @@ export default function App() {
             <div className="flex-1 flex items-center justify-center relative">
               <SedationGauge />
 
-              {/* Trend overlay - transparent in background, clickable */}
+              {/* Trend overlay - transparent in background, clickable to expand */}
               <div
-                className={`absolute inset-0 transition-all duration-500 cursor-pointer ${
+                className={`absolute inset-0 transition-all duration-500 ${
                   trendsExpanded
                     ? 'bg-sim-bg/95 z-20'
-                    : 'opacity-20 hover:opacity-40 z-10 pointer-events-auto'
+                    : 'opacity-20 hover:opacity-40 z-10'
                 }`}
                 onClick={() => !trendsExpanded && setTrendsExpanded(true)}
+                style={{ cursor: trendsExpanded ? 'default' : 'pointer' }}
               >
                 {trendsExpanded && (
                   <button
@@ -98,7 +98,10 @@ export default function App() {
       </div>
 
       {showTutorial && (
-        <TutorialMode onClose={() => setShowTutorial(false)} />
+        <TutorialMode
+          onClose={() => setShowTutorial(false)}
+          onSelectScenario={() => setShowTutorial(false)}
+        />
       )}
     </>
   );
