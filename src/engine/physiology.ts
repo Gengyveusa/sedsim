@@ -138,7 +138,7 @@ function computeSpO2(
   const sedationFactor = Math.max(0.9, ventilationRatio);
   const osaFactor = patient.osa ? 0.95 : 1.0;
 
-  const effectivePaO2 = pao2 * obesityFactor * sedationFactor * osaFactor;
+    const effectivePaO2 = Math.max(0, pao2 * obesityFactor * sedationFactor * osaFactor);
 
   // Oxygen-hemoglobin dissociation curve (Hill equation)
   const p50 = 26.6;
