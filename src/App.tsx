@@ -69,7 +69,7 @@ export default function App() {
       <ControlBar />
     </div>
 
-          {showTutorial && (
+      {showTutorial && (
         <TutorialMode
           onClose={() => setShowTutorial(false)}
           onSelectScenario={(scenario) => {
@@ -78,5 +78,3 @@ export default function App() {
           }}
         />
       )}
-  );
-}
