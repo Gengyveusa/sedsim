@@ -171,11 +171,10 @@ export const nitrousOxide: DrugParams = {
 
 // ============================================
 // LOCAL ANESTHETICS
-// Subcutaneous depot -> systemic absorption PK
-// k12 models absorption from tissue depot
+// Local injection -> systemic absorption via 3-compartment PK
+// k12 models distribution to peripheral compartments
 // k10 models systemic elimination
-// Epinephrine slows absorption (lower k12)
-// ============================================
+// Epinephrine slows systemic absorption (lower k12)
 
 // 2% Lidocaine with 1:100,000 Epinephrine
 // 20mg/mL, 1.8mL cartridge = 36mg per cartridge
@@ -185,12 +184,12 @@ export const lidocaine_epi: DrugParams = {
   name: 'Lidocaine 2% + Epi',
   color: '#ef4444',  // red
   k10: 0.012,   // hepatic elimination t1/2 ~96 min
-  k12: 0.008,   // slow absorption from subQ depot (epi vasoconstriction)
+  k12: 0.008,   // slow absorption from local tissue depot (epi vasoconstriction)
   k13: 0.001,   // minimal deep peripheral
   k21: 0.025,   // tissue->central redistribution
   k31: 0.001,
   ke0: 0.05,    // slow equilibration to effect site (tissue block)
-  V1: 90.0,     // large Vd for subQ depot (apparent volume)
+  V1: 90.0,     // large Vd for local tissue depot (apparent volume)
   EC50: 5.0,    // mcg/mL (toxic threshold used as reference)
   gamma: 2.0,
   unit: 'mg',
@@ -211,7 +210,7 @@ export const articaine_epi: DrugParams = {
   k21: 0.030,   // faster redistribution
   k31: 0.001,
   ke0: 0.08,    // faster onset than lidocaine
-  V1: 85.0,     // large Vd for subQ depot
+  V1: 85.0,     // large Vd for local tissue depot
   EC50: 5.0,    // mcg/mL toxic threshold
   gamma: 2.0,
   unit: 'mg',
