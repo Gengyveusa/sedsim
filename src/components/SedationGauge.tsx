@@ -67,12 +67,13 @@ function getDrugClass(drugKey: string): string | null {
 export default function SedationGauge() {
   const { combinedEff, moass, pkStates } = useSimStore();
 
-  const size = 240;
+  // --- HERO SIZE: Much larger gauge ---
+  const size = 420;
   const cx = size / 2;
   const cy = size / 2;
-  const baseR = 60;
-  const ringSpacing = 12;
-  const strokeW = 8;
+  const baseR = 110;
+  const ringSpacing = 18;
+  const strokeW = 14;
 
   // Get active sedation drugs (Ce > 0.001, exclude local anesthetics)
   const localAnesthetics = ['lidocaine_epi', 'articaine_epi', 'bupivacaine'];
@@ -88,8 +89,8 @@ export default function SedationGauge() {
         key: name,
         name: drug.name,
         ce: s.ce,
-        effect,
         color: drug.color,
+        effect,
         intensity,
         drugClass: getDrugClass(name),
       };
@@ -106,17 +107,28 @@ export default function SedationGauge() {
   const gaugeColor = getGaugeColor(combinedEff);
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center justify-center">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <defs>
           <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
             <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
+          <filter id="bigGlow">
+            <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <radialGradient id="centerGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={gaugeColor} stopOpacity="0.15" />
+            <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+          </radialGradient>
         </defs>
 
+        {/* Subtle center glow */}
+        <circle cx={cx} cy={cy} r={baseR - 10} fill="url(#centerGrad)" />
+
         {/* Background track */}
-        <circle cx={cx} cy={cy} r={baseR + 30} fill="none" stroke="#1e293b" strokeWidth={strokeW * 6} opacity={0.3} />
+        <circle cx={cx} cy={cy} r={baseR + 50} fill="none" stroke="#1e293b" strokeWidth={strokeW * 8} opacity={0.3} />
 
         {/* Per-drug rings */}
         {activeDrugs.slice(0, 4).map((drug, i) => {
@@ -141,12 +153,12 @@ export default function SedationGauge() {
               />
               {/* Needle at tip */}
               {(() => {
-                const tip = polarToCartesian(cx, cy, r + 5, sweepAngle);
-                const base = polarToCartesian(cx, cy, r - 5, sweepAngle);
+                const tip = polarToCartesian(cx, cy, r + 8, sweepAngle);
+                const base = polarToCartesian(cx, cy, r - 8, sweepAngle);
                 return (
                   <line
                     x1={base.x} y1={base.y} x2={tip.x} y2={tip.y}
-                    stroke={drug.color} strokeWidth={2} strokeLinecap="round"
+                    stroke={drug.color} strokeWidth={3} strokeLinecap="round"
                     opacity={opacity}
                   />
                 );
@@ -165,12 +177,12 @@ export default function SedationGauge() {
             return (
               <g key={`synergy-${i}`}>
                 <circle
-                  cx={pos.x} cy={pos.y} r={6}
+                  cx={pos.x} cy={pos.y} r={8}
                   fill="#fbbf24" opacity={0.8}
                   style={{ animation: 'pulse 1.5s ease-in-out infinite' }}
                 />
                 <circle
-                  cx={pos.x} cy={pos.y} r={3}
+                  cx={pos.x} cy={pos.y} r={4}
                   fill="#fff"
                 />
               </g>
@@ -178,31 +190,33 @@ export default function SedationGauge() {
           });
         })()}
 
-        {/* 12 o'clock marker */}
+        {/* 12 o'clock start marker */}
         <line
-          x1={cx} y1={cy - baseR + 10} x2={cx} y2={cy - baseR - 35}
+          x1={cx} y1={cy - baseR + 15}
+          x2={cx} y2={cy - baseR - 55}
           stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"
         />
 
         {/* Center - MOASS display */}
         <text
-          x={cx} y={cy - 8}
+          x={cx} y={cy - 15}
           textAnchor="middle" dominantBaseline="middle"
-          fill={gaugeColor} fontSize="36" fontWeight="bold"
+          fill={gaugeColor} fontSize="64" fontWeight="bold"
+          filter="url(#bigGlow)"
         >
           {moass}
         </text>
         <text
-          x={cx} y={cy + 14}
+          x={cx} y={cy + 22}
           textAnchor="middle" dominantBaseline="middle"
-          fill="#94a3b8" fontSize="10"
+          fill="#94a3b8" fontSize="16"
         >
           {moassLabel(moass)}
         </text>
         <text
-          x={cx} y={cy + 28}
+          x={cx} y={cy + 46}
           textAnchor="middle" dominantBaseline="middle"
-          fill="#64748b" fontSize="8"
+          fill="#64748b" fontSize="13"
         >
           Effect: {(combinedEff * 100).toFixed(0)}%
         </text>
@@ -210,12 +224,12 @@ export default function SedationGauge() {
 
       {/* Legend - active drugs with Ce values */}
       {activeDrugs.length > 0 && (
-        <div className="mt-1 space-y-0.5 w-full max-w-[220px]">
+        <div className="mt-1 space-y-0.5 w-full max-w-[380px]">
           {activeDrugs.slice(0, 4).map((d) => (
-            <div key={d.key} className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5">
+            <div key={d.key} className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2">
                 <span
-                  className="w-3 h-1 rounded-sm"
+                  className="w-4 h-1.5 rounded-sm"
                   style={{ backgroundColor: d.color, opacity: 0.4 + d.intensity * 0.6 }}
                 />
                 <span className="text-gray-400">{d.name}</span>
@@ -235,13 +249,6 @@ export default function SedationGauge() {
           Synergy: {activeSynergies.map(([c1, c2]) => `${c1}+${c2}`).join(', ')}
         </div>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.3); opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }
