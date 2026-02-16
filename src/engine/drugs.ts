@@ -134,41 +134,6 @@ export const flumazenil: DrugParams = {
 };
 
 
-// Dexmedetomidine - Alpha-2 agonist for sedation and analgesia
-// Provides conscious sedation without respiratory depression
-export const dexmedetomidine: DrugParams = {
-    name: 'Dexmedetomidine',
-    color: '#9C27B0',  // purple
-    k10: 0.42,  // moderate clearance
-    k12: 0.29,
-    k13: 0.15,
-    k21: 0.19,
-    k31: 0.008,
-    ke0: 0.64,  // moderate onset/offset
-    V1: 28.0,  // L for 70kg
-    EC50: 0.7,  // ng/mL for sedation
-    gamma: 2.5,
-    unit: 'mcg',
-  };
-
-
-// Ketamine - NMDA antagonist dissociative anesthetic
-// Provides analgesia and sedation with maintained airway reflexes
-export const ketamine: DrugParams = {
-    name: 'Ketamine',
-    color: '#FF5722',  // deep orange
-    k10: 0.119,  // relatively slow elimination
-    k12: 0.156,
-    k13: 0.046,
-    k21: 0.064,
-    k31: 0.0026,
-    ke0: 0.52,  // rapid onset
-    V1: 16.1,  // L for 70kg
-    EC50: 0.9,  // mcg/mL for analgesia/sedation
-    gamma: 2.0,
-    unit: 'mg',
-  };
-
 // Etomidate - Induction agent for RSI scenarios
 // Preserves hemodynamics, causes myoclonus, simple Arden model
 export const etomidate: DrugParams = {
