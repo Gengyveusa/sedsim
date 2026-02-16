@@ -59,44 +59,64 @@ export default function App() {
             <MonitorPanel vitals={useSimStore.getState().vitals} history={trendData.map(t => t.vitals)} />
 
             {/* HERO: Giant Sedation Gauge - takes up most of center */}
-            <div className="flex-1 flex items-center justify-center relative">
+            <div className="flex-1 flex items-center justify-center">
               <SedationGauge />
-
-              {/* Trend overlay - transparent in background, clickable to expand */}
-              <div
-                className={`absolute inset-0 transition-all duration-500 ${
-                  trendsExpanded
-                    ? 'bg-sim-bg/95 z-20'
-                    : 'opacity-20 hover:opacity-40 z-10'
-                }`}
-                onClick={() => !trendsExpanded && setTrendsExpanded(true)}
-                style={{ cursor: trendsExpanded ? 'default' : 'pointer' }}
-              >
-                {trendsExpanded && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setTrendsExpanded(false); }}
-                    className="absolute top-2 right-2 z-30 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300"
-                  >
-                    ✕ Close Trends
-                  </button>
-                )}
-                <div className={`h-full overflow-auto p-2 ${trendsExpanded ? '' : 'pointer-events-none'}`}>
-                  <TrendGraph />
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* Right Panel - Event Log */}
-          <div className="w-72 border-l border-gray-700 overflow-y-auto">
-            <EventLog />
+          {/* Right side: Event Log + Collapsible Trends */}
+          <div className="flex flex-row">
+            {/* Trends Panel - collapsible side drawer */}
+            <div
+              className={`transition-all duration-300 ease-in-out border-l border-gray-700 overflow-hidden flex flex-col ${
+                trendsExpanded ? 'w-96' : 'w-10'
+              }`}
+            >
+              {/* Collapsed: vertical tab button */}
+              {!trendsExpanded && (
+                <button
+                  onClick={() => setTrendsExpanded(true)}
+                  className="h-full w-10 flex items-center justify-center bg-gray-800/60 hover:bg-gray-700/80 transition-colors group"
+                  title="Show Trend Graphs"
+                >
+                  <span className="writing-mode-vertical text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase"
+                    style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                  >
+                    Trends
+                  </span>
+                </button>
+              )}
+
+              {/* Expanded: full trend panel */}
+              {trendsExpanded && (
+                <div className="flex flex-col h-full bg-sim-panel">
+                  <div className="flex items-center justify-between px-2 py-1 border-b border-gray-700">
+                    <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Trend Graphs</span>
+                    <button
+                      onClick={() => setTrendsExpanded(false)}
+                      className="text-gray-400 hover:text-white text-sm px-1"
+                      title="Collapse Trends"
+                    >
+                      &raquo;
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    <TrendGraph />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Event Log */}
+            <div className="w-72 border-l border-gray-700 overflow-y-auto">
+              <EventLog />
+            </div>
           </div>
         </div>
 
         {/* Bottom Control Bar */}
         <ControlBar />
       </div>
-
       {showTutorial && (
         <TutorialMode
           onClose={() => setShowTutorial(false)}
