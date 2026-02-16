@@ -82,6 +82,7 @@ export interface Patient {
 // Time-stamped data point for trend graphs
 export interface TrendPoint {
   time: number;
+    cp: Record<string, number>;  // plasma concentration by drug name
   vitals: Vitals;
   ce: Record<string, number>;  // effect-site by drug name
   moass: MOASSLevel;
