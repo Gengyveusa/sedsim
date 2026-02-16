@@ -27,8 +27,8 @@ export const midazolam: DrugParams = {
   k31: 0.004,
   ke0: 0.13,
   V1: 8.6,
-  EC50: 0.15,  // mcg/mL
-  gamma: 3.0,
+    EC50: 0.40,  // mcg/mL - raised from 0.15 to prevent over-sedation at 2mg
+  gamma: 2.2,  // reduced from 3.0 for more gradual sedation curve
   unit: 'mg',
 };
 
