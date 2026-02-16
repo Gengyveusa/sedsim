@@ -73,7 +73,7 @@ export default function App() {
       {showTutorial && (
         <TutorialMode
           onClose={() => setShowTutorial(false)}
-          onSelectScenario={(scenario) => {
+          onSelectScenario={(_scenario) => {
             // TODO: Apply scenario to simulation
             setShowTutorial(false);
           }}
