@@ -64,3 +64,22 @@ html, body {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.08); }
 }
+
+
+/* Petal pulse animation for active drugs */
+@keyframes petalPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.5; }
+}
+
+/* Blink animation for crisis alerts */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Glow animation for neon effects */
+@keyframes glowPulse {
+  0%, 100% { filter: drop-shadow(0 0 3px currentColor); }
+  50% { filter: drop-shadow(0 0 8px currentColor); }
+}
