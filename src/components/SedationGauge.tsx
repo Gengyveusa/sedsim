@@ -317,7 +317,7 @@ export default function SedationGauge() {
             <rect x={cx - outerR} y={cy - outerR} width={outerR * 2} height={outerR} fill="rgba(59,130,246,0.04)" clipPath="url(#circleClip)" />
 
             {/* Safety halo ring - 5 color-coded segments */}
-            {safetySegments.map((seg, i) => {
+            {safetySegments.map((seg) => {
               const startA = seg.angle - 30;
               const endA = seg.angle + 30;
               return (
