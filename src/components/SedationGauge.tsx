@@ -132,7 +132,6 @@ export default function SedationGauge() {
 
   // Generate radar polygon points
   const axisCount = radarAxes.length;
-  const _angleStep = (2 * Math.PI) / axisCount;
   const radarPoints = radarValues.map((v, i) => {
     const p = polarToCartesian(cx, cy, v * 130 + 20, (i * 360 / axisCount));
     return `${p.x},${p.y}`;
