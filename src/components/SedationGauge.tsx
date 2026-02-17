@@ -28,8 +28,7 @@ const MOASS_LABELS = ['Unresponsive', 'Deep', 'Moderate', 'Light', 'Drowsy', 'Aw
 // Mode types: A=Tabbed Rings, B=Concentric Layers, C=Avatar, D=Risk Radar
 type GaugeMode = 'rings' | 'layers' | 'avatar' | 'risk';
 const MODE_LABELS: Record<GaugeMode, string> = {
-  rings: 'A: RINGS', layers: 'B: LAYERS', avatar: 'C: AVATAR', risk: 'D: RADAR'
-};
+  rings: 'RINGS', layers: 'B: LAYERS', avatar: 'C: AVATAR', risk: 'D: RADAR'};
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
