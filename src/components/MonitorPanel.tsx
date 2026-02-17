@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Vitals } from '../types';
 
 interface MonitorPanelProps {
@@ -21,6 +21,10 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   const ecgCanvasRef = useRef<HTMLCanvasElement>(null);
   const plethCanvasRef = useRef<HTMLCanvasElement>(null);
   const capnoCanvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Collapsible state for Pleth and CO2
+  const [showPleth, setShowPleth] = useState(true);
+  const [showCapno, setShowCapno] = useState(true);
 
   // Draw ECG waveform
   useEffect(() => {
@@ -43,7 +47,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
     // Generate ECG-like waveform based on HR
     const hr = vitals.hr || 75;
     const cycleLength = 60 / hr; // seconds per beat
-    const pixelsPerSecond = width / 4; // 4 seconds visible
+    const pixelsPerSecond = width / 60; // 60 seconds visible
     const cyclePixels = cycleLength * pixelsPerSecond;
 
     for (let x = 0; x < width; x++) {
@@ -83,6 +87,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
 
   // Draw SpO2 plethysmograph
   useEffect(() => {
+    if (!showPleth) return;
     const canvas = plethCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -101,7 +106,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
 
     const hr = vitals.hr || 75;
     const cycleLength = 60 / hr;
-    const pixelsPerSecond = width / 4;
+    const pixelsPerSecond = width / 60; // 60 seconds visible
     const cyclePixels = cycleLength * pixelsPerSecond;
 
     for (let x = 0; x < width; x++) {
@@ -132,10 +137,11 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
       }
     }
     ctx.stroke();
-  }, [vitals.hr]);
+  }, [vitals.hr, showPleth]);
 
   // Draw capnography
   useEffect(() => {
+    if (!showCapno) return;
     const canvas = capnoCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -154,7 +160,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
     const rr = vitals.rr || 14;
     const etco2 = vitals.etco2 || 38;
     const cycleLength = 60 / rr;
-    const pixelsPerSecond = width / 10;
+    const pixelsPerSecond = width / 60; // 60 seconds visible
     const cyclePixels = cycleLength * pixelsPerSecond;
     const etco2Height = (etco2 / 60) * (height - 10);
 
@@ -190,69 +196,76 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
       }
     }
     ctx.stroke();
-  }, [vitals.rr, vitals.etco2]);
+  }, [vitals.rr, vitals.etco2, showCapno]);
 
   return (
-    <div className="bg-sim-panel rounded-lg p-4">
-      <div className="grid grid-cols-[1fr_200px] gap-4">
-        {/* Waveforms */}
-        <div className="space-y-2">
-          {/* ECG */}
-          <div className="relative">
-            <span className="absolute top-1 left-2 text-sim-ecg text-xs font-mono">II</span>
-            <canvas
-              ref={ecgCanvasRef}
-              width={400}
-              height={60}
-              className="w-full bg-sim-panel rounded"
-            />
-          </div>
-          {/* SpO2 Pleth */}
-          <div className="relative">
-            <span className="absolute top-1 left-2 text-sim-spo2 text-xs font-mono">Pleth</span>
-            <canvas
-              ref={plethCanvasRef}
-              width={400}
-              height={50}
-              className="w-full bg-sim-panel rounded"
-            />
-          </div>
-          {/* Capnography */}
-          <div className="relative">
-            <span className="absolute top-1 left-2 text-sim-capno text-xs font-mono">CO₂</span>
-            <canvas
-              ref={capnoCanvasRef}
-              width={400}
-              height={50}
-              className="w-full bg-sim-panel rounded"
-            />
-          </div>
+    <div className="flex gap-4">
+      {/* Waveforms */}
+      <div className="flex-1 space-y-1">
+        {/* ECG */}
+        <div className="relative">
+          <span className="absolute top-1 left-2 text-xs font-bold" style={{ color: COLORS.ecg }}>II</span>
+          <canvas ref={ecgCanvasRef} width={480} height={60} className="w-full rounded" style={{ background: COLORS.background }} />
         </div>
 
-        {/* Numeric Values */}
-        <div className="space-y-3 font-mono text-right">
-          <div>
-            <div className="text-sim-hr text-3xl font-bold">{Math.round(vitals.hr)}</div>
-            <div className="text-sim-text-secondary text-xs">HR bpm</div>
-          </div>
-          <div>
-            <div className="text-sim-spo2 text-3xl font-bold">{Math.round(vitals.spo2)}</div>
-            <div className="text-sim-text-secondary text-xs">SpO₂ %</div>
-          </div>
-          <div>
-            <div className="text-sim-bp text-2xl font-bold">
-              {Math.round(vitals.sbp)}/{Math.round(vitals.dbp)}
-            </div>
-            <div className="text-sim-text-secondary text-xs">BP mmHg</div>
-          </div>
-          <div>
-            <div className="text-sim-rr text-2xl font-bold">{Math.round(vitals.rr)}</div>
-            <div className="text-sim-text-secondary text-xs">RR /min</div>
-          </div>
-          <div>
-            <div className="text-sim-capno text-2xl font-bold">{Math.round(vitals.etco2)}</div>
-            <div className="text-sim-text-secondary text-xs">EtCO₂</div>
-          </div>
+        {/* SpO2 Pleth - Collapsible */}
+        <div className="relative">
+          <button
+            onClick={() => setShowPleth(!showPleth)}
+            className="absolute top-1 left-2 text-xs font-bold z-10 hover:opacity-80 flex items-center gap-1"
+            style={{ color: COLORS.spo2 }}
+          >
+            <span className="text-[10px]">{showPleth ? '▼' : '▶'}</span>
+            Pleth
+          </button>
+          {showPleth && (
+            <canvas ref={plethCanvasRef} width={480} height={60} className="w-full rounded" style={{ background: COLORS.background }} />
+          )}
+          {!showPleth && (
+            <div className="w-full h-4 rounded" style={{ background: COLORS.background }} />
+          )}
+        </div>
+
+        {/* Capnography - Collapsible */}
+        <div className="relative">
+          <button
+            onClick={() => setShowCapno(!showCapno)}
+            className="absolute top-1 left-2 text-xs font-bold z-10 hover:opacity-80 flex items-center gap-1"
+            style={{ color: COLORS.capno }}
+          >
+            <span className="text-[10px]">{showCapno ? '▼' : '▶'}</span>
+            CO₂
+          </button>
+          {showCapno && (
+            <canvas ref={capnoCanvasRef} width={480} height={60} className="w-full rounded" style={{ background: COLORS.background }} />
+          )}
+          {!showCapno && (
+            <div className="w-full h-4 rounded" style={{ background: COLORS.background }} />
+          )}
+        </div>
+      </div>
+
+      {/* Numeric Values */}
+      <div className="flex flex-col justify-center text-right space-y-1 min-w-[80px]">
+        <div>
+          <span className="text-3xl font-bold" style={{ color: COLORS.hr }}>{Math.round(vitals.hr)}</span>
+          <div className="text-xs text-gray-400">HR bpm</div>
+        </div>
+        <div>
+          <span className="text-3xl font-bold" style={{ color: COLORS.spo2 }}>{Math.round(vitals.spo2)}</span>
+          <div className="text-xs text-gray-400">SpO₂ %</div>
+        </div>
+        <div>
+          <span className="text-2xl font-bold" style={{ color: COLORS.bp }}>{Math.round(vitals.sbp)}/{Math.round(vitals.dbp)}</span>
+          <div className="text-xs text-gray-400">BP mmHg</div>
+        </div>
+        <div>
+          <span className="text-2xl font-bold" style={{ color: COLORS.rr }}>{Math.round(vitals.rr)}</span>
+          <div className="text-xs text-gray-400">RR /min</div>
+        </div>
+        <div>
+          <span className="text-2xl font-bold" style={{ color: COLORS.capno }}>{Math.round(vitals.etco2)}</span>
+          <div className="text-xs text-gray-400">EtCO₂</div>
         </div>
       </div>
     </div>
