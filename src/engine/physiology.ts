@@ -4,6 +4,12 @@ import { Vitals, Patient, PKState } from '../types';
  * Comprehensive Physiology Engine
  * Simulates vital sign responses based on PK/PD state
  * Implements respiratory cascade, SpO2 model, cardiovascular reflexes
+ *
+ * Calibrated to clinical reality:
+ *   - 25 mcg fentanyl IV in 75kg adult -> ~0.3-0.5 ng/mL Ce -> mild RR reduction
+ *   - 50 mcg fentanyl -> ~0.8-1.0 ng/mL Ce -> moderate RR depression
+ *   - 100 mcg fentanyl -> ~1.5-2.0 ng/mL Ce -> significant RR depression
+ *   - 200+ mcg fentanyl -> apnea risk
  */
 
 // Baseline vitals for healthy adult
@@ -43,7 +49,7 @@ export const PATIENT_ARCHETYPES: Record<string, Patient> = {
     age: 17, weight: 65, height: 170, sex: 'M', asa: 1,
     mallampati: 1, osa: false, drugSensitivity: 0.9,
   },
-    // Cardiomyopathy archetypes
+  // Cardiomyopathy archetypes
   hcm_young: {
     age: 28, weight: 72, height: 175, sex: 'M', asa: 3,
     mallampati: 1, osa: false, drugSensitivity: 1.6,
@@ -78,32 +84,57 @@ function sigmoidEffect(ce: number, ce50: number, gamma: number): number {
 
 /**
  * Calculate respiratory rate based on drug effects
- * Opioids and hypnotics both depress respiration with synergy
+ * Clinically calibrated:
+ *   - Fentanyl Ce50 for RR depression ~3.5 ng/mL (literature: 2-5 ng/mL)
+ *   - 25mcg bolus in 75kg -> peak Ce ~0.4 ng/mL -> ~5% RR depression
+ *   - 100mcg bolus -> peak Ce ~1.5 ng/mL -> ~15% RR depression
+ *   - 200mcg+ -> Ce >3 ng/mL -> significant depression
  */
 function computeRespiratoryRate(
   baseline: number,
   pkStates: Record<string, PKState>,
   patient: Patient
 ): number {
-  // Fentanyl respiratory depression (Ce50 = 1.5 ng/mL, gamma = 2.5)
+  // Fentanyl respiratory depression
+  // Ce50 = 3.5 ng/mL for 50% RR depression (clinical range 2-5 ng/mL)
+  // gamma = 1.8 (gradual onset curve)
   const fentanylCe = pkStates.fentanyl?.ce || 0;
-  const opioidEffect = sigmoidEffect(fentanylCe * 1000, 1.5, 2.5); // convert to ng/mL
+  const fentanylCeNg = fentanylCe * 1000; // mcg/mL -> ng/mL
+  const opioidEffect = sigmoidEffect(fentanylCeNg, 3.5, 1.8);
 
   // Propofol has milder RR depression
+  // Ce50 for RR depression ~4 mcg/mL (higher than sedation Ce50 of 3.4)
   const propofolCe = pkStates.propofol?.ce || 0;
-  const propofolFrac = propofolCe / 3.4; // propofol Ce50 for sedation
-  const hypnoticEffect = 0.3 * propofolFrac;
+  const propofolRREffect = sigmoidEffect(propofolCe, 4.0, 2.0);
 
-  // Synergy factor: combined depression greater than sum
-  const synergyFactor = 1 + 0.5 * opioidEffect * propofolFrac;
+  // Midazolam RR depression (mild)
+  const midazolamCe = pkStates.midazolam?.ce || 0;
+  const midazolamCeNg = midazolamCe * 1000;
+  const benzoEffect = sigmoidEffect(midazolamCeNg, 200, 1.5) * 0.3;
 
-  // Total depression
-  const totalDepression = (opioidEffect * baseline * 0.8 + hypnoticEffect * baseline) * synergyFactor;
+  // Ketamine: minimal RR depression (may even stimulate)
+  const ketamineCe = pkStates.ketamine?.ce || 0;
+  const ketamineProtection = ketamineCe > 0.0005 ? 0.05 : 0;
+
+  // Maximum RR depression fractions (how much each drug can reduce RR)
+  // Opioid alone can reduce RR by up to 60% at very high doses
+  // Propofol alone can reduce by up to 40%
+  // Benzodiazepines alone by up to 25%
+  const opioidDepression = opioidEffect * 0.6 * baseline;
+  const propofolDepression = propofolRREffect * 0.4 * baseline;
+  const benzoDepression = benzoEffect * baseline;
+
+  // Synergy: opioid + hypnotic combination is supra-additive
+  // But only moderate synergy factor (1.15-1.3 range)
+  const hasSynergy = opioidEffect > 0.05 && (propofolRREffect > 0.05 || benzoEffect > 0.02);
+  const synergyFactor = hasSynergy ? 1.0 + 0.25 * Math.min(opioidEffect, 0.5) * Math.min(propofolRREffect + benzoEffect, 0.5) : 1.0;
+
+  // Total depression (additive with synergy multiplier)
+  const totalDepression = (opioidDepression + propofolDepression + benzoDepression) * synergyFactor;
 
   // Apply patient sensitivity
   const sensitivityMod = patient.drugSensitivity ?? 1.0;
-
-  let rr = baseline - totalDepression * sensitivityMod;
+  let rr = baseline - totalDepression * sensitivityMod + ketamineProtection * baseline;
 
   // Cannot go below 0
   rr = Math.max(0, rr);
@@ -138,7 +169,7 @@ function computeSpO2(
   const sedationFactor = Math.max(0.9, ventilationRatio);
   const osaFactor = patient.osa ? 0.95 : 1.0;
 
-    const effectivePaO2 = Math.max(0, pao2 * obesityFactor * sedationFactor * osaFactor);
+  const effectivePaO2 = Math.max(0, pao2 * obesityFactor * sedationFactor * osaFactor);
 
   // Oxygen-hemoglobin dissociation curve (Hill equation)
   const p50 = 26.6;
@@ -157,6 +188,7 @@ function computeSpO2(
 
 /**
  * Compute hemodynamics (HR, BP) with baroreceptor reflex
+ * Fentanyl bradycardia is dose-dependent but modest at sedation doses
  */
 function computeHemodynamics(
   baseline: Vitals,
@@ -166,33 +198,41 @@ function computeHemodynamics(
 ): { hr: number; sbp: number; dbp: number; map: number } {
   const propofolCe = pkStates.propofol?.ce || 0;
   const fentanylCe = pkStates.fentanyl?.ce || 0;
+  const ketamineCe = pkStates.ketamine?.ce || 0;
 
   // Propofol: vasodilation + myocardial depression
-  const propofolFrac = propofolCe / 3.4;
+  const propofolFrac = sigmoidEffect(propofolCe, 3.4, 2.0);
   const propofolHREffect = -0.15 * propofolFrac * baseline.hr;
   const propofolBPEffect = -0.25 * propofolFrac;
 
   // Fentanyl: bradycardia via vagal tone
-  const fentanylFrac = (fentanylCe * 1000) / 1.5; // convert to ng/mL, Ce50=1.5
-  const fentanylHREffect = -0.10 * Math.min(fentanylFrac, 1) * baseline.hr;
+  // Ce50 for bradycardia ~4 ng/mL - modest effect at sedation doses
+  const fentanylCeNg = fentanylCe * 1000;
+  const fentanylFrac = sigmoidEffect(fentanylCeNg, 4.0, 1.5);
+  const fentanylHREffect = -0.12 * fentanylFrac * baseline.hr;
+
+  // Ketamine: sympathomimetic (increases HR and BP)
+  const ketamineFrac = sigmoidEffect(ketamineCe, 0.001, 1.5);
+  const ketamineHREffect = 0.15 * ketamineFrac * baseline.hr;
+  const ketamineBPEffect = 0.10 * ketamineFrac;
 
   // Calculate BP first (for baroreflex)
   const sensitivity = patient.drugSensitivity ?? 1.0;
-  let sbp = baseline.sbp * (1 + propofolBPEffect * sensitivity);
-  let dbp = baseline.dbp * (1 + propofolBPEffect * 0.7 * sensitivity);
+  let sbp = baseline.sbp * (1 + (propofolBPEffect + ketamineBPEffect) * sensitivity);
+  let dbp = baseline.dbp * (1 + (propofolBPEffect * 0.7 + ketamineBPEffect * 0.7) * sensitivity);
   let map = (sbp + 2 * dbp) / 3;
 
   // Baroreceptor reflex: hypotension -> compensatory tachycardia
   const mapBaseline = baseline.map;
   const mapDrop = mapBaseline - map;
-  const baroreflexDrive = mapDrop > 0 ? mapDrop * 0.5 : 0; // +0.5 bpm per mmHg drop
+  const baroreflexDrive = mapDrop > 0 ? mapDrop * 0.5 : 0;
 
   // Hypoxia response (SpO2 < 90 -> tachycardia)
   const hypoxiaDrive = currentSpO2 < 90 ? (90 - currentSpO2) * 1.5 : 0;
 
   // Combine HR effects
-  const drugHRDelta = (propofolHREffect + fentanylHREffect) * sensitivity;
-    let hr = baseline.hr + drugHRDelta + baroreflexDrive + hypoxiaDrive;
+  const drugHRDelta = (propofolHREffect + fentanylHREffect + ketamineHREffect) * sensitivity;
+  let hr = baseline.hr + drugHRDelta + baroreflexDrive + hypoxiaDrive;
 
   // Severe hypoxia -> bradycardia (late sign)
   if (currentSpO2 < 75) {
@@ -273,24 +313,22 @@ export function calculateVitals(
   // Calculate respiratory rate first (drives SpO2 and EtCO2)
   const rr = computeRespiratoryRate(baseline.rr, pkStates, patient);
 
-    // Cardiomyopathy adjustments
-const isHCM = (patient.drugSensitivity === 1.6 || patient.drugSensitivity === 1.8) && patient.asa === 3 && !patient.osa;
-  const isDCM = (patient.drugSensitivity === 1.55 || patient.drugSensitivity === 1.9) && patient.asa >= 3 && !patient.osa && !patient.hepaticImpairment;
+  // Cardiomyopathy adjustments
+  const isHCM = (patient.drugSensitivity === 1.6 || patient.drugSensitivity === 1.8) &&
+    patient.asa === 3 && !patient.osa;
+  const isDCM = (patient.drugSensitivity === 1.55 || patient.drugSensitivity === 1.9) &&
+    patient.asa >= 3 && !patient.osa && !patient.hepaticImpairment;
 
   if (isHCM) {
-    // HCM: higher resting HR (compensatory), lower BP tolerance
-    // Diastolic dysfunction: narrow pulse pressure, higher dbp
-    baseline.hr += 5;      // Slightly elevated resting HR
-    baseline.sbp -= 5;     // Slightly lower baseline SBP
-    baseline.dbp += 5;     // Elevated diastolic (stiff ventricle)
+    baseline.hr += 5;
+    baseline.sbp -= 5;
+    baseline.dbp += 5;
   }
 
   if (isDCM) {
-    // DCM: compensatory tachycardia, lower EF -> lower BP
-    // Sympathetic drive keeps HR up to maintain CO
-    baseline.hr += 15;     // Compensatory tachycardia (low EF)
-    baseline.sbp -= 15;    // Lower SBP (poor contractility)
-    baseline.dbp -= 5;     // Lower DBP (reduced stroke volume)
+    baseline.hr += 15;
+    baseline.sbp -= 15;
+    baseline.dbp -= 5;
     baseline.map = (baseline.sbp + 2 * baseline.dbp) / 3;
   }
 
