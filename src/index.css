@@ -52,3 +52,15 @@ html, body {
 .animate-vital-pulse {
   animation: pulse-vital 1s ease-in-out infinite;
 }
+
+/* Avatar body animations for SedationGauge */
+@keyframes heartbeat {
+  0%, 70%, 100% { transform: scale(1); }
+  10% { transform: scale(1.15); }
+  30% { transform: scale(1.05); }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
