@@ -543,7 +543,7 @@ export default function SedationGauge() {
 
       {activeSynergies.length > 0 && (
         <div className="text-xs text-yellow-400 mt-1 font-bold">
-          \u26A1 Synergy
+          {"\u26A1"} Synergy
         </div>
       )}
     </div>
