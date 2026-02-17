@@ -21,7 +21,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   const ecgCanvasRef = useRef<HTMLCanvasElement>(null);
   const plethCanvasRef = useRef<HTMLCanvasElement>(null);
   const capnoCanvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   // Collapsible state for Pleth and CO2
   const [showPleth, setShowPleth] = useState(true);
   const [showCapno, setShowCapno] = useState(true);
@@ -47,7 +47,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
     // Generate ECG-like waveform based on HR
     const hr = vitals.hr || 75;
     const cycleLength = 60 / hr; // seconds per beat
-    const pixelsPerSecond = width / 30; // 60 seconds visible
+    const pixelsPerSecond = width / 30; // 30 seconds visible
     const cyclePixels = cycleLength * pixelsPerSecond;
 
     for (let x = 0; x < width; x++) {
@@ -106,7 +106,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
 
     const hr = vitals.hr || 75;
     const cycleLength = 60 / hr;
-    const pixelsPerSecond = width / 30; // 60 seconds visible
+    const pixelsPerSecond = width / 30; // 30 seconds visible
     const cyclePixels = cycleLength * pixelsPerSecond;
 
     for (let x = 0; x < width; x++) {
@@ -124,9 +124,10 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
         // Dicrotic notch
         const notchPhase = (phase - 0.25) / 0.1;
         y = midY - 5 + 3 * Math.sin(notchPhase * Math.PI);
-// 60 seconds visible        // Diastolic decay
+      } else {
+        // Diastolic decay
         const decayPhase = (phase - 0.35) / 0.65;
-  // 30 seconds visible      y = midY - 5 + 20 * decayPhase;
+        y = midY - 5 + 20 * decayPhase;
       }
 
       if (x === 0) {
@@ -159,7 +160,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
     const rr = vitals.rr || 14;
     const etco2 = vitals.etco2 || 38;
     const cycleLength = 60 / rr;
-    const pixelsPerSecond = width / 30; // 60 seconds visible
+    const pixelsPerSecond = width / 30; // 30 seconds visible
     const cyclePixels = cycleLength * pixelsPerSecond;
     const etco2Height = (etco2 / 60) * (height - 10);
 
