@@ -118,12 +118,6 @@ export default function SedationGauge() {
 
   const radarFill = isCrisis ? 'rgba(220,38,38,0.35)' : moass <= 2 ? 'rgba(249,115,22,0.3)' : 'rgba(34,197,94,0.25)';
 
-  // Cycle to next mode
-  const cycleMode = () => {
-    const modes: GaugeMode[] = ['rings', 'layers', 'avatar', 'risk'];
-    const idx = modes.indexOf(mode);
-    setMode(modes[(idx + 1) % modes.length]);
-  };
 
   return (
     <div className="flex flex-col items-center">
