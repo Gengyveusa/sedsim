@@ -18,7 +18,6 @@ const COLORS = {
   etco2: '#ffcc00',
   background: '#0a0a12',
   gridLine: 'rgba(255,255,255,0.04)',
-  sweepLine: 'rgba(0,255,100,0.6)',
   dimText: 'rgba(255,255,255,0.3)',
 };
 
@@ -78,7 +77,7 @@ function capnoWaveform(phase: number, etco2Height: number): number {
   return 0;
 }
 
-// Sweep-style waveform renderer
+// Sweep-style waveform renderer - NO vertical tracer line
 function drawSweepWaveform(
   canvas: HTMLCanvasElement,
   color: string,
@@ -111,7 +110,7 @@ function drawSweepWaveform(
     ctx.stroke();
   }
 
-  // Draw waveform trace
+  // Draw waveform trace with erase-ahead gap (no vertical line)
   ctx.strokeStyle = color;
   ctx.lineWidth = 1.8;
   ctx.lineJoin = 'round';
@@ -135,17 +134,7 @@ function drawSweepWaveform(
     }
   }
   ctx.stroke();
-
-  // Draw sweep line
-  const grad = ctx.createLinearGradient(sweepX - 8, 0, sweepX + 2, 0);
-  grad.addColorStop(0, 'transparent');
-  grad.addColorStop(1, color);
-  ctx.strokeStyle = grad;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(sweepX, 0);
-  ctx.lineTo(sweepX, height);
-  ctx.stroke();
+  // No vertical sweep/tracer line drawn
 }
 
 // Alarm threshold helpers
@@ -154,21 +143,25 @@ function getHRColor(hr: number): string {
   if (hr < 60 || hr > 100) return '#ffaa00';
   return COLORS.hr;
 }
+
 function getSpO2Color(spo2: number): string {
   if (spo2 < 85) return '#ff4444';
   if (spo2 < 90) return '#ffaa00';
   return COLORS.spo2Text;
 }
+
 function getBPColor(sbp: number): string {
   if (sbp < 80 || sbp > 180) return '#ff4444';
   if (sbp < 90 || sbp > 160) return '#ffaa00';
   return COLORS.bp;
 }
+
 function getRRColor(rr: number): string {
   if (rr < 6 || rr === 0) return '#ff4444';
   if (rr < 8) return '#ffaa00';
   return COLORS.rr;
 }
+
 function getEtCO2Color(etco2: number): string {
   if (etco2 > 65 || etco2 < 15) return '#ff4444';
   if (etco2 > 55 || etco2 < 20) return '#ffaa00';
@@ -180,16 +173,14 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   const plethCanvasRef = useRef<HTMLCanvasElement>(null);
   const capnoCanvasRef = useRef<HTMLCanvasElement>(null);
   const sweepRef = useRef(0);
-  const animRef = useRef<number>(0);
-
+  const animRef = useRef(0);
   const [showPleth, setShowPleth] = useState(true);
   const [showCapno, setShowCapno] = useState(true);
   const [alarmFlash, setAlarmFlash] = useState(false);
 
   // Alarm flash toggle
   useEffect(() => {
-    const hasAlarm = vitals.spo2 < 90 || vitals.hr < 50 || vitals.hr > 120 ||
-      vitals.sbp < 80 || vitals.rr < 6;
+    const hasAlarm = vitals.spo2 < 90 || vitals.hr < 50 || vitals.hr > 120 || vitals.sbp < 80 || vitals.rr < 6;
     if (!hasAlarm) { setAlarmFlash(false); return; }
     const iv = setInterval(() => setAlarmFlash(f => !f), 500);
     return () => clearInterval(iv);
@@ -258,116 +249,58 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   const rrVal = Math.round(vitals.rr);
   const etco2Val = Math.round(vitals.etco2);
 
-  const isAlarmActive = vitals.spo2 < 90 || vitals.hr < 50 || vitals.hr > 120 ||
-    vitals.sbp < 80 || vitals.rr < 6;
+  const isAlarmActive = vitals.spo2 < 90 || vitals.hr < 50 || vitals.hr > 120 || vitals.sbp < 80 || vitals.rr < 6;
 
   return (
-    <div
-      className="relative w-full select-none"
-      style={{
-        background: COLORS.background,
-        borderRadius: '6px',
-        border: isAlarmActive && alarmFlash ? '1px solid #ff4444' : '1px solid rgba(255,255,255,0.08)',
-        overflow: 'hidden',
-      }}
-    >
+    <div style={{ background: COLORS.background, borderRadius: 8, overflow: 'hidden', border: '1px solid #222' }}>
+
       {/* === ROW 1: ECG + HR/SpO2 numerics === */}
-      <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex" style={{ borderBottom: '1px solid #1a1a2e' }}>
         {/* ECG Waveform */}
-        <div className="relative flex-1" style={{ minHeight: '64px' }}>
-          <span
-            className="absolute top-1 left-2 text-xs font-bold z-10"
-            style={{ color: COLORS.ecg, opacity: 0.7, fontSize: '10px' }}
-          >
+        <div className="flex-1 relative">
+          <span style={{ position: 'absolute', top: 4, left: 8, color: COLORS.ecg, fontSize: 10, fontWeight: 700, zIndex: 1 }}>
             II
           </span>
-          <canvas
-            ref={ecgCanvasRef}
-            width={520}
-            height={64}
-            className="w-full h-full"
-            style={{ display: 'block' }}
-          />
+          <canvas ref={ecgCanvasRef} width={500} height={80} style={{ width: '100%', height: 80 }} />
         </div>
+
         {/* HR Numeric */}
-        <div
-          className="flex flex-col items-end justify-center px-3"
-          style={{ minWidth: '90px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <span style={{ color: getHRColor(hrVal), fontSize: '10px', fontWeight: 600, opacity: 0.7 }}>HR bpm</span>
-          <span
-            style={{
-              color: getHRColor(hrVal),
-              fontSize: '32px',
-              fontWeight: 700,
-              lineHeight: 1,
-              fontFamily: 'ui-monospace, monospace',
-            }}
-          >
+        <div style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
+          <div style={{ fontSize: 10, color: getHRColor(hrVal), fontWeight: 700, opacity: 0.8 }}>HR <span style={{ float: 'right', fontWeight: 400 }}>bpm</span></div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: getHRColor(hrVal), fontFamily: 'monospace', lineHeight: 1, opacity: isAlarmActive && alarmFlash && (hrVal < 50 || hrVal > 120) ? 0.3 : 1 }}>
             {hrVal}
-          </span>
+          </div>
         </div>
+
         {/* SpO2 Numeric */}
-        <div
-          className="flex flex-col items-end justify-center px-3"
-          style={{ minWidth: '80px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <span style={{ color: getSpO2Color(spo2Val), fontSize: '10px', fontWeight: 600, opacity: 0.7 }}>SpO&#8322; %</span>
-          <span
-            style={{
-              color: getSpO2Color(spo2Val),
-              fontSize: '32px',
-              fontWeight: 700,
-              lineHeight: 1,
-              fontFamily: 'ui-monospace, monospace',
-            }}
-          >
+        <div style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
+          <div style={{ fontSize: 10, color: getSpO2Color(spo2Val), fontWeight: 700, opacity: 0.8 }}>SpO\u2082 <span style={{ float: 'right', fontWeight: 400 }}>%</span></div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: getSpO2Color(spo2Val), fontFamily: 'monospace', lineHeight: 1, opacity: isAlarmActive && alarmFlash && spo2Val < 90 ? 0.3 : 1 }}>
             {spo2Val}
-          </span>
+          </div>
         </div>
       </div>
 
       {/* === ROW 2: Pleth waveform (collapsible) + BP === */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ borderBottom: '1px solid #1a1a2e' }}>
         <button
           onClick={() => setShowPleth(!showPleth)}
           className="flex items-center gap-1 px-2 py-0.5 hover:opacity-80"
           style={{ color: COLORS.spo2, fontSize: '10px', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          <span style={{ fontSize: '8px' }}>{showPleth ? '\u25BC' : '\u25B6'}</span> Pleth
+          {showPleth ? '\u25BC' : '\u25B6'} Pleth
         </button>
         {showPleth && (
           <div className="flex">
-            <div className="relative flex-1" style={{ height: '48px' }}>
-              <canvas
-                ref={plethCanvasRef}
-                width={520}
-                height={48}
-                className="w-full h-full"
-                style={{ display: 'block' }}
-              />
+            <div className="flex-1">
+              <canvas ref={plethCanvasRef} width={500} height={55} style={{ width: '100%', height: 55 }} />
             </div>
-            <div
-              className="flex flex-col items-end justify-center px-3"
-              style={{ minWidth: '170px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              <span style={{ color: getBPColor(sbpVal), fontSize: '10px', fontWeight: 600, opacity: 0.7 }}>BP mmHg</span>
-              <span
-                style={{
-                  color: getBPColor(sbpVal),
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  fontFamily: 'ui-monospace, monospace',
-                }}
-              >
+            <div style={{ width: 200, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
+              <div style={{ fontSize: 10, color: getBPColor(sbpVal), fontWeight: 700, opacity: 0.8 }}>BP <span style={{ float: 'right', fontWeight: 400 }}>mmHg</span></div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: getBPColor(sbpVal), fontFamily: 'monospace', lineHeight: 1 }}>
                 {sbpVal}/{dbpVal}
-              </span>
-              <span
-                style={{ color: getBPColor(sbpVal), fontSize: '11px', opacity: 0.6, fontFamily: 'ui-monospace, monospace' }}
-              >
-                MAP {mapVal}
-              </span>
+              </div>
+              <div style={{ fontSize: 11, color: getBPColor(sbpVal), fontFamily: 'monospace', opacity: 0.7 }}>MAP {mapVal}</div>
             </div>
           </div>
         )}
@@ -380,55 +313,29 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
           className="flex items-center gap-1 px-2 py-0.5 hover:opacity-80"
           style={{ color: COLORS.capno, fontSize: '10px', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          <span style={{ fontSize: '8px' }}>{showCapno ? '\u25BC' : '\u25B6'}</span> CO&#8322;
+          {showCapno ? '\u25BC' : '\u25B6'} CO\u2082
         </button>
         {showCapno && (
           <div className="flex">
-            <div className="relative flex-1" style={{ height: '48px' }}>
-              <canvas
-                ref={capnoCanvasRef}
-                width={520}
-                height={48}
-                className="w-full h-full"
-                style={{ display: 'block' }}
-              />
+            <div className="flex-1">
+              <canvas ref={capnoCanvasRef} width={500} height={55} style={{ width: '100%', height: 55 }} />
             </div>
-            <div
-              className="flex items-center gap-4 px-3"
-              style={{ minWidth: '170px', borderLeft: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              <div className="flex flex-col items-end">
-                <span style={{ color: getRRColor(rrVal), fontSize: '10px', fontWeight: 600, opacity: 0.7 }}>RR /min</span>
-                <span
-                  style={{
-                    color: getRRColor(rrVal),
-                    fontSize: '24px',
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    fontFamily: 'ui-monospace, monospace',
-                  }}
-                >
-                  {rrVal}
-                </span>
+            <div style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
+              <div style={{ fontSize: 10, color: getRRColor(rrVal), fontWeight: 700, opacity: 0.8 }}>RR <span style={{ float: 'right', fontWeight: 400 }}>/min</span></div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: getRRColor(rrVal), fontFamily: 'monospace', lineHeight: 1 }}>
+                {rrVal}
               </div>
-              <div className="flex flex-col items-end">
-                <span style={{ color: getEtCO2Color(etco2Val), fontSize: '10px', fontWeight: 600, opacity: 0.7 }}>EtCO&#8322;</span>
-                <span
-                  style={{
-                    color: getEtCO2Color(etco2Val),
-                    fontSize: '24px',
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    fontFamily: 'ui-monospace, monospace',
-                  }}
-                >
-                  {etco2Val}
-                </span>
+            </div>
+            <div style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
+              <div style={{ fontSize: 10, color: getEtCO2Color(etco2Val), fontWeight: 700, opacity: 0.8 }}>EtCO\u2082</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: getEtCO2Color(etco2Val), fontFamily: 'monospace', lineHeight: 1 }}>
+                {etco2Val}
               </div>
             </div>
           </div>
         )}
       </div>
+
     </div>
   );
 }
