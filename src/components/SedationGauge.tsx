@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import useSimStore from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
-import { moassLabel, hillEffect } from '../engine/pdModel';
+import { hillEffect } from '../engine/pdModel';
 import { MOASSLevel } from '../types';
 
 // Drug class definitions for synergy detection
@@ -132,7 +132,7 @@ export default function SedationGauge() {
 
   // Generate radar polygon points
   const axisCount = radarAxes.length;
-  const angleStep = (2 * Math.PI) / axisCount;
+  const _angleStep = (2 * Math.PI) / axisCount;
   const radarPoints = radarValues.map((v, i) => {
     const p = polarToCartesian(cx, cy, v * 130 + 20, (i * 360 / axisCount));
     return `${p.x},${p.y}`;
