@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import useSimStore from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
 import { moassLabel, hillEffect } from '../engine/pdModel';
@@ -12,7 +13,6 @@ const DRUG_CLASSES: Record<string, string[]> = {
   alpha2: ['dexmedetomidine'],
 };
 
-// Synergy pairs that potentiate effects (especially respiratory depression)
 const SYNERGY_PAIRS: [string, string][] = [
   ['opioid', 'benzodiazepine'],
   ['opioid', 'hypnotic'],
@@ -28,6 +28,10 @@ const MOASS_COLORS: Record<MOASSLevel, string> = {
   1: '#ef4444',
   0: '#dc2626',
 };
+
+const MOASS_LABELS = ['Unresponsive', 'Deep', 'Moderate', 'Light', 'Drowsy', 'Awake'];
+
+type GaugeMode = 'avatar' | 'risk';
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -48,15 +52,6 @@ function describeArc(cx: number, cy: number, r: number, startAngle: number, endA
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${large} 0 ${end.x} ${end.y}`;
 }
 
-function getGaugeColor(effect: number): string {
-  if (effect < 0.1) return MOASS_COLORS[5];
-  if (effect < 0.25) return MOASS_COLORS[4];
-  if (effect < 0.45) return MOASS_COLORS[3];
-  if (effect < 0.65) return MOASS_COLORS[2];
-  if (effect < 0.85) return MOASS_COLORS[1];
-  return MOASS_COLORS[0];
-}
-
 function getDrugClass(drugKey: string): string | null {
   for (const [cls, drugs] of Object.entries(DRUG_CLASSES)) {
     if (drugs.includes(drugKey)) return cls;
@@ -65,17 +60,16 @@ function getDrugClass(drugKey: string): string | null {
 }
 
 export default function SedationGauge() {
-  const { combinedEff, moass, pkStates } = useSimStore();
+  const { combinedEff, moass, pkStates, vitals } = useSimStore();
+  const [mode, setMode] = useState<GaugeMode>('avatar');
+  const [autoSwitched, setAutoSwitched] = useState(false);
 
-  // --- HERO SIZE: Much larger gauge ---
   const size = 420;
   const cx = size / 2;
   const cy = size / 2;
-  const baseR = 110;
-  const ringSpacing = 18;
-  const strokeW = 14;
+  const outerR = 185;
 
-  // Get active sedation drugs (Ce > 0.001, exclude local anesthetics)
+  // Get active sedation drugs
   const localAnesthetics = ['lidocaine_epi', 'articaine_epi', 'bupivacaine'];
   const activeDrugs = Object.entries(pkStates)
     .filter(([name, s]) => s.ce > 0.001 && !localAnesthetics.includes(name))
@@ -83,170 +77,254 @@ export default function SedationGauge() {
       const drug = DRUG_DATABASE[name];
       if (!drug) return null;
       const effect = hillEffect(s.ce, drug.EC50, drug.gamma);
-      const maxCe = drug.EC50 * 3;
-      const intensity = Math.min(1, s.ce / maxCe);
-      return {
-        key: name,
-        name: drug.name,
-        ce: s.ce,
-        color: drug.color,
-        effect,
-        intensity,
-        drugClass: getDrugClass(name),
-      };
+      return { key: name, name: drug.name, ce: s.ce, color: drug.color, effect, drugClass: getDrugClass(name) };
     })
     .filter((d): d is NonNullable<typeof d> => d !== null)
     .sort((a, b) => b.effect - a.effect);
 
-  // Detect active synergies
+  // Detect synergies
   const activeClasses = new Set(activeDrugs.map(d => d.drugClass).filter(Boolean));
-  const activeSynergies = SYNERGY_PAIRS.filter(
-    ([c1, c2]) => activeClasses.has(c1) && activeClasses.has(c2)
-  );
+  const activeSynergies = SYNERGY_PAIRS.filter(([c1, c2]) => activeClasses.has(c1) && activeClasses.has(c2));
 
-  const gaugeColor = getGaugeColor(combinedEff);
+  // Crisis detection - auto-switch to risk view
+  const isCrisis = vitals.spo2 < 90 || vitals.rr < 6 || vitals.hr < 45 || vitals.hr > 140;
+  
+  useEffect(() => {
+    if (isCrisis && !autoSwitched) {
+      setMode('risk');
+      setAutoSwitched(true);
+    } else if (!isCrisis && autoSwitched) {
+      setAutoSwitched(false);
+    }
+  }, [isCrisis, autoSwitched]);
+
+  const gaugeColor = MOASS_COLORS[moass];
+
+  // Calculate body colors based on state
+  const brainColor = gaugeColor;
+  const chestColor = vitals.spo2 < 92 ? '#3b82f6' : gaugeColor;
+  const bodyOpacity = 1 - (combinedEff * 0.6);
+  const breatheRate = vitals.rr > 0 ? (60 / vitals.rr) : 0;
+
+  // Radar chart calculations
+  const radarAxes = ['Sedation', 'HR', 'SpO2', 'EtCO2', 'RR', 'MAP', 'Drugs', 'Risk'];
+  const normalizeValue = (val: number, min: number, max: number, invert = false) => {
+    const norm = Math.max(0, Math.min(1, (val - min) / (max - min)));
+    return invert ? 1 - norm : norm;
+  };
+  
+  const radarValues = [
+    normalizeValue(moass, 0, 5),  // Sedation
+    normalizeValue(vitals.hr, 40, 120, false) * 0.5 + 0.25, // HR centered
+    normalizeValue(vitals.spo2, 70, 100), // SpO2
+    1 - normalizeValue(vitals.etco2, 20, 60), // EtCO2 (high is bad)
+    normalizeValue(vitals.rr, 0, 25) * 0.7 + 0.15, // RR
+    normalizeValue(vitals.map, 50, 110) * 0.6 + 0.2, // MAP
+    combinedEff, // Drug load
+    Math.min(1, (combinedEff * 0.5) + (activeSynergies.length * 0.2) + (isCrisis ? 0.5 : 0)), // Risk
+  ];
+
+  const radarFillColor = isCrisis ? 'rgba(220,38,38,0.35)' 
+    : moass <= 2 ? 'rgba(249,115,22,0.3)' 
+    : moass <= 3 ? 'rgba(234,179,8,0.25)' 
+    : 'rgba(34,197,94,0.25)';
+  const radarStrokeColor = gaugeColor;
+
+  // Generate radar polygon points
+  const axisCount = radarAxes.length;
+  const angleStep = (2 * Math.PI) / axisCount;
+  const radarPoints = radarValues.map((v, i) => {
+    const p = polarToCartesian(cx, cy, v * 130 + 20, (i * 360 / axisCount));
+    return `${p.x},${p.y}`;
+  }).join(' ');
 
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className="relative flex flex-col items-center">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <defs>
           <filter id="glow">
-            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-          <filter id="bigGlow">
-            <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
-            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          <radialGradient id="centerGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={gaugeColor} stopOpacity="0.15" />
-            <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+          <radialGradient id="brainGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={brainColor} stopOpacity="0.6" />
+            <stop offset="100%" stopColor={brainColor} stopOpacity="0" />
           </radialGradient>
         </defs>
 
-        {/* Subtle center glow */}
-        <circle cx={cx} cy={cy} r={baseR - 10} fill="url(#centerGrad)" />
+        {/* Outer ring */}
+        <circle cx={cx} cy={cy} r={outerR} fill="none" stroke="#1e293b" strokeWidth="2" />
+        <circle cx={cx} cy={cy} r={outerR - 8} fill="none" stroke={gaugeColor} strokeWidth="3" opacity="0.3" />
 
-        {/* Background track */}
-        <circle cx={cx} cy={cy} r={baseR + 50} fill="none" stroke="#1e293b" strokeWidth={strokeW * 8} opacity={0.3} />
+        {/* Mode tabs on outer rim */}
+        <g className="cursor-pointer">
+          {/* Avatar tab - top left arc */}
+          <path
+            d={describeArc(cx, cy, outerR + 12, 200, 250)}
+            fill="none"
+            stroke={mode === 'avatar' ? '#3b82f6' : '#334155'}
+            strokeWidth={mode === 'avatar' ? 4 : 2}
+            onClick={() => setMode('avatar')}
+            className="cursor-pointer hover:stroke-blue-400 transition-colors"
+          />
+          <text
+            x={polarToCartesian(cx, cy, outerR + 28, 225).x}
+            y={polarToCartesian(cx, cy, outerR + 28, 225).y}
+            textAnchor="middle"
+            fill={mode === 'avatar' ? '#3b82f6' : '#64748b'}
+            fontSize="9"
+            fontWeight={mode === 'avatar' ? 'bold' : 'normal'}
+            className="cursor-pointer select-none"
+            onClick={() => setMode('avatar')}
+          >PATIENT</text>
 
-        {/* Per-drug rings */}
-        {activeDrugs.slice(0, 4).map((drug, i) => {
-          const r = baseR + i * ringSpacing;
-          const sweepAngle = Math.min(drug.effect, 1) * 360;
-          const opacity = 0.4 + drug.intensity * 0.6;
-          if (sweepAngle < 1) return null;
-          return (
-            <g key={drug.key}>
-              {/* Track */}
-              <circle cx={cx} cy={cy} r={r} fill="none" stroke="#334155" strokeWidth={strokeW} opacity={0.3} />
-              {/* Colored arc */}
-              <path
-                d={describeArc(cx, cy, r, 0, sweepAngle)}
-                fill="none"
-                stroke={drug.color}
-                strokeWidth={strokeW}
-                strokeLinecap="round"
-                opacity={opacity}
-                filter={drug.intensity > 0.5 ? 'url(#glow)' : undefined}
-                style={{ transition: 'opacity 0.3s, stroke 0.3s' }}
-              />
-              {/* Needle at tip */}
-              {(() => {
-                const tip = polarToCartesian(cx, cy, r + 8, sweepAngle);
-                const base = polarToCartesian(cx, cy, r - 8, sweepAngle);
-                return (
-                  <line
-                    x1={base.x} y1={base.y} x2={tip.x} y2={tip.y}
-                    stroke={drug.color} strokeWidth={3} strokeLinecap="round"
-                    opacity={opacity}
-                  />
-                );
-              })()}
+          {/* Risk tab - top right arc */}
+          <path
+            d={describeArc(cx, cy, outerR + 12, 290, 340)}
+            fill="none"
+            stroke={mode === 'risk' ? '#f97316' : '#334155'}
+            strokeWidth={mode === 'risk' ? 4 : 2}
+            onClick={() => setMode('risk')}
+            className="cursor-pointer hover:stroke-orange-400 transition-colors"
+          />
+          <text
+            x={polarToCartesian(cx, cy, outerR + 28, 315).x}
+            y={polarToCartesian(cx, cy, outerR + 28, 315).y}
+            textAnchor="middle"
+            fill={mode === 'risk' ? '#f97316' : '#64748b'}
+            fontSize="9"
+            fontWeight={mode === 'risk' ? 'bold' : 'normal'}
+            className="cursor-pointer select-none"
+            onClick={() => setMode('risk')}
+          >RISK</text>
+        </g>
+
+                {/* Drug effect arc */}
+        {combinedEff > 0.01 && (
+          <path
+            d={describeArc(cx, cy, outerR - 4, 0, combinedEff * 270)}
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth="6"
+            strokeLinecap="round"
+            opacity="0.8"
+          />
+        )}
+
+        {/* ===== MODE: AVATAR ===== */}
+        {mode === 'avatar' && (
+          <g style={{ opacity: bodyOpacity, transition: 'opacity 0.5s' }} transform={`translate(${cx - 45}, ${cy - 95})`}>
+            {/* Head/Brain */}
+            <ellipse cx="45" cy="22" rx="28" ry="24" fill="url(#brainGlow)" className={isCrisis ? 'animate-pulse' : ''} />
+            <ellipse cx="45" cy="22" rx="22" ry="18" fill={brainColor} opacity="0.4" filter="url(#glow)" />
+            
+            {/* Neck */}
+            <rect x="36" y="42" width="18" height="14" fill="#e2e8f0" opacity="0.3" rx="4" />
+            
+            {/* Torso */}
+            <path d="M15,56 Q3,75 8,120 L82,120 Q87,75 75,56 Z" fill="#e2e8f0" opacity="0.2" />
+            
+            {/* Heart - pulsing */}
+            <g transform="translate(28, 68)" style={{ animation: `heartbeat ${60 / Math.max(vitals.hr, 30)}s infinite` }}>
+              <path d="M10,5 C10,0 15,0 15,5 C15,0 20,0 20,5 C20,12 10,20 10,20 C10,20 0,12 0,5 C0,0 5,0 5,5 C5,0 10,0 10,5" fill={chestColor} opacity="0.8" />
             </g>
-          );
-        })}
+            
+            {/* Lungs - breathing */}
+            <g style={{ animation: breatheRate > 0 ? `breathe ${breatheRate}s infinite` : 'none', transformOrigin: 'center' }} transform="translate(42, 65)">
+              <ellipse cx="16" cy="22" rx="14" ry="20" fill={vitals.spo2 < 90 ? '#3b82f6' : chestColor} opacity="0.5" />
+              <ellipse cx="-10" cy="22" rx="14" ry="20" fill={vitals.spo2 < 90 ? '#3b82f6' : chestColor} opacity="0.5" />
+            </g>
+            
+            {/* Abdomen */}
+            <ellipse cx="45" cy="135" rx="30" ry="14" fill={chestColor} opacity="0.2" />
+          </g>
+        )}
 
-        {/* Synergy dots - pulsing indicators where drug classes overlap */}
-        {activeSynergies.length > 0 && (() => {
-          const angles = [45, 90, 135, 180];
-          return activeSynergies.slice(0, 4).map((_pair, i) => {
-            const angle = angles[i % angles.length];
-            const r = baseR + (activeDrugs.length * ringSpacing) / 2;
-            const pos = polarToCartesian(cx, cy, r, angle);
-            return (
-              <g key={`synergy-${i}`}>
-                <circle
-                  cx={pos.x} cy={pos.y} r={8}
-                  fill="#fbbf24" opacity={0.8}
-                  style={{ animation: 'pulse 1.5s ease-in-out infinite' }}
-                />
-                <circle
-                  cx={pos.x} cy={pos.y} r={4}
-                  fill="#fff"
-                />
-              </g>
-            );
-          });
-        })()}
+                {/* ===== MODE: RISK RADAR ===== */}
+        {mode === 'risk' && (
+          <g>
+            {/* Grid circles */}
+            {[40, 80, 120, 160].map(r => (
+              <circle key={r} cx={cx} cy={cy} r={r} fill="none" stroke="#1e293b" strokeWidth="1" strokeDasharray="2,4" />
+            ))}
+            
+            {/* Axis lines and labels */}
+            {radarAxes.map((label, i) => {
+              const angle = (i * 360) / axisCount;
+              const p = polarToCartesian(cx, cy, 160, angle);
+              const lp = polarToCartesian(cx, cy, 175, angle);
+              const isWarning = radarValues[i] < 0.3 || radarValues[i] > 0.75;
+              return (
+                <g key={label}>
+                  <line x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#334155" strokeWidth="1" />
+                  <text x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fill={isWarning ? '#f97316' : '#64748b'} fontSize="9" fontWeight={isWarning ? 'bold' : 'normal'}>{label}</text>
+                </g>
+              );
+            })}
+            
+            {/* Radar polygon */}
+            <polygon
+              points={radarPoints}
+              fill={radarFillColor}
+              stroke={radarStrokeColor}
+              strokeWidth="2"
+              style={{ transition: 'all 0.5s' }}
+              className={isCrisis ? 'animate-pulse' : ''}
+              filter="url(#glow)"
+            />
+            
+            {/* Vertex dots */}
+            {radarValues.map((v, i) => {
+              const p = polarToCartesian(cx, cy, v * 130 + 20, (i * 360 / axisCount));
+              const isWarn = v < 0.3 || v > 0.75;
+              return (
+                <circle key={i} cx={p.x} cy={p.y} r={isWarn ? 6 : 4} fill={isWarn ? '#f97316' : radarStrokeColor} className={isWarn ? 'animate-pulse' : ''} />
+              );
+            })}
+          </g>
+        )}
 
-        {/* 12 o'clock start marker */}
-        <line
-          x1={cx} y1={cy - baseR + 15}
-          x2={cx} y2={cy - baseR - 55}
-          stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"
-        />
+                {/* Center MOASS display - always visible */}
+        <circle cx={cx} cy={cy} r={50} fill="#0a0a14" stroke={gaugeColor} strokeWidth="2" />
+        <text x={cx} y={cy + 15} textAnchor="middle" fill={gaugeColor} fontSize="56" fontWeight="bold" filter="url(#glow)">{moass}</text>
+        <text x={cx} y={cy + 35} textAnchor="middle" fill="#94a3b8" fontSize="10">{MOASS_LABELS[moass]}</text>
 
-        {/* Center - MOASS display */}
-        <text
-          x={cx} y={cy - 15}
-          textAnchor="middle" dominantBaseline="middle"
-          fill={gaugeColor} fontSize="64" fontWeight="bold"
-          filter="url(#bigGlow)"
-        >
-          {moass}
-        </text>
-        <text
-          x={cx} y={cy + 22}
-          textAnchor="middle" dominantBaseline="middle"
-          fill="#94a3b8" fontSize="16"
-        >
-          {moassLabel(moass)}
-        </text>
-        <text
-          x={cx} y={cy + 46}
-          textAnchor="middle" dominantBaseline="middle"
-          fill="#64748b" fontSize="13"
-        >
-          Effect: {(combinedEff * 100).toFixed(0)}%
-        </text>
+        {/* Crisis alert */}
+        {isCrisis && (
+          <text x={cx} y={cy - 120} textAnchor="middle" fill="#dc2626" fontSize="12" fontWeight="bold" className="animate-pulse">
+            {vitals.spo2 < 90 ? '⚠ DESATURATION' : vitals.rr < 6 ? '⚠ APNEA RISK' : '⚠ CRITICAL'}
+          </text>
+        )}
+
+        {/* 12 o'clock marker */}
+        <line x1={cx} y1={cy - outerR + 15} x2={cx} y2={cy - outerR + 5} stroke="#64748b" strokeWidth="2" />
       </svg>
 
-      {/* Legend - active drugs with Ce values */}
+      {/* Vitals display below gauge */}
+      <div className="flex gap-4 mt-2 text-xs">
+        <span><span className="text-green-400">HR</span> {vitals.hr}</span>
+        <span><span className="text-cyan-400">SpO2</span> {vitals.spo2}%</span>
+        <span><span className="text-yellow-400">RR</span> {vitals.rr}</span>
+        <span><span className="text-red-400">BP</span> {vitals.sbp}/{vitals.dbp}</span>
+      </div>
+
+      {/* Drug legend */}
       {activeDrugs.length > 0 && (
-        <div className="mt-1 space-y-0.5 w-full max-w-[380px]">
-          {activeDrugs.slice(0, 4).map((d) => (
-            <div key={d.key} className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2">
-                <span
-                  className="w-4 h-1.5 rounded-sm"
-                  style={{ backgroundColor: d.color, opacity: 0.4 + d.intensity * 0.6 }}
-                />
-                <span className="text-gray-400">{d.name}</span>
-              </span>
-              <span className="font-mono text-gray-300">
-                Ce {d.ce.toFixed(3)}
-              </span>
-            </div>
+        <div className="flex flex-wrap gap-2 mt-2 justify-center text-xs">
+          {activeDrugs.slice(0, 4).map(d => (
+            <span key={d.key} className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+              <span className="text-gray-400">{d.name}</span>
+              <span className="text-gray-500">Ce {d.ce.toFixed(2)}</span>
+            </span>
           ))}
         </div>
       )}
 
       {/* Synergy warning */}
       {activeSynergies.length > 0 && (
-        <div className="mt-2 px-2 py-1 bg-amber-500/20 border border-amber-500/50 rounded text-xs text-amber-300 flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-          Synergy: {activeSynergies.map(([c1, c2]) => `${c1}+${c2}`).join(', ')}
+        <div className="text-xs text-amber-400 mt-1 animate-pulse">
+          ⚡ Synergy: {activeSynergies.map(([c1, c2]) => `${c1}+${c2}`).join(', ')}
         </div>
       )}
     </div>
