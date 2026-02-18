@@ -43,7 +43,7 @@ export const fentanyl: DrugParams = {
   k31: 0.013,
   ke0: 0.147,
   V1: 12.7,
-  EC50: 0.003,  // mcg/mL (3 ng/mL)
+    EC50: 0.005,  // mcg/mL (5 ng/mL) - Bouillon/AReS: opioid sedation EC50 is HIGH
   gamma: 2.0,
   unit: 'mcg',
 };
@@ -94,7 +94,7 @@ export const remifentanil: DrugParams = {
   k31: 0.017,
   ke0: 0.595,  // FAST effect-site equilibration (~1 min)
   V1: 5.1,
-  EC50: 0.002,  // ng/mL (2 ng/mL)
+    EC50: 0.005,  // mcg/mL (5 ng/mL) - Minto/Eleveld: high opioid sedation EC50
   gamma: 2.0,
   unit: 'mcg',
 };
