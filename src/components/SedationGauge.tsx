@@ -3,6 +3,7 @@ import useSimStore from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
 import { hillEffect } from '../engine/pdModel';
 import { MOASSLevel } from '../types';
+import PhysiologyAvatar from './PhysiologyAvatar';
 
 const DRUG_CLASSES: Record<string, string[]> = {
   opioid: ['fentanyl', 'remifentanil'],
@@ -75,7 +76,7 @@ function petalPath(cx: number, cy: number, angleDeg: number, innerR: number, out
   return `M ${cx} ${cy} Q ${left.x} ${left.y} ${cpL.x} ${cpL.y} L ${tip.x} ${tip.y} L ${cpR.x} ${cpR.y} Q ${right.x} ${right.y} ${cx} ${cy} Z`;
 }
 export default function SedationGauge() {
-  const { combinedEff, moass, pkStates, vitals } = useSimStore();
+  const { combinedEff, moass, pkStates, vitals, patient } = useSimStore();
   const [mode, setMode] = useState<GaugeMode>('petals');
   const [autoSwitched, setAutoSwitched] = useState(false);
 
@@ -207,16 +208,11 @@ export default function SedationGauge() {
         )}
 
         {/* ===== MODE C: AVATAR ===== */}
-        {mode === 'avatar' && (
-          <g clipPath="url(#circleClip)">
-            <circle cx={cx} cy={cy} r={120} fill="rgba(30,41,59,0.8)" stroke={gaugeColor} strokeWidth="3" style={{ animation: vitals.hr > 0 ? `heartbeat ${60/vitals.hr}s infinite` : 'none' }} />
-            <g style={{ animation: vitals.rr > 0 ? `breathe ${breatheRate}s infinite` : 'none', transformOrigin: 'center' }} transform="translate(63, 98)">
-              <ellipse cx={cx - 63} cy={cy - 98 - 38} rx="18" ry="21" fill="rgba(100,116,139,0.5)" />
-              <ellipse cx={cx - 63} cy={cy - 98 + 8} rx="24" ry="33" fill="rgba(100,116,139,0.4)" />
-              <ellipse cx={cx - 63} cy={cy - 98 + 45} rx="15" ry="23" fill="rgba(100,116,139,0.3)" />
-            </g>
-          </g>
-        )}
+      {mode === 'avatar' && (
+        <foreignObject x="0" y="0" width={size} height={size}>
+          <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} size={size} />
+        </foreignObject>
+      )}
 
         {/* ===== MODE D: RISK RADAR ===== */}
         {mode === 'risk' && (
