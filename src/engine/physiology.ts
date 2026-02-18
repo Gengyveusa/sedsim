@@ -99,7 +99,7 @@ function computeRespiratoryRate(
   // Ce50 = 3.5 ng/mL for 50% RR depression (clinical range 2-5 ng/mL)
   // gamma = 1.8 (gradual onset curve)
   const fentanylCe = pkStates.fentanyl?.ce || 0;
-  const fentanylCeNg = fentanylCe * 1000; // mcg/mL -> ng/mL
+    const fentanylCeNg = fentanylCe; // already in ng/mL from PK model
   const opioidEffect = sigmoidEffect(fentanylCeNg, 3.5, 1.8);
 
   // Propofol has milder RR depression
@@ -207,7 +207,7 @@ function computeHemodynamics(
 
   // Fentanyl: bradycardia via vagal tone
   // Ce50 for bradycardia ~4 ng/mL - modest effect at sedation doses
-  const fentanylCeNg = fentanylCe * 1000;
+    const fentanylCeNg = fentanylCe; // already in ng/mL from PK model
   const fentanylFrac = sigmoidEffect(fentanylCeNg, 4.0, 1.5);
   const fentanylHREffect = -0.12 * fentanylFrac * baseline.hr;
 
