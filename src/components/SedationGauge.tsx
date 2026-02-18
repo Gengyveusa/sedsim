@@ -418,6 +418,7 @@ export default function SedationGauge() {
           </g>
         )}
 
+                {mode !== 'avatar' && (<>
         {/* Center MOASS display - always visible, aviation-style large text */}
         <text x={cx} y={cy - 8} fill="white" fontSize="63" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" filter="url(#glow)" letterSpacing="-0.02em">
           {moass}
@@ -431,6 +432,7 @@ export default function SedationGauge() {
             {vitals.spo2 < 90 ? '\u26A0 DESAT' : vitals.rr < 6 ? '\u26A0 APNEA' : '\u26A0 CRITICAL'}
           </text>
         )}
+                          </>)}
       </svg>
 
       {/* Vitals row - larger text */}
