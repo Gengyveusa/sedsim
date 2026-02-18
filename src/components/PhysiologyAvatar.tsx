@@ -12,7 +12,6 @@ interface PhysiologyAvatarProps {
 function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: number) {
   const hr = vitals.hr;
   const map = vitals.map;
-  const _sbp = vitals.sbp;
   const spo2 = vitals.spo2;
   const rr = vitals.rr;
 
