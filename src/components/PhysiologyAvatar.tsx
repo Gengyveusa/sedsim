@@ -12,7 +12,7 @@ interface PhysiologyAvatarProps {
 function computeCardioState(vitals: Vitals, patient: Patient, combinedEff: number) {
   const hr = vitals.hr;
   const map = vitals.map;
-  const sbp = vitals.sbp;
+  const _sbp = vitals.sbp;
   const spo2 = vitals.spo2;
   const rr = vitals.rr;
 
@@ -76,7 +76,7 @@ function computeCardioState(vitals: Vitals, patient: Patient, combinedEff: numbe
   };
 }
 
-export default function PhysiologyAvatar({ vitals, moass, combinedEff, patient, size = 560 }: PhysiologyAvatarProps) {
+export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, patient, size = 560 }: PhysiologyAvatarProps) {
   const cs = computeCardioState(vitals, patient, combinedEff);
   const cx = size / 2;
   const cy = size / 2;
