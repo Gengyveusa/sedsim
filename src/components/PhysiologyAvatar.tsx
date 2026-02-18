@@ -9,7 +9,7 @@ interface PhysiologyAvatarProps {
 }
 
 // Derive cardiovascular physiology from vitals
-function computeCardioState(vitals: Vitals, patient: Patient, combinedEff: number) {
+function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: number) {
   const hr = vitals.hr;
   const map = vitals.map;
   const _sbp = vitals.sbp;
