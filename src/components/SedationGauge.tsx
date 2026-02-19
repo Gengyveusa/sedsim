@@ -4,6 +4,7 @@ import { DRUG_DATABASE } from '../engine/drugs';
 import { hillEffect } from '../engine/pdModel';
 import { MOASSLevel } from '../types';
 import OxyHbCurve from './OxyHbCurve';
+import PhysiologyAvatar from './PhysiologyAvatar';
 
 const DRUG_CLASSES: Record<string, string[]> = {
   opioid: ['fentanyl', 'remifentanil'],
@@ -81,12 +82,14 @@ export default function SedationGauge() {
   const { combinedEff, moass, pkStates, vitals, patient, fio2, airwayDevice } = useSimStore();
   const [mode, setMode] = useState<GaugeMode>('petals');
   const [autoSwitched, setAutoSwitched] = useState(false);
+  const [oxyHbExpanded, setOxyHbExpanded] = useState(false);
 
   // 50% larger: 420 -> 630, outerR 185 -> 278
   const size = 630;
   const cx = size / 2;
   const cy = size / 2;
   const outerR = 278;
+  const avatarSize = 1050;
 
   // Get active sedation drugs
   const localAnesthetics = ['lidocaine_epi', 'articaine_epi', 'bupivacaine'];
@@ -173,9 +176,31 @@ export default function SedationGauge() {
 
       {/* ===== MODE C: AVATAR (standalone rendering) ===== */}
       {mode === 'avatar' && (
-        <div className="w-full flex-1" style={{ minHeight: '400px' }}>
-          <OxyHbCurve vitals={vitals} fio2={fio2} patient={patient} airwayDevice={airwayDevice} />
-        </div>
+        <>
+          <div style={{ overflowX: 'auto', overflowY: 'visible', width: '100%' }}>
+            <div style={{ minWidth: '800px' }}>
+              <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} rhythm={vitals.rhythm} size={avatarSize} />
+            </div>
+          </div>
+          {/* Collapsible O2-Hb Dissociation Curve */}
+          <div className="border-t border-gray-700/50 mt-2">
+            <button
+              onClick={() => setOxyHbExpanded(prev => !prev)}
+              className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-800/60 transition-colors text-left"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-cyan-400">O₂-Hb Curve</span>
+                <span className="text-xs text-slate-500">{airwayDevice.replace(/_/g, ' ')} | FiO₂ {Math.round(fio2 * 100)}%</span>
+              </div>
+              <span className="text-gray-500 text-xs">{oxyHbExpanded ? '▲' : '▼'}</span>
+            </button>
+            <div style={{ overflow: 'hidden', maxHeight: oxyHbExpanded ? '500px' : '0', transition: 'max-height 0.3s ease-in-out' }}>
+              <div className="px-2 pb-2">
+                <OxyHbCurve vitals={vitals} fio2={fio2} patient={patient} airwayDevice={airwayDevice} />
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* ===== MODES D & E: Radar and Petals use the gauge SVG ===== */}
