@@ -3,6 +3,7 @@ import { MultiAgentOrchestrator, AgentMessage } from '../ai/multiAgent';
 import { EEGSnapshot } from '../ai/eegModel';
 import { TwinState } from '../ai/digitalTwin';
 import { Scenario } from '../ai/scenarioGenerator';
+import { GhostDose, TutorialState } from '../types';
 
 interface AIState {
   // Orchestrator
@@ -32,6 +33,12 @@ interface AIState {
   isDashboardOpen: boolean;
   activeAITab: 'eeg' | 'mentor' | 'scenarios';
 
+  // Ghost Dose
+  ghostDose: GhostDose | null;
+
+  // Tutorial
+  tutorialState: TutorialState | null;
+
   // Actions
   initializeAI: () => void;
   startAI: () => void;
@@ -46,6 +53,8 @@ interface AIState {
   toggleDashboard: () => void;
   setActiveAITab: (tab: 'eeg' | 'mentor' | 'scenarios') => void;
   destroyAI: () => void;
+  setGhostDose: (ghost: GhostDose | null) => void;
+  setTutorialState: (state: TutorialState | null) => void;
 }
 
 const useAIStore = create<AIState>((set, get) => ({
@@ -62,6 +71,8 @@ const useAIStore = create<AIState>((set, get) => ({
   isMentorThinking: false,
   isDashboardOpen: false,
   activeAITab: 'eeg',
+  ghostDose: null,
+  tutorialState: null,
 
   initializeAI: () => {
     const orchestrator = new MultiAgentOrchestrator();
@@ -159,6 +170,14 @@ const useAIStore = create<AIState>((set, get) => ({
       alerts: [],
       unreadAlertCount: 0,
     });
+  },
+
+  setGhostDose: (ghost) => {
+    set({ ghostDose: ghost });
+  },
+
+  setTutorialState: (state) => {
+    set({ tutorialState: state });
   },
 }));
 
