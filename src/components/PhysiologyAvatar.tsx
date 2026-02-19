@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Vitals, MOASSLevel, Patient } from '../types';
+import { Vitals, MOASSLevel, Patient, CardiacRhythm } from '../types';
+import { isPulselessRhythm } from '../engine/cardiacRhythm';
 
 interface PhysiologyAvatarProps {
   vitals: Vitals;
   moass: MOASSLevel;
   combinedEff: number;
   patient: Patient;
+  rhythm?: CardiacRhythm;
   size?: number;
 }
 
@@ -45,13 +47,68 @@ const TOOLTIPS: Record<string, string> = {
 };
 
 // Derive cardiovascular physiology from vitals
-function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: number) {
+function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: number, rhythm?: CardiacRhythm) {
   const hr = vitals.hr;
   const map = vitals.map;
   const spo2 = vitals.spo2;
   const rr = vitals.rr;
   const sbp = vitals.sbp;
   const dbp = vitals.dbp;
+
+  // ---- ARREST OVERRIDE: zero-output states ----
+  const activeRhythm = rhythm ?? vitals.rhythm;
+  if (activeRhythm && isPulselessRhythm(activeRhythm)) {
+    const fio2 = 0.21;
+    const paco2 = rr > 0 ? Math.max(20, Math.min(80, 40 * (14 / Math.max(4, rr)))) : 80;
+    const pao2Alveolar = fio2 * (760 - 47) - paco2 / 0.8;
+    const capOncotic = 25;
+    // Pulmonary capillary pressure with no forward flow: RA pressure (~8) + typical gradient (3)
+    const capHydrostatic = 8 + 3;
+
+    let heartState: 'normal' | 'hyperdynamic' | 'failure' | 'dilated' | 'vfib' | 'pea' | 'asystole';
+    let raP: number;
+    let rvSys: number;
+    let rvDia: number;
+    let laP: number;
+    let lvSys: number;
+    let lvDia: number;
+    let paSys: number;
+    let paDia: number;
+
+    if (activeRhythm === 'ventricular_fibrillation') {
+      heartState = 'vfib';
+      // Chaotic quivering: chambers retain residual pressure from fibrillation
+      raP = 10; rvSys = 12; rvDia = 10;
+      laP = 10; lvSys = 15; lvDia = 10;
+      paSys = 12; paDia = 10;
+    } else if (activeRhythm === 'asystole') {
+      heartState = 'asystole';
+      // Complete standstill: all pressures fall to zero
+      raP = 0; rvSys = 0; rvDia = 0;
+      laP = 0; lvSys = 0; lvDia = 0;
+      paSys = 0; paDia = 0;
+    } else {
+      // PEA: organized electrical but no mechanical output — pressures equalize near CVP
+      heartState = 'pea';
+      raP = 8; rvSys = 10; rvDia = 8;
+      laP = 8; lvSys = 10; lvDia = 8;
+      paSys = 10; paDia = 8;
+    }
+
+    return {
+      hr, co: 0, sv: 0, ef: 0, preload: 0, afterload: 0, heartState,
+      contractility: 0, rvDilation: 1.0, lvDilation: 1.0, wallThickness: 1.0,
+      raP, rvSys, rvDia, laP, lvSys, lvDia, paSys, paDia,
+      paMean: (paSys + 2 * paDia) / 3,
+      pcwp: laP, pulmonaryEdema: 'none' as const, svr: 0,
+      sbp: 0, dbp: 0, map: 0,
+      pao2: 0, paco2, pao2Alveolar, aaGradient: pao2Alveolar,
+      gasExchangeEff: 0, capPo2: 0, capHydrostatic, capOncotic,
+      netFiltration: capHydrostatic - capOncotic,
+      cbf: 0, spo2, rr, pulsePressure: 0,
+    };
+  }
+  // ---- END ARREST OVERRIDE ----
 
   const pulsePressure = sbp - dbp;
   const sv = Math.max(20, Math.min(120, pulsePressure * 1.2));
@@ -67,7 +124,7 @@ function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: numb
   if (combinedEff > 0.3) contractility *= (1 - combinedEff * 0.4);
   contractility = Math.max(400, Math.min(2500, contractility));
 
-  let heartState: 'normal' | 'hyperdynamic' | 'failure' | 'dilated' = 'normal';
+  let heartState: 'normal' | 'hyperdynamic' | 'failure' | 'dilated' | 'vfib' | 'pea' | 'asystole' = 'normal';
   if (co > 7 && hr > 100) heartState = 'hyperdynamic';
   else if (ef < 0.35 || (map < 60 && hr > 100)) heartState = 'failure';
   else if (ef < 0.45 && co < 3.5) heartState = 'dilated';
@@ -129,16 +186,24 @@ function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: numb
     cbf, spo2, rr, pulsePressure };
 }
 
-export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, patient, size = 1050 }: PhysiologyAvatarProps) {
-  const cs = computeCardioState(vitals, patient, combinedEff);
+export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, patient, rhythm, size = 1050 }: PhysiologyAvatarProps) {
+  const cs = computeCardioState(vitals, patient, combinedEff, rhythm);
   const [tooltip, setTooltip] = useState<{text: string; x: number; y: number} | null>(null);
   const cx = size / 2;
   const cy = size * 0.38;
-  const beatDur = cs.hr > 0 ? 60 / cs.hr : 0;
+  const isArrest = cs.heartState === 'vfib' || cs.heartState === 'pea' || cs.heartState === 'asystole';
+  const beatDur = (!isArrest && cs.hr > 0) ? 60 / cs.hr : 0;
 
-  const heartColor = cs.heartState === 'failure' ? '#dc2626' : cs.heartState === 'hyperdynamic' ? '#f59e0b' : cs.heartState === 'dilated' ? '#f97316' : '#ef4444';
+  const heartColor = cs.heartState === 'vfib' ? '#9333ea'
+    : cs.heartState === 'asystole' ? '#374151'
+    : cs.heartState === 'pea' ? '#6b7280'
+    : cs.heartState === 'failure' ? '#dc2626'
+    : cs.heartState === 'hyperdynamic' ? '#f59e0b'
+    : cs.heartState === 'dilated' ? '#f97316'
+    : '#ef4444';
   const lungColor = cs.pulmonaryEdema === 'flash' ? '#3b82f6' : cs.pulmonaryEdema === 'moderate' ? '#60a5fa' : cs.pulmonaryEdema === 'mild' ? '#93c5fd' : 'rgba(147,197,253,0.3)';
-  const brainColor = cs.cbf > 0.8 ? '#a78bfa' : cs.cbf > 0.5 ? '#f59e0b' : '#ef4444';
+  const brainColor = cs.cbf === 0 ? '#374151' : cs.cbf > 0.8 ? '#a78bfa' : cs.cbf > 0.5 ? '#f59e0b' : '#ef4444';
+  const brainOpacity = cs.cbf === 0 ? 0.2 : cs.cbf > 0.5 ? 0.6 : 0.3;
   const edemaOpacity = cs.pulmonaryEdema === 'flash' ? 0.8 : cs.pulmonaryEdema === 'moderate' ? 0.5 : cs.pulmonaryEdema === 'mild' ? 0.3 : 0;
   const contractColor = cs.contractility > 1400 ? '#22c55e' : cs.contractility > 900 ? '#f59e0b' : '#ef4444';
 
@@ -160,12 +225,26 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
           @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
           @keyframes heartbeat { 0%,100% { transform: scale(1); } 15% { transform: scale(1.06); } 30% { transform: scale(1); } 45% { transform: scale(1.03); } }
           @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+          @keyframes vfib {
+            0% { transform: translate(0,0) scale(1); }
+            10% { transform: translate(2px,-1px) scale(1.02); }
+            20% { transform: translate(-1px,2px) scale(0.98); }
+            30% { transform: translate(1px,1px) scale(1.01); }
+            40% { transform: translate(-2px,-1px) scale(0.99); }
+            50% { transform: translate(0,2px) scale(1.02); }
+            60% { transform: translate(2px,0) scale(0.97); }
+            70% { transform: translate(-1px,-2px) scale(1.01); }
+            80% { transform: translate(1px,1px) scale(0.98); }
+            90% { transform: translate(-2px,0) scale(1.01); }
+            100% { transform: translate(0,0) scale(1); }
+          }
+          @keyframes pea-pulse { 0%,100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.02); opacity: 0.8; } }
         `}</style>
       </defs>
 
       {/* ===== BRAIN ===== */}
       <g onMouseEnter={(e) => onHover('brain', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
-        <ellipse cx={cx} cy={cy - 120} rx={55} ry={45} fill={brainColor} opacity={cs.cbf > 0.5 ? 0.6 : 0.3}
+        <ellipse cx={cx} cy={cy - 120} rx={55} ry={45} fill={brainColor} opacity={brainOpacity}
           style={beatDur > 0 ? { animation: `pulse ${beatDur}s ease-in-out infinite` } : {}} />
         <path d={`M ${cx-30} ${cy-120} Q ${cx-45} ${cy-155} ${cx} ${cy-160} Q ${cx+45} ${cy-155} ${cx+30} ${cy-120}`}
           fill="none" stroke={brainColor} strokeWidth={2} opacity={0.5} />
@@ -180,7 +259,7 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
       <line x1={cx + 12} y1={cy - 75} x2={cx + 15} y2={cy - 40} stroke="#ef4444" strokeWidth={3} opacity={0.4} />
 
       {/* ===== LUNGS ===== */}
-      <g style={cs.rr > 0 ? { animation: `breathe ${60/cs.rr}s ease-in-out infinite`, transformOrigin: `${cx}px ${cy-20}px` } : {}}>
+      <g style={(!isArrest && cs.rr > 0) ? { animation: `breathe ${60/cs.rr}s ease-in-out infinite`, transformOrigin: `${cx}px ${cy-20}px` } : {}}>
         {/* Right lung */}
         <g onMouseEnter={(e) => onHover('rlung', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
           <ellipse cx={cx - 90} cy={cy + 5} rx={68} ry={85} fill={lungColor} stroke="#60a5fa" strokeWidth={1.5} opacity={0.4} />
@@ -213,7 +292,13 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
       <text x={cx + 90} y={cy - 70} fill="#94a3b8" fontSize="12" fontWeight="bold" textAnchor="middle">L LUNG</text>
 
       {/* ===== 4-CHAMBER HEART ===== */}
-      <g style={beatDur > 0 ? { animation: `heartbeat ${beatDur}s infinite`, transformOrigin: `${cx}px ${cy+2}px` } : {}}>
+      <g style={
+        cs.heartState === 'vfib' ? { animation: `vfib 0.1s infinite`, transformOrigin: `${cx}px ${cy+2}px` }
+        : cs.heartState === 'pea' ? { animation: `pea-pulse 1.5s ease-in-out infinite`, transformOrigin: `${cx}px ${cy+2}px` }
+        : cs.heartState === 'asystole' ? {}
+        : beatDur > 0 ? { animation: `heartbeat ${beatDur}s infinite`, transformOrigin: `${cx}px ${cy+2}px` }
+        : {}
+      }>
         {/* Pericardium */}
         <g onMouseEnter={(e) => onHover('heart', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
           <ellipse cx={cx} cy={cy + 5} rx={60 * Math.max(cs.rvDilation, cs.lvDilation)} ry={55 * Math.max(cs.rvDilation, cs.lvDilation)}
@@ -283,27 +368,61 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
       {/* Heart state badge */}
       <g onMouseEnter={(e) => onHover('heartState', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <rect x={cx - 82} y={cy + 95} width={164} height={26} rx={13}
-          fill={cs.heartState === 'failure' ? '#7f1d1d' : cs.heartState === 'hyperdynamic' ? '#713f12' : cs.heartState === 'dilated' ? '#7c2d12' : '#14532d'}
-          stroke={cs.heartState === 'failure' ? '#dc2626' : cs.heartState === 'hyperdynamic' ? '#f59e0b' : cs.heartState === 'dilated' ? '#f97316' : '#22c55e'}
+          fill={
+            cs.heartState === 'vfib' ? '#581c87'
+            : cs.heartState === 'asystole' ? '#111827'
+            : cs.heartState === 'pea' ? '#1f2937'
+            : cs.heartState === 'failure' ? '#7f1d1d'
+            : cs.heartState === 'hyperdynamic' ? '#713f12'
+            : cs.heartState === 'dilated' ? '#7c2d12'
+            : '#14532d'
+          }
+          stroke={
+            cs.heartState === 'vfib' ? '#9333ea'
+            : cs.heartState === 'asystole' ? '#374151'
+            : cs.heartState === 'pea' ? '#6b7280'
+            : cs.heartState === 'failure' ? '#dc2626'
+            : cs.heartState === 'hyperdynamic' ? '#f59e0b'
+            : cs.heartState === 'dilated' ? '#f97316'
+            : '#22c55e'
+          }
           strokeWidth={1.5} />
         <text x={cx} y={cy + 112} fill="white" fontSize="13" textAnchor="middle" fontWeight="bold">
-          {cs.heartState === 'failure' ? 'HF - Reduced EF' : cs.heartState === 'hyperdynamic' ? 'HYPERDYNAMIC' : cs.heartState === 'dilated' ? 'DILATED CM' : 'NORMAL'}
+          {cs.heartState === 'vfib' ? 'V-FIB ARREST'
+            : cs.heartState === 'asystole' ? 'ASYSTOLE'
+            : cs.heartState === 'pea' ? 'PEA ARREST'
+            : cs.heartState === 'failure' ? 'HF - Reduced EF'
+            : cs.heartState === 'hyperdynamic' ? 'HYPERDYNAMIC'
+            : cs.heartState === 'dilated' ? 'DILATED CM'
+            : 'NORMAL'}
         </text>
       </g>
+
+      {/* CARDIAC ARREST banner overlay */}
+      {isArrest && (
+        <g>
+          <rect x={cx - 110} y={cy - 20} width={220} height={28} rx={6}
+            fill="#7f1d1d" stroke="#ef4444" strokeWidth={2} opacity={0.92} />
+          <text x={cx} y={cy - 2} fill="#fca5a5" fontSize="14" fontWeight="bold" textAnchor="middle"
+            style={{ animation: 'pulse 0.8s ease-in-out infinite' }}>
+            ⚠ CARDIAC ARREST
+          </text>
+        </g>
+      )}
 
       {/* Row 1: CO / EF / SV */}
       <g onMouseEnter={(e) => onHover('co', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <text x={cx - 120} y={cy + 140} fill="#94a3b8" fontSize="12">CO</text>
-        <text x={cx - 120} y={cy + 157} fill="#22d3ee" fontSize="17" fontWeight="bold">{cs.co.toFixed(1)}</text>
+        <text x={cx - 120} y={cy + 157} fill={isArrest ? '#ef4444' : '#22d3ee'} fontSize="17" fontWeight="bold">{cs.co.toFixed(1)}</text>
         <text x={cx - 84} y={cy + 157} fill="#64748b" fontSize="10">L/min</text>
       </g>
       <g onMouseEnter={(e) => onHover('ef', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <text x={cx - 22} y={cy + 140} fill="#94a3b8" fontSize="12">EF</text>
-        <text x={cx - 22} y={cy + 157} fill={cs.ef < 0.4 ? '#ef4444' : '#22c55e'} fontSize="17" fontWeight="bold">{(cs.ef * 100).toFixed(0)}%</text>
+        <text x={cx - 22} y={cy + 157} fill={isArrest || cs.ef < 0.4 ? '#ef4444' : '#22c55e'} fontSize="17" fontWeight="bold">{(cs.ef * 100).toFixed(0)}%</text>
       </g>
       <g onMouseEnter={(e) => onHover('sv', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <text x={cx + 45} y={cy + 140} fill="#94a3b8" fontSize="12">SV</text>
-        <text x={cx + 45} y={cy + 157} fill="#22d3ee" fontSize="17" fontWeight="bold">{cs.sv.toFixed(0)}</text>
+        <text x={cx + 45} y={cy + 157} fill={isArrest ? '#ef4444' : '#22d3ee'} fontSize="17" fontWeight="bold">{cs.sv.toFixed(0)}</text>
         <text x={cx + 81} y={cy + 157} fill="#64748b" fontSize="10">mL</text>
       </g>
 
@@ -376,10 +495,22 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
       </g>
 
       {/* O2/CO2 diffusion arrows */}
-      <line x1={cx - 20} y1={cy + 300} x2={cx + 8} y2={cy + 300} stroke="#f59e0b" strokeWidth={2} markerEnd="url(#arrowBlue)" />
-      <text x={cx - 7} y={cy + 295} fill="#f59e0b" fontSize="9" textAnchor="middle">{"O₂"}</text>
-      <line x1={cx + 8} y1={cy + 340} x2={cx - 20} y2={cy + 340} stroke="#a855f7" strokeWidth={2} markerEnd="url(#arrowPurple)" />
-      <text x={cx - 7} y={cy + 352} fill="#a855f7" fontSize="9" textAnchor="middle">{"CO₂"}</text>
+      {!isArrest && (
+        <>
+          <line x1={cx - 20} y1={cy + 300} x2={cx + 8} y2={cy + 300} stroke="#f59e0b" strokeWidth={2} markerEnd="url(#arrowBlue)" />
+          <text x={cx - 7} y={cy + 295} fill="#f59e0b" fontSize="9" textAnchor="middle">{"O₂"}</text>
+          <line x1={cx + 8} y1={cy + 340} x2={cx - 20} y2={cy + 340} stroke="#a855f7" strokeWidth={2} markerEnd="url(#arrowPurple)" />
+          <text x={cx - 7} y={cy + 352} fill="#a855f7" fontSize="9" textAnchor="middle">{"CO₂"}</text>
+        </>
+      )}
+
+      {/* NO PULMONARY FLOW overlay during arrest */}
+      {isArrest && (
+        <g>
+          <rect x={cx - 100} y={cy + 310} width={390} height={32} rx={6} fill="#450a0a" stroke="#ef4444" strokeWidth={1.5} opacity={0.9} />
+          <text x={cx + 95} y={cy + 331} fill="#fca5a5" fontSize="13" fontWeight="bold" textAnchor="middle">NO PULMONARY BLOOD FLOW</text>
+        </g>
+      )}
 
       {/* Edema fluid in alveolus when PCWP high */}
       {cs.pulmonaryEdema !== 'none' && (
