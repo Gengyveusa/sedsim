@@ -58,9 +58,9 @@ export const createDigitalTwin = (basePatient: Patient): DigitalTwin => {
 export const updateTwin = (
   twin: DigitalTwin,
   pkStates: Record<string, PKState>,
-  vitalsHr: number,
+  _vitalsHr: number,
   vitalsSpo2: number,
-  dt: number
+  _dt: number
 ): DigitalTwin => {
   // Extract effect-site concentrations from PK states
   const newCe: Record<string, number> = {};
