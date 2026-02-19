@@ -2,7 +2,8 @@
 // Patient-Specific Digital Twin Engine
 // Extends patient archetypes into full digital twins with predictive capabilities
 
-import { Patient, PKState } from '../types';
+import { Patient, PKState, CardiacRhythm } from '../types';
+import { getAclsGuidance } from './cardiacRhythm';
 
 export interface DigitalTwin extends Patient {
   sensitivityMultiplier: number;
@@ -13,6 +14,9 @@ export interface DigitalTwin extends Patient {
     hypotensionRisk: number;
     desaturationRisk: number;
     awarenessRisk: number;
+    arrhythmiaRisk: number;
+    predictedRhythm: CardiacRhythm;
+    aclsGuidance: string[];
   };
   physiologyModifiers: {
     cardiacOutput: number;      // 0.5-1.5 multiplier
@@ -44,6 +48,9 @@ export const createDigitalTwin = (basePatient: Patient): DigitalTwin => {
       hypotensionRisk: 0,
       desaturationRisk: 0,
       awarenessRisk: 0,
+      arrhythmiaRisk: 0,
+      predictedRhythm: 'normal_sinus',
+      aclsGuidance: [],
     },
     physiologyModifiers: {
       cardiacOutput: ageFactor * obesityFactor,
@@ -60,7 +67,8 @@ export const updateTwin = (
   pkStates: Record<string, PKState>,
   _vitalsHr: number,
   vitalsSpo2: number,
-  _dt: number
+  _dt: number,
+  currentRhythm: CardiacRhythm = 'normal_sinus'
 ): DigitalTwin => {
   // Extract effect-site concentrations from PK states
   const newCe: Record<string, number> = {};
@@ -97,6 +105,15 @@ export const updateTwin = (
     totalSedationPressure < 1.5 ? (1.5 - totalSedationPressure) * 40 : 0
   ));
 
+  // Arrhythmia risk based on hypoxia, drug effects, and haemodynamics
+  const arrhythmiaRisk = Math.min(100, Math.max(0,
+    (vitalsSpo2 < 90 ? (90 - vitalsSpo2) * 3 : 0) +
+    (propCe > 5 ? (propCe - 5) * 8 : 0) +
+    (fentCe > 3 ? (fentCe - 3) * 5 : 0)
+  ));
+
+  const aclsGuidance = getAclsGuidance(currentRhythm);
+
   return {
     ...twin,
     currentCe: newCe,
@@ -105,6 +122,9 @@ export const updateTwin = (
       hypotensionRisk: Math.round(hypotensionRisk),
       desaturationRisk: Math.round(desaturationRisk),
       awarenessRisk: Math.round(awarenessRisk),
+      arrhythmiaRisk: Math.round(arrhythmiaRisk),
+      predictedRhythm: currentRhythm,
+      aclsGuidance,
     },
   };
 };

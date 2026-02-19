@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Vitals } from '../types';
+import { Vitals, CardiacRhythm } from '../types';
+import { isPulselessRhythm, isLethalRhythm } from '../engine/cardiacRhythm';
 
 interface MonitorPanelProps {
   vitals: Vitals;
@@ -37,8 +38,14 @@ const DEFAULT_SCALES = {
   etco2: { ticks: [20, 30, 40, 50, 60], min: 20, max: 60 },
 };
 
-// Clean ECG template: [phase, amplitude] pairs for one cardiac cycle
-const ECG_TEMPLATE: [number, number][] = [
+// ── ECG Waveform Templates ────────────────────────────────────────────────────
+// Each template is an array of [phase(0-1), amplitude] control points.
+// Negative amplitude = downward deflection on monitor.
+
+type WaveformPoint = [number, number];
+
+// Normal sinus rhythm – classic P-QRS-T
+const TEMPLATE_NORMAL: WaveformPoint[] = [
   [0, 0], [0.08, 0], [0.10, -3], [0.14, 0], [0.16, 0],
   [0.22, 0], [0.24, 2], [0.25, 5],
   [0.27, -35], [0.30, -38],
@@ -47,10 +54,39 @@ const ECG_TEMPLATE: [number, number][] = [
   [0.70, 0], [1.0, 0],
 ];
 
-function interpolateECG(phase: number): number {
-  for (let i = 0; i < ECG_TEMPLATE.length - 1; i++) {
-    const [p0, a0] = ECG_TEMPLATE[i];
-    const [p1, a1] = ECG_TEMPLATE[i + 1];
+// No P wave – narrow QRS (junctional / SVT baseline beat)
+const TEMPLATE_NARROW_NO_P: WaveformPoint[] = [
+  [0, 0], [0.20, 0],
+  [0.24, 2], [0.25, 5],
+  [0.27, -35], [0.30, -38],
+  [0.32, 8], [0.34, 3], [0.36, 0],
+  [0.42, 0], [0.50, -8], [0.58, -10], [0.64, -6], [0.68, 0],
+  [1.0, 0],
+];
+
+// Wide QRS (VTach / LBBB-style)
+const TEMPLATE_WIDE_QRS: WaveformPoint[] = [
+  [0, 0], [0.18, 0],
+  [0.22, -5], [0.28, -20],
+  [0.33, 30], [0.40, -8],
+  [0.46, 0], [0.55, -6], [0.60, -4], [0.65, 0],
+  [1.0, 0],
+];
+
+// First-degree AV block – normal PQRS but P is earlier (wider gap)
+const TEMPLATE_1ST_DEGREE: WaveformPoint[] = [
+  [0, 0], [0.05, 0], [0.07, -3], [0.12, 0], [0.14, 0],   // P wave
+  [0.30, 0], [0.32, 2], [0.33, 5],                         // long PR gap then QRS
+  [0.35, -35], [0.38, -38],
+  [0.40, 8], [0.42, 3], [0.44, 0],
+  [0.50, 0], [0.56, -8], [0.63, -10], [0.70, -6], [0.74, 0],
+  [1.0, 0],
+];
+
+function interpolateTemplate(template: WaveformPoint[], phase: number): number {
+  for (let i = 0; i < template.length - 1; i++) {
+    const [p0, a0] = template[i];
+    const [p1, a1] = template[i + 1];
     if (phase >= p0 && phase < p1) {
       const t = (phase - p0) / (p1 - p0);
       const tSmooth = t * t * (3 - 2 * t);
@@ -58,6 +94,130 @@ function interpolateECG(phase: number): number {
     }
   }
   return 0;
+}
+
+// Sawtooth flutter-wave baseline (atrial flutter F-waves)
+function flutterBaseline(phase: number): number {
+  // ~4 F-waves per QRS cycle → sawtooth
+  const fPhase = (phase * 4) % 1;
+  return fPhase < 0.6 ? -(fPhase / 0.6) * 8 : ((fPhase - 0.6) / 0.4) * 8 - 8;
+}
+
+// VFib: sum of sinusoids at randomish frequencies – seeded by time for smooth animation
+const VFIB_FREQS = [2.1, 3.7, 5.3, 7.1, 4.8]; // Hz (relative)
+const VFIB_AMPS  = [12,  8,   5,   4,   6];
+
+function vfibWaveform(phase: number, coarseVsFine: number, phaseOffset: number): number {
+  // coarseVsFine: 1 = coarse (early), 0 = fine (late)
+  const scale = 0.4 + 0.6 * coarseVsFine;
+  let val = 0;
+  for (let i = 0; i < VFIB_FREQS.length; i++) {
+    val += VFIB_AMPS[i] * Math.sin(2 * Math.PI * (phase * VFIB_FREQS[i] + phaseOffset + i * 0.37));
+  }
+  return val * scale;
+}
+
+// Polymorphic VT / Torsades: waxing-waning sinusoidal envelope on wide QRS
+function torsadesWaveform(phase: number, cycleIndex: number): number {
+  const envelope = Math.abs(Math.sin(cycleIndex * 0.3));
+  const base = interpolateTemplate(TEMPLATE_WIDE_QRS, phase);
+  return base * (0.3 + envelope * 1.4);
+}
+
+/**
+ * Select the ECG waveform value for a given rhythm, phase, and cycle index.
+ * Returns amplitude in the same units as ECG_TEMPLATE (peak ~38 units).
+ */
+function interpolateECGForRhythm(
+  rhythm: CardiacRhythm,
+  phase: number,
+  cycleIndex: number,
+  _hr: number,
+  vfibOffset: number
+): number {
+  switch (rhythm) {
+    case 'normal_sinus':
+    case 'sinus_bradycardia':
+    case 'sinus_tachycardia':
+      return interpolateTemplate(TEMPLATE_NORMAL, phase);
+
+    case 'first_degree_av_block':
+      return interpolateTemplate(TEMPLATE_1ST_DEGREE, phase);
+
+    case 'second_degree_type1': {
+      // Wenckebach: PR lengthens over 3 beats then dropped QRS
+      const beatInCycle = cycleIndex % 4;
+      if (beatInCycle === 3) return 0; // dropped beat
+      const extraPR = beatInCycle * 0.06; // 0, 0.06, 0.12
+      const shifted = Math.max(0, phase - extraPR);
+      return interpolateTemplate(TEMPLATE_NORMAL, shifted > 0.14 && phase < extraPR ? 0 : shifted);
+    }
+
+    case 'second_degree_type2': {
+      // Fixed PR, every 3rd QRS dropped
+      const beatMod = cycleIndex % 3;
+      if (beatMod === 2) return 0;
+      return interpolateTemplate(TEMPLATE_NORMAL, phase);
+    }
+
+    case 'third_degree_av_block': {
+      // Independent P-wave at ~75 bpm, wide QRS at ~40 bpm
+      const pPhase = (phase * 1.875) % 1; // P waves at higher rate
+      const pVal = pPhase < 0.15 ? interpolateTemplate(TEMPLATE_NORMAL, pPhase * 4) * 0.3 : 0;
+      return pVal + interpolateTemplate(TEMPLATE_WIDE_QRS, phase) * 0.7;
+    }
+
+    case 'svt':
+    case 'junctional':
+      return interpolateTemplate(TEMPLATE_NARROW_NO_P, phase);
+
+    case 'atrial_fibrillation': {
+      // Fibrillatory baseline + narrow QRS (no P wave)
+      const fibNoise = Math.sin(phase * 47) * 1.5 + Math.sin(phase * 73) * 1.0;
+      return fibNoise + interpolateTemplate(TEMPLATE_NARROW_NO_P, phase) * 0.9;
+    }
+
+    case 'atrial_flutter': {
+      const flutter = flutterBaseline(phase);
+      // QRS every 4th F-wave (2:1 or 3:1 – show 2:1 for clarity)
+      return flutter + interpolateTemplate(TEMPLATE_NARROW_NO_P, phase) * 0.85;
+    }
+
+    case 'ventricular_tachycardia':
+    case 'wide_complex_unknown':
+      return interpolateTemplate(TEMPLATE_WIDE_QRS, phase);
+
+    case 'polymorphic_vt':
+      return torsadesWaveform(phase, cycleIndex);
+
+    case 'ventricular_fibrillation':
+      return vfibWaveform(phase, 1.0, vfibOffset);
+
+    case 'pea':
+      // Organised-looking narrow rhythm but haemodynamics show no output
+      return interpolateTemplate(TEMPLATE_NARROW_NO_P, phase) * 0.7;
+
+    case 'asystole':
+      // Near-flat line with very slight noise
+      return (Math.random() - 0.5) * 1.2;
+
+    default:
+      return interpolateTemplate(TEMPLATE_NORMAL, phase);
+  }
+}
+
+// Compute per-beat RR interval variation for irregular rhythms
+function getRRVariation(rhythm: CardiacRhythm, baseRR: number): number {
+  switch (rhythm) {
+    case 'atrial_fibrillation':
+      // Irregularly irregular: vary ±40% around mean
+      return baseRR * (0.6 + Math.random() * 0.8);
+    case 'second_degree_type1':
+    case 'second_degree_type2':
+      return baseRR * (0.9 + Math.random() * 0.2);
+    default:
+      return baseRR;
+  }
 }
 
 function plethWaveform(phase: number): number {
@@ -252,9 +412,13 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   const capnoCanvasRef = useRef<HTMLCanvasElement>(null);
   const sweepRef = useRef(0);
   const animRef = useRef(0);
+  const cycleIndexRef = useRef(0);
+  const prevPhaseRef = useRef(0);
+  const vfibOffsetRef = useRef(0);
   const [showPleth, setShowPleth] = useState(true);
   const [showCapno, setShowCapno] = useState(true);
   const [alarmFlash, setAlarmFlash] = useState(false);
+  const [rhythmFlash, setRhythmFlash] = useState(false);
 
   // Dynamic scale tracking - use refs to track current scale ranges without them being in deps
   const [hrScale, setHrScale] = useState<ScaleConfig>(DEFAULT_SCALES.hr);
@@ -324,39 +488,76 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   useEffect(() => {
     const hasAlarm = vitals.spo2 < 90 || vitals.hr < 50 || vitals.hr > 120 || vitals.sbp < 80 || vitals.rr < 6;
     if (!hasAlarm) { setAlarmFlash(false); return; }
-    const iv = setInterval(() => setAlarmFlash(f => !f), 500);
+    const iv = setInterval(() => setAlarmFlash((f: boolean) => !f), 500);
     return () => clearInterval(iv);
   }, [vitals.spo2, vitals.hr, vitals.sbp, vitals.rr]);
+
+  // Lethal rhythm label flash
+  const rhythm = vitals.rhythm ?? 'normal_sinus';
+  useEffect(() => {
+    if (!isLethalRhythm(rhythm)) { setRhythmFlash(false); return; }
+    const iv = setInterval(() => setRhythmFlash((f: boolean) => !f), 600);
+    return () => clearInterval(iv);
+  }, [rhythm]);
 
   // Animation loop for sweep waveforms
   const drawAll = useCallback(() => {
     const hr = vitals.hr || 75;
     const rr = vitals.rr || 14;
     const etco2 = vitals.etco2 || 38;
+    const currentRhythm = vitals.rhythm ?? 'normal_sinus';
+    const pulseless = isPulselessRhythm(currentRhythm);
+
+    // Advance VFib phase offset for animation (stored in ref, not module-level)
+    vfibOffsetRef.current += 0.012;
+    const vfibOffset = vfibOffsetRef.current;
 
     // ECG
     const ecgCanvas = ecgCanvasRef.current;
     if (ecgCanvas) {
-      const cycleLen = (60 / hr) * (ecgCanvas.width / 8);
+      const baseCycleLen = (60 / hr) * (ecgCanvas.width / 8);
+      const cycleLen = getRRVariation(currentRhythm, baseCycleLen);
+
+      // Track cycle index for Wenckebach / Torsades envelope
+      const phase = (sweepRef.current % cycleLen) / cycleLen;
+      if (phase < prevPhaseRef.current) {
+        cycleIndexRef.current += 1;
+      }
+      prevPhaseRef.current = phase;
+
+      const ci = cycleIndexRef.current;
       drawSweepWaveform(
-        ecgCanvas, COLORS.ecg, interpolateECG,
+        ecgCanvas, COLORS.ecg,
+        (p) => interpolateECGForRhythm(currentRhythm, p, ci, hr, vfibOffset),
         sweepRef.current % ecgCanvas.width, cycleLen,
         ecgCanvas.height / 2, 0.9,
         hrScale.ticks, hrScale.min, hrScale.max
       );
     }
 
-    // Pleth
+    // Pleth – flatline for pulseless rhythms
     if (showPleth) {
       const plethCanvas = plethCanvasRef.current;
       if (plethCanvas) {
-        const cycleLen = (60 / hr) * (plethCanvas.width / 8);
-        drawSweepWaveform(
-          plethCanvas, COLORS.spo2, plethWaveform,
-          sweepRef.current % plethCanvas.width, cycleLen,
-          plethCanvas.height * 0.6, 0.7,
-          spo2Scale.ticks, spo2Scale.min, spo2Scale.max
-        );
+        if (pulseless) {
+          // Draw flatline
+          drawSweepWaveform(
+            plethCanvas, COLORS.spo2,
+            () => 0,
+            sweepRef.current % plethCanvas.width,
+            plethCanvas.width,
+            plethCanvas.height / 2, 0.7,
+            spo2Scale.ticks, spo2Scale.min, spo2Scale.max
+          );
+        } else {
+          const cycleLen = (60 / hr) * (plethCanvas.width / 8);
+          drawSweepWaveform(
+            plethCanvas, COLORS.spo2, plethWaveform,
+            sweepRef.current % plethCanvas.width, cycleLen,
+            plethCanvas.height * 0.6, 0.7,
+            spo2Scale.ticks, spo2Scale.min, spo2Scale.max
+          );
+        }
       }
     }
 
@@ -364,21 +565,33 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
     if (showCapno) {
       const capnoCanvas = capnoCanvasRef.current;
       if (capnoCanvas) {
-        const cycleLen = (60 / rr) * (capnoCanvas.width / 8);
-        const etco2H = (etco2 / 60) * (capnoCanvas.height - 10);
-        drawSweepWaveform(
-          capnoCanvas, COLORS.capno,
-          (phase) => capnoWaveform(phase, etco2H),
-          sweepRef.current % capnoCanvas.width, cycleLen,
-          capnoCanvas.height - 5, 1,
-          etco2Scale.ticks, etco2Scale.min, etco2Scale.max
-        );
+        if (rr === 0) {
+          // Respiratory arrest → flatline
+          drawSweepWaveform(
+            capnoCanvas, COLORS.capno,
+            () => 0,
+            sweepRef.current % capnoCanvas.width,
+            capnoCanvas.width,
+            capnoCanvas.height - 5, 1,
+            etco2Scale.ticks, etco2Scale.min, etco2Scale.max
+          );
+        } else {
+          const cycleLen = (60 / rr) * (capnoCanvas.width / 8);
+          const etco2H = (etco2 / 60) * (capnoCanvas.height - 10);
+          drawSweepWaveform(
+            capnoCanvas, COLORS.capno,
+            (phase) => capnoWaveform(phase, etco2H),
+            sweepRef.current % capnoCanvas.width, cycleLen,
+            capnoCanvas.height - 5, 1,
+            etco2Scale.ticks, etco2Scale.min, etco2Scale.max
+          );
+        }
       }
     }
 
     sweepRef.current += 1.5;
     animRef.current = requestAnimationFrame(drawAll);
-  }, [vitals.hr, vitals.rr, vitals.etco2, showPleth, showCapno, hrScale, spo2Scale, etco2Scale]);
+  }, [vitals.hr, vitals.rr, vitals.etco2, vitals.rhythm, showPleth, showCapno, hrScale, spo2Scale, etco2Scale]);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(drawAll);
@@ -431,6 +644,32 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
           <span style={{ position: 'absolute', top: 4, left: 30, color: COLORS.ecg, fontSize: 10, fontWeight: 700, zIndex: 1 }}>
             II
           </span>
+          {/* Rhythm label overlay */}
+          {isLethalRhythm(rhythm) && (
+            <span style={{
+              position: 'absolute', top: 4, right: 8,
+              color: '#ff2222', fontSize: 11, fontWeight: 900, zIndex: 2,
+              opacity: rhythmFlash ? 1 : 0.15,
+              letterSpacing: '0.08em',
+              textShadow: '0 0 8px #ff0000',
+            }}>
+              {rhythm.replace(/_/g, ' ').toUpperCase()}
+            </span>
+          )}
+          {(() => {
+            const silentRhythms: CardiacRhythm[] = ['normal_sinus', 'sinus_bradycardia', 'sinus_tachycardia'];
+            const showLabel = !isLethalRhythm(rhythm) && !silentRhythms.includes(rhythm);
+            return showLabel ? (
+              <span style={{
+                position: 'absolute', top: 4, right: 8,
+                color: '#ffaa00', fontSize: 10, fontWeight: 700, zIndex: 2,
+                opacity: 0.85,
+                letterSpacing: '0.06em',
+              }}>
+                {rhythm.replace(/_/g, ' ').toUpperCase()}
+              </span>
+            ) : null;
+          })()}
           <canvas ref={ecgCanvasRef} width={500} height={80} style={{ width: '100%', height: 80 }} />
         </div>
 

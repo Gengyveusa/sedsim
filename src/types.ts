@@ -24,6 +24,31 @@ export interface PKState {
   ce: number;  // effect-site concentration
 }
 
+// Cardiac rhythm types
+export type CardiacRhythm =
+  // Normal / Sinus rhythms
+  | 'normal_sinus'
+  | 'sinus_bradycardia'          // HR < 60
+  | 'sinus_tachycardia'          // HR > 100
+  // Narrow complex tachycardias (QRS < 120ms)
+  | 'svt'                        // Supraventricular tachycardia
+  | 'atrial_fibrillation'        // Irregularly irregular, no P waves
+  | 'atrial_flutter'             // Sawtooth pattern, ~300 atrial rate
+  | 'junctional'                 // No P waves, narrow QRS, regular
+  // Wide complex tachycardias (QRS > 120ms)
+  | 'ventricular_tachycardia'    // Monomorphic VT
+  | 'polymorphic_vt'             // Torsades de Pointes
+  | 'wide_complex_unknown'       // Wide complex, unclear origin
+  // Bradyarrhythmias
+  | 'first_degree_av_block'      // Prolonged PR interval
+  | 'second_degree_type1'        // Wenckebach
+  | 'second_degree_type2'        // Dropped QRS without PR change
+  | 'third_degree_av_block'      // Complete heart block
+  // Arrest rhythms
+  | 'ventricular_fibrillation'   // Chaotic, no organized QRS
+  | 'asystole'                   // Flatline
+  | 'pea';                       // Pulseless electrical activity
+
 // Vital signs
 export interface Vitals {
   hr: number;    // heart rate (bpm)
@@ -33,6 +58,10 @@ export interface Vitals {
   rr: number;    // respiratory rate
   spo2: number;  // oxygen saturation %
   etco2: number; // end-tidal CO2
+  rhythm?: CardiacRhythm;
+  qrsWidth?: number;   // ms, normal < 120
+  prInterval?: number; // ms, normal 120-200
+  qtInterval?: number; // ms
 }
 
 // Sedation depth (Modified Observer Assessment)
