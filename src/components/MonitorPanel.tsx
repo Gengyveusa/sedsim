@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Vitals, CardiacRhythm } from '../types';
 import { isPulselessRhythm, isLethalRhythm } from '../engine/cardiacRhythm';
+import {
+  evaluateECG,
+  getRRVariation,
+} from '../engine/ecgWaveformEngine';
 
 interface MonitorPanelProps {
   vitals: Vitals;
@@ -38,187 +42,7 @@ const DEFAULT_SCALES = {
   etco2: { ticks: [20, 30, 40, 50, 60], min: 20, max: 60 },
 };
 
-// ── ECG Waveform Templates ────────────────────────────────────────────────────
-// Each template is an array of [phase(0-1), amplitude] control points.
-// Negative amplitude = downward deflection on monitor.
-
-type WaveformPoint = [number, number];
-
-// Normal sinus rhythm – classic P-QRS-T
-const TEMPLATE_NORMAL: WaveformPoint[] = [
-  [0, 0], [0.08, 0], [0.10, -3], [0.14, 0], [0.16, 0],
-  [0.22, 0], [0.24, 2], [0.25, 5],
-  [0.27, -35], [0.30, -38],
-  [0.32, 8], [0.34, 3], [0.36, 0],
-  [0.42, 0], [0.48, -8], [0.55, -10], [0.62, -6], [0.66, 0],
-  [0.70, 0], [1.0, 0],
-];
-
-// No P wave – narrow QRS (junctional / SVT baseline beat)
-const TEMPLATE_NARROW_NO_P: WaveformPoint[] = [
-  [0, 0], [0.20, 0],
-  [0.24, 2], [0.25, 5],
-  [0.27, -35], [0.30, -38],
-  [0.32, 8], [0.34, 3], [0.36, 0],
-  [0.42, 0], [0.50, -8], [0.58, -10], [0.64, -6], [0.68, 0],
-  [1.0, 0],
-];
-
-// Wide QRS (VTach / LBBB-style)
-const TEMPLATE_WIDE_QRS: WaveformPoint[] = [
-  [0, 0], [0.18, 0],
-  [0.22, -5], [0.28, -20],
-  [0.33, 30], [0.40, -8],
-  [0.46, 0], [0.55, -6], [0.60, -4], [0.65, 0],
-  [1.0, 0],
-];
-
-// First-degree AV block – normal PQRS but P is earlier (wider gap)
-const TEMPLATE_1ST_DEGREE: WaveformPoint[] = [
-  [0, 0], [0.05, 0], [0.07, -3], [0.12, 0], [0.14, 0],   // P wave
-  [0.30, 0], [0.32, 2], [0.33, 5],                         // long PR gap then QRS
-  [0.35, -35], [0.38, -38],
-  [0.40, 8], [0.42, 3], [0.44, 0],
-  [0.50, 0], [0.56, -8], [0.63, -10], [0.70, -6], [0.74, 0],
-  [1.0, 0],
-];
-
-function interpolateTemplate(template: WaveformPoint[], phase: number): number {
-  for (let i = 0; i < template.length - 1; i++) {
-    const [p0, a0] = template[i];
-    const [p1, a1] = template[i + 1];
-    if (phase >= p0 && phase < p1) {
-      const t = (phase - p0) / (p1 - p0);
-      const tSmooth = t * t * (3 - 2 * t);
-      return a0 + (a1 - a0) * tSmooth;
-    }
-  }
-  return 0;
-}
-
-// Sawtooth flutter-wave baseline (atrial flutter F-waves)
-function flutterBaseline(phase: number): number {
-  // ~4 F-waves per QRS cycle → sawtooth
-  const fPhase = (phase * 4) % 1;
-  return fPhase < 0.6 ? -(fPhase / 0.6) * 8 : ((fPhase - 0.6) / 0.4) * 8 - 8;
-}
-
-// VFib: sum of sinusoids at randomish frequencies – seeded by time for smooth animation
-const VFIB_FREQS = [2.1, 3.7, 5.3, 7.1, 4.8]; // Hz (relative)
-const VFIB_AMPS  = [12,  8,   5,   4,   6];
-
-function vfibWaveform(phase: number, coarseVsFine: number, phaseOffset: number): number {
-  // coarseVsFine: 1 = coarse (early), 0 = fine (late)
-  const scale = 0.4 + 0.6 * coarseVsFine;
-  let val = 0;
-  for (let i = 0; i < VFIB_FREQS.length; i++) {
-    val += VFIB_AMPS[i] * Math.sin(2 * Math.PI * (phase * VFIB_FREQS[i] + phaseOffset + i * 0.37));
-  }
-  return val * scale;
-}
-
-// Polymorphic VT / Torsades: waxing-waning sinusoidal envelope on wide QRS
-function torsadesWaveform(phase: number, cycleIndex: number): number {
-  const envelope = Math.abs(Math.sin(cycleIndex * 0.3));
-  const base = interpolateTemplate(TEMPLATE_WIDE_QRS, phase);
-  return base * (0.3 + envelope * 1.4);
-}
-
-/**
- * Select the ECG waveform value for a given rhythm, phase, and cycle index.
- * Returns amplitude in the same units as ECG_TEMPLATE (peak ~38 units).
- */
-function interpolateECGForRhythm(
-  rhythm: CardiacRhythm,
-  phase: number,
-  cycleIndex: number,
-  _hr: number,
-  vfibOffset: number
-): number {
-  switch (rhythm) {
-    case 'normal_sinus':
-    case 'sinus_bradycardia':
-    case 'sinus_tachycardia':
-      return interpolateTemplate(TEMPLATE_NORMAL, phase);
-
-    case 'first_degree_av_block':
-      return interpolateTemplate(TEMPLATE_1ST_DEGREE, phase);
-
-    case 'second_degree_type1': {
-      // Wenckebach: PR lengthens over 3 beats then dropped QRS
-      const beatInCycle = cycleIndex % 4;
-      if (beatInCycle === 3) return 0; // dropped beat
-      const extraPR = beatInCycle * 0.06; // 0, 0.06, 0.12
-      const shifted = Math.max(0, phase - extraPR);
-      return interpolateTemplate(TEMPLATE_NORMAL, shifted > 0.14 && phase < extraPR ? 0 : shifted);
-    }
-
-    case 'second_degree_type2': {
-      // Fixed PR, every 3rd QRS dropped
-      const beatMod = cycleIndex % 3;
-      if (beatMod === 2) return 0;
-      return interpolateTemplate(TEMPLATE_NORMAL, phase);
-    }
-
-    case 'third_degree_av_block': {
-      // Independent P-wave at ~75 bpm, wide QRS at ~40 bpm
-      const pPhase = (phase * 1.875) % 1; // P waves at higher rate
-      const pVal = pPhase < 0.15 ? interpolateTemplate(TEMPLATE_NORMAL, pPhase * 4) * 0.3 : 0;
-      return pVal + interpolateTemplate(TEMPLATE_WIDE_QRS, phase) * 0.7;
-    }
-
-    case 'svt':
-    case 'junctional':
-      return interpolateTemplate(TEMPLATE_NARROW_NO_P, phase);
-
-    case 'atrial_fibrillation': {
-      // Fibrillatory baseline + narrow QRS (no P wave)
-      const fibNoise = Math.sin(phase * 47) * 1.5 + Math.sin(phase * 73) * 1.0;
-      return fibNoise + interpolateTemplate(TEMPLATE_NARROW_NO_P, phase) * 0.9;
-    }
-
-    case 'atrial_flutter': {
-      const flutter = flutterBaseline(phase);
-      // QRS every 4th F-wave (2:1 or 3:1 – show 2:1 for clarity)
-      return flutter + interpolateTemplate(TEMPLATE_NARROW_NO_P, phase) * 0.85;
-    }
-
-    case 'ventricular_tachycardia':
-    case 'wide_complex_unknown':
-      return interpolateTemplate(TEMPLATE_WIDE_QRS, phase);
-
-    case 'polymorphic_vt':
-      return torsadesWaveform(phase, cycleIndex);
-
-    case 'ventricular_fibrillation':
-      return vfibWaveform(phase, 1.0, vfibOffset);
-
-    case 'pea':
-      // Organised-looking narrow rhythm but haemodynamics show no output
-      return interpolateTemplate(TEMPLATE_NARROW_NO_P, phase) * 0.7;
-
-    case 'asystole':
-      // Near-flat line with very slight noise
-      return (Math.random() - 0.5) * 1.2;
-
-    default:
-      return interpolateTemplate(TEMPLATE_NORMAL, phase);
-  }
-}
-
-// Compute per-beat RR interval variation for irregular rhythms
-function getRRVariation(rhythm: CardiacRhythm, baseRR: number): number {
-  switch (rhythm) {
-    case 'atrial_fibrillation':
-      // Irregularly irregular: vary ±40% around mean
-      return baseRR * (0.6 + Math.random() * 0.8);
-    case 'second_degree_type1':
-    case 'second_degree_type2':
-      return baseRR * (0.9 + Math.random() * 0.2);
-    default:
-      return baseRR;
-  }
-}
+// ─── Pleth / Capno waveform generators ───────────────────────────────────────
 
 function plethWaveform(phase: number): number {
   if (phase < 0.12) {
@@ -253,6 +77,162 @@ function capnoWaveform(phase: number, etco2Height: number): number {
   return 0;
 }
 
+// ─── Sweep Renderer Helpers ───────────────────────────────────────────────────
+
+/** Grid spacing in pixels */
+const GRID_STEP = 20;
+
+/**
+ * Draw grid lines within the horizontal range [x1, x2) on a canvas context.
+ * Called to restore the grid after the erase zone overwrites it.
+ */
+function drawGridInRange(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  x2: number,
+  height: number,
+) {
+  ctx.save();
+  ctx.strokeStyle = COLORS.gridLine;
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([]);
+
+  // Horizontal lines (span x1→x2)
+  for (let gy = 0; gy <= height; gy += GRID_STEP) {
+    ctx.beginPath();
+    ctx.moveTo(x1, gy);
+    ctx.lineTo(x2, gy);
+    ctx.stroke();
+  }
+  // Vertical lines that fall within [x1, x2)
+  const first = Math.ceil(x1 / GRID_STEP) * GRID_STEP;
+  for (let gx = first; gx <= x2; gx += GRID_STEP) {
+    ctx.beginPath();
+    ctx.moveTo(gx, 0);
+    ctx.lineTo(gx, height);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * Initialise a canvas with the dark background + full grid.
+ * Called once per canvas when the component mounts.
+ */
+function initCanvasBg(
+  canvas: HTMLCanvasElement,
+  marginLeft: number,
+) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const { width, height } = canvas;
+  ctx.fillStyle = COLORS.background;
+  ctx.fillRect(0, 0, width, height);
+  // Full grid
+  ctx.strokeStyle = COLORS.gridLine;
+  ctx.lineWidth = 0.5;
+  for (let gy = 0; gy <= height; gy += GRID_STEP) {
+    ctx.beginPath();
+    ctx.moveTo(marginLeft, gy);
+    ctx.lineTo(width, gy);
+    ctx.stroke();
+  }
+  for (let gx = marginLeft; gx < width; gx += GRID_STEP) {
+    ctx.beginPath();
+    ctx.moveTo(gx, 0);
+    ctx.lineTo(gx, height);
+    ctx.stroke();
+  }
+}
+
+/** Width of the leading erase zone in pixels. */
+const ERASE_WIDTH = 22;
+
+/**
+ * Erase the zone [eraseStart, eraseStart + ERASE_WIDTH) on the canvas
+ * (with wrapping) and restore the grid + scale-axis background in that area.
+ * Uses a short gradient so the scan-line looks like a phosphor sweep bar.
+ */
+function eraseZone(
+  ctx: CanvasRenderingContext2D,
+  eraseStart: number,
+  marginLeft: number,
+) {
+  const { width, height } = ctx.canvas;
+  // Clamp so we never paint over the Y-axis scale column
+  const x1 = Math.max(eraseStart, marginLeft);
+  const x2 = x1 + ERASE_WIDTH;
+
+  function clearSegment(a: number, b: number) {
+    if (b <= a) return;
+    const ca = Math.max(a, marginLeft);
+    const cb = Math.min(b, width);
+    if (cb <= ca) return;
+    ctx.fillStyle = COLORS.background;
+    ctx.fillRect(ca, 0, cb - ca, height);
+    drawGridInRange(ctx, ca, cb, height);
+  }
+
+  if (x2 < width) {
+    clearSegment(x1, x2);
+  } else {
+    // Wraps around right edge
+    clearSegment(x1, width);
+    clearSegment(marginLeft, x2 - width);
+  }
+}
+
+/**
+ * Draw a single sweep step for one waveform channel.
+ * Advances the write cursor from prevX to nextX, draws the new trace segment,
+ * and calls eraseZone ahead of the cursor.
+ *
+ * @param canvas      Target visible canvas
+ * @param color       Stroke colour
+ * @param prevX       Write-X from previous frame
+ * @param nextX       Write-X for this frame (may wrap)
+ * @param prevY       Canvas-Y from previous frame
+ * @param nextY       Canvas-Y for this frame
+ * @param marginLeft  Left margin reserved for Y-axis scale labels
+ */
+function drawSweepStep(
+  canvas: HTMLCanvasElement,
+  color: string,
+  prevX: number,
+  nextX: number,
+  prevY: number,
+  nextY: number,
+  marginLeft: number,
+) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // Draw trace segment (skip across-wrap connections to avoid diagonal artifact)
+  if (nextX >= prevX) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 3;
+    ctx.beginPath();
+    ctx.moveTo(prevX, prevY);
+    ctx.lineTo(nextX, nextY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Erase zone ahead of cursor
+  eraseZone(ctx, nextX + 1, marginLeft);
+}
+
+// Sweep speed: pixels advanced per animation frame (~60 fps → 120 px/s ≈ 25 mm/s at default scale)
+const SWEEP_SPEED = 2;
+
+// Pleth delay: ~200 ms pulse-transit time → 200 ms × 120 px/s = 24 pixels
+const PLETH_DELAY_PX = 24;
+
 // Draw Y-axis scale ticks on a canvas channel
 function drawScaleTicks(
   ctx: CanvasRenderingContext2D,
@@ -286,69 +266,6 @@ function drawScaleTicks(
     // Label
     ctx.fillText(String(tick), marginLeft - 2, y + 3);
   });
-}
-
-// Sweep-style waveform renderer with scale ticks
-function drawSweepWaveform(
-  canvas: HTMLCanvasElement,
-  color: string,
-  waveformFn: (phase: number) => number,
-  _sweepX: number,
-  cyclePixels: number,
-  baselineY: number,
-  amplitude: number,
-  scaleTicks?: number[],
-  scaleMin?: number,
-  scaleMax?: number
-) {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  const { width, height } = canvas;
-  const marginLeft = scaleTicks ? 28 : 0;
-
-  ctx.fillStyle = COLORS.background;
-  ctx.fillRect(0, 0, width, height);
-
-  // Draw subtle grid
-  ctx.strokeStyle = COLORS.gridLine;
-  ctx.lineWidth = 0.5;
-  for (let gy = 0; gy < height; gy += 20) {
-    ctx.beginPath();
-    ctx.moveTo(marginLeft, gy);
-    ctx.lineTo(width, gy);
-    ctx.stroke();
-  }
-  for (let gx = marginLeft; gx < width; gx += 20) {
-    ctx.beginPath();
-    ctx.moveTo(gx, 0);
-    ctx.lineTo(gx, height);
-    ctx.stroke();
-  }
-
-  // Draw scale ticks if provided
-  if (scaleTicks && scaleMin !== undefined && scaleMax !== undefined) {
-    drawScaleTicks(ctx, scaleTicks, scaleMin, scaleMax, height, width, marginLeft);
-  }
-
-  // Draw waveform trace continuously across full canvas width
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.8;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-
-  for (let x = marginLeft; x < width; x++) {
-    const phase = ((x - marginLeft) % cyclePixels) / cyclePixels;
-    const val = waveformFn(phase);
-    const y = baselineY + val * amplitude;
-
-    if (x === marginLeft) {
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-    }
-  }
-  ctx.stroke();
 }
 
 // Alarm threshold helpers
@@ -415,6 +332,16 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   const cycleIndexRef = useRef(0);
   const prevPhaseRef = useRef(0);
   const vfibOffsetRef = useRef(0);
+
+  // Per-channel sweep state: previous canvas-Y value and write-X position
+  const ecgPrevYRef   = useRef(40);   // ECG canvas height/2
+  const plethPrevYRef = useRef(33);   // pleth canvas height * 0.6
+  const capnoPrevYRef = useRef(50);   // capno canvas near bottom
+
+  // Canvas initialisation flags (reset when rhythm / scale changes)
+  const ecgInitRef   = useRef(false);
+  const plethInitRef = useRef(false);
+  const capnoInitRef = useRef(false);
   const [showPleth, setShowPleth] = useState(true);
   const [showCapno, setShowCapno] = useState(true);
   const [alarmFlash, setAlarmFlash] = useState(false);
@@ -492,6 +419,21 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
     return () => clearInterval(iv);
   }, [vitals.spo2, vitals.hr, vitals.sbp, vitals.rr]);
 
+  // When HR scale changes, redraw scale column on ECG canvas and force re-init
+  useEffect(() => {
+    ecgInitRef.current = false;
+  }, [hrScale]);
+
+  // When SpO2 scale changes, force re-init of pleth canvas
+  useEffect(() => {
+    plethInitRef.current = false;
+  }, [spo2Scale]);
+
+  // When EtCO2 scale changes, force re-init of capno canvas
+  useEffect(() => {
+    capnoInitRef.current = false;
+  }, [etco2Scale]);
+
   // Lethal rhythm label flash
   const rhythm = vitals.rhythm ?? 'normal_sinus';
   useEffect(() => {
@@ -508,90 +450,148 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
     const currentRhythm = vitals.rhythm ?? 'normal_sinus';
     const pulseless = isPulselessRhythm(currentRhythm);
 
-    // Advance VFib phase offset for animation (stored in ref, not module-level)
     vfibOffsetRef.current += 0.012;
     const vfibOffset = vfibOffsetRef.current;
 
-    // ECG
+    // ── ECG ───────────────────────────────────────────────────────────────────
     const ecgCanvas = ecgCanvasRef.current;
     if (ecgCanvas) {
-      const baseCycleLen = (60 / hr) * (ecgCanvas.width / 8);
-      const cycleLen = getRRVariation(currentRhythm, baseCycleLen);
+      const ctx = ecgCanvas.getContext('2d');
+      if (ctx) {
+        const w = ecgCanvas.width;
+        const h = ecgCanvas.height;
+        const ML = 28; // margin left (scale column)
 
-      // Track cycle index for Wenckebach / Torsades envelope
-      const phase = (sweepRef.current % cycleLen) / cycleLen;
-      if (phase < prevPhaseRef.current) {
-        cycleIndexRef.current += 1;
+        // Initialise background once
+        if (!ecgInitRef.current) {
+          initCanvasBg(ecgCanvas, ML);
+          drawScaleTicks(ctx, hrScale.ticks, hrScale.min, hrScale.max, h, w, ML);
+          ecgPrevYRef.current = h / 2;
+          ecgInitRef.current = true;
+        }
+
+        const drawWidth = w - ML;
+        const baseCycleLen = (60 / hr) * (drawWidth / 8);
+        const cycleLen = getRRVariation(currentRhythm, baseCycleLen);
+
+        const prevSweep = sweepRef.current;
+        const nextSweep = prevSweep + SWEEP_SPEED;
+
+        // Phase within current beat cycle
+        const phase = ((nextSweep % cycleLen) + cycleLen) % cycleLen / cycleLen;
+        if (phase < prevPhaseRef.current) cycleIndexRef.current += 1;
+        prevPhaseRef.current = phase;
+
+        // P-wave phase for complete heart block (independent atrial rate ~75/min)
+        const pPhase = hr > 0 ? (nextSweep / (drawWidth / 8) * (75 / 60) % 1 + 1) % 1 : 0;
+
+        const amplitude = evaluateECG(
+          currentRhythm, phase, hr,
+          cycleIndexRef.current, vfibOffset,
+          pPhase,
+        );
+
+        // Scale: R-peak (1.0) → 30 px upward from baseline
+        const ECG_SCALE = h * 0.38;
+        const newY = h / 2 - amplitude * ECG_SCALE;
+
+        const prevX = ML + (prevSweep % drawWidth);
+        const nextX = ML + (nextSweep % drawWidth);
+        drawSweepStep(ecgCanvas, COLORS.ecg, prevX, nextX, ecgPrevYRef.current, newY, ML);
+        ecgPrevYRef.current = newY;
       }
-      prevPhaseRef.current = phase;
-
-      const ci = cycleIndexRef.current;
-      drawSweepWaveform(
-        ecgCanvas, COLORS.ecg,
-        (p) => interpolateECGForRhythm(currentRhythm, p, ci, hr, vfibOffset),
-        sweepRef.current % ecgCanvas.width, cycleLen,
-        ecgCanvas.height / 2, 0.9,
-        hrScale.ticks, hrScale.min, hrScale.max
-      );
     }
 
-    // Pleth – flatline for pulseless rhythms
+    // ── Pleth ─────────────────────────────────────────────────────────────────
     if (showPleth) {
       const plethCanvas = plethCanvasRef.current;
       if (plethCanvas) {
-        if (pulseless) {
-          // Draw flatline
-          drawSweepWaveform(
-            plethCanvas, COLORS.spo2,
-            () => 0,
-            sweepRef.current % plethCanvas.width,
-            plethCanvas.width,
-            plethCanvas.height / 2, 0.7,
-            spo2Scale.ticks, spo2Scale.min, spo2Scale.max
-          );
-        } else {
-          const cycleLen = (60 / hr) * (plethCanvas.width / 8);
-          drawSweepWaveform(
-            plethCanvas, COLORS.spo2, plethWaveform,
-            sweepRef.current % plethCanvas.width, cycleLen,
-            plethCanvas.height * 0.6, 0.7,
-            spo2Scale.ticks, spo2Scale.min, spo2Scale.max
-          );
+        const ctx = plethCanvas.getContext('2d');
+        if (ctx) {
+          const w = plethCanvas.width;
+          const h = plethCanvas.height;
+          const ML = 28;
+
+          if (!plethInitRef.current) {
+            initCanvasBg(plethCanvas, ML);
+            drawScaleTicks(ctx, spo2Scale.ticks, spo2Scale.min, spo2Scale.max, h, w, ML);
+            plethPrevYRef.current = h * 0.6;
+            plethInitRef.current = true;
+          }
+
+          const drawWidth = w - ML;
+          const prevSweep = sweepRef.current;
+          const nextSweep = prevSweep + SWEEP_SPEED;
+
+          let newY: number;
+          if (pulseless) {
+            newY = h / 2; // flatline
+          } else {
+            const cycleLen = (60 / hr) * (drawWidth / 8);
+            // Pleth delayed by ~200 ms (PLETH_DELAY_PX) relative to ECG
+            const plethSweep = nextSweep - PLETH_DELAY_PX;
+            const phase = ((plethSweep % cycleLen) + cycleLen) % cycleLen / cycleLen;
+
+            // Scale pleth amplitude by pulse pressure (SBP - DBP) normalised to 40 mmHg
+            const pulsePressure = (vitals.sbp - vitals.dbp) || 40;
+            const ppScale = Math.min(Math.max(pulsePressure / 40, 0.1), 1.8);
+
+            const pVal = plethWaveform(phase);
+            newY = h * 0.6 - pVal * (h * 0.28) * ppScale;
+          }
+
+          const prevX = ML + (prevSweep % drawWidth);
+          const nextX = ML + (nextSweep % drawWidth);
+          drawSweepStep(plethCanvas, COLORS.spo2, prevX, nextX, plethPrevYRef.current, newY, ML);
+          plethPrevYRef.current = newY;
         }
       }
     }
 
-    // Capno
+    // ── Capno ─────────────────────────────────────────────────────────────────
     if (showCapno) {
       const capnoCanvas = capnoCanvasRef.current;
       if (capnoCanvas) {
-        if (rr === 0) {
-          // Respiratory arrest → flatline
-          drawSweepWaveform(
-            capnoCanvas, COLORS.capno,
-            () => 0,
-            sweepRef.current % capnoCanvas.width,
-            capnoCanvas.width,
-            capnoCanvas.height - 5, 1,
-            etco2Scale.ticks, etco2Scale.min, etco2Scale.max
-          );
-        } else {
-          const cycleLen = (60 / rr) * (capnoCanvas.width / 8);
-          const etco2H = (etco2 / 60) * (capnoCanvas.height - 10);
-          drawSweepWaveform(
-            capnoCanvas, COLORS.capno,
-            (phase) => capnoWaveform(phase, etco2H),
-            sweepRef.current % capnoCanvas.width, cycleLen,
-            capnoCanvas.height - 5, 1,
-            etco2Scale.ticks, etco2Scale.min, etco2Scale.max
-          );
+        const ctx = capnoCanvas.getContext('2d');
+        if (ctx) {
+          const w = capnoCanvas.width;
+          const h = capnoCanvas.height;
+          const ML = 28;
+
+          if (!capnoInitRef.current) {
+            initCanvasBg(capnoCanvas, ML);
+            drawScaleTicks(ctx, etco2Scale.ticks, etco2Scale.min, etco2Scale.max, h, w, ML);
+            capnoPrevYRef.current = h - 5;
+            capnoInitRef.current = true;
+          }
+
+          const drawWidth = w - ML;
+          const prevSweep = sweepRef.current;
+          const nextSweep = prevSweep + SWEEP_SPEED;
+
+          let newY: number;
+          if (rr === 0) {
+            newY = h - 5; // flatline
+          } else {
+            const cycleLen = (60 / rr) * (drawWidth / 8);
+            const phase = ((nextSweep % cycleLen) + cycleLen) % cycleLen / cycleLen;
+            const etco2H = (etco2 / 60) * (h - 10);
+            const cVal = capnoWaveform(phase, etco2H);
+            newY = h - 5 + cVal;
+          }
+
+          const prevX = ML + (prevSweep % drawWidth);
+          const nextX = ML + (nextSweep % drawWidth);
+          drawSweepStep(capnoCanvas, COLORS.capno, prevX, nextX, capnoPrevYRef.current, newY, ML);
+          capnoPrevYRef.current = newY;
         }
       }
     }
 
-    sweepRef.current += 1.5;
+    sweepRef.current += SWEEP_SPEED;
     animRef.current = requestAnimationFrame(drawAll);
-  }, [vitals.hr, vitals.rr, vitals.etco2, vitals.rhythm, showPleth, showCapno, hrScale, spo2Scale, etco2Scale]);
+  }, [vitals.hr, vitals.rr, vitals.etco2, vitals.rhythm, vitals.sbp, vitals.dbp,
+      showPleth, showCapno, hrScale, spo2Scale, etco2Scale]);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(drawAll);
