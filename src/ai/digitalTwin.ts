@@ -61,7 +61,7 @@ export class DigitalTwin {
   private profile: PatientProfile;
   private state: TwinState;
   private drugHistory: DrugBolus[] = [];
-  private tickInterval: number = 1000; // ms
+  private _tickInterval: number = 1000; // ms
   private elapsedTime: number = 0;
 
   constructor(profile: PatientProfile) {
@@ -131,7 +131,7 @@ export class DigitalTwin {
   private updateCompartments(deltaMs: number): void {
     const dt = deltaMs / 1000 / 60; // convert to minutes
     // Three-compartment PK model update
-    for (const [drug, conc] of Object.entries(
+    for (const [_drug, conc] of Object.entries(
       this.state.drugConcentrations
     )) {
       const ke = this.getDrugParam(drug, 'ke');
