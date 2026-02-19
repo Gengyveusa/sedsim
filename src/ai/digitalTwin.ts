@@ -61,7 +61,6 @@ export class DigitalTwin {
   private profile: PatientProfile;
   private state: TwinState;
   private drugHistory: DrugBolus[] = [];
-  private _tickInterval: number = 1000; // ms
   private elapsedTime: number = 0;
 
   constructor(profile: PatientProfile) {
@@ -83,7 +82,7 @@ export class DigitalTwin {
         dbp: profile.baselineVitals.dbp,
         map: Math.round(
           profile.baselineVitals.dbp +
-            (profile.baselineVitals.sbp - profile.baselineVitals.dbp) / 3
+          (profile.baselineVitals.sbp - profile.baselineVitals.dbp) / 3
         ),
         spo2: profile.baselineVitals.spo2,
         rr: profile.baselineVitals.rr,
@@ -101,8 +100,7 @@ export class DigitalTwin {
   }
 
   private estimateCardiacOutput(profile: PatientProfile): number {
-    // Simplified CO estimation based on patient factors
-    const baseCO = 5.0; // L/min
+    const baseCO = 5.0;
     const ageFactor = profile.age > 65 ? 0.85 : 1.0;
     const weightFactor = profile.weight / 70;
     return baseCO * ageFactor * weightFactor;
@@ -116,8 +114,7 @@ export class DigitalTwin {
   }
 
   private calculateInitialConcentration(bolus: DrugBolus): number {
-    // Volume of distribution estimation
-    const vd = this.profile.weight * 0.15; // simplified
+    const vd = this.profile.weight * 0.15;
     return bolus.dose / vd;
   }
 
@@ -129,25 +126,22 @@ export class DigitalTwin {
   }
 
   private updateCompartments(deltaMs: number): void {
-    const dt = deltaMs / 1000 / 60; // convert to minutes
-    // Three-compartment PK model update
-    for (const [_drug, conc] of Object.entries(
+    const dt = deltaMs / 1000 / 60;
+    for (const [drug, conc] of Object.entries(
       this.state.drugConcentrations
     )) {
       const ke = this.getDrugParam(drug, 'ke');
       const newConc = conc * Math.exp(-ke * dt);
       this.state.drugConcentrations[drug] = newConc;
-      // Update effect site
       this.state.compartments.effect +=
         (newConc - this.state.compartments.effect) * 0.1 * dt;
     }
   }
 
   private getDrugParam(
-    drug: string,
+    _drug: string,
     param: 'ke' | 'k12' | 'k21' | 'k13' | 'k31'
   ): number {
-    // Default PK parameters (can be extended per drug)
     const defaults: Record<string, number> = {
       ke: 0.1,
       k12: 0.05,
@@ -167,19 +161,19 @@ export class DigitalTwin {
 
     this.state.vitals.hr = Math.round(
       this.profile.baselineVitals.hr * (1 - depression * 0.3) +
-        (Math.random() - 0.5) * 2
+      (Math.random() - 0.5) * 2
     );
     this.state.vitals.sbp = Math.round(
       this.profile.baselineVitals.sbp * (1 - depression * 0.4) +
-        (Math.random() - 0.5) * 3
+      (Math.random() - 0.5) * 3
     );
     this.state.vitals.dbp = Math.round(
       this.profile.baselineVitals.dbp * (1 - depression * 0.3) +
-        (Math.random() - 0.5) * 2
+      (Math.random() - 0.5) * 2
     );
     this.state.vitals.map = Math.round(
       this.state.vitals.dbp +
-        (this.state.vitals.sbp - this.state.vitals.dbp) / 3
+      (this.state.vitals.sbp - this.state.vitals.dbp) / 3
     );
     this.state.vitals.spo2 = Math.min(
       100,
@@ -187,7 +181,7 @@ export class DigitalTwin {
         85,
         Math.round(
           this.profile.baselineVitals.spo2 * (1 - depression * 0.1) +
-            (Math.random() - 0.5)
+          (Math.random() - 0.5)
         )
       )
     );
@@ -195,7 +189,7 @@ export class DigitalTwin {
       4,
       Math.round(
         this.profile.baselineVitals.rr * (1 - depression * 0.5) +
-          (Math.random() - 0.5)
+        (Math.random() - 0.5)
       )
     );
     this.state.vitals.bis = Math.max(
@@ -204,10 +198,9 @@ export class DigitalTwin {
     );
     this.state.vitals.etco2 = Math.round(
       this.profile.baselineVitals.etco2 * (1 + depression * 0.2) +
-        (Math.random() - 0.5) * 2
+      (Math.random() - 0.5) * 2
     );
 
-    // Update physiology state
     this.state.physiologyState.consciousnessLevel = Math.max(
       0,
       1 - depression
