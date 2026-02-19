@@ -11,6 +11,7 @@ import ControlBar from './components/ControlBar';
 import EventLog from './components/EventLog';
 import { TutorialMode } from './components/TutorialMode';
 import SedationGauge from './components/SedationGauge';
+import { Dashboard } from './components/Dashboard';
 
 export default function App() {
   const { isRunning, speedMultiplier, tick, trendData } = useSimStore();
@@ -117,6 +118,10 @@ export default function App() {
         {/* Bottom Control Bar */}
         <ControlBar />
       </div>
+              {/* AI Dashboard */}
+        <div className="fixed bottom-20 right-4 z-40">
+          <Dashboard />
+        </div>
       {showTutorial && (
         <TutorialMode
           onClose={() => setShowTutorial(false)}
