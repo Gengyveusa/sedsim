@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { PKState, Vitals, MOASSLevel, LogEntry, Patient, TrendPoint, DrugParams, InfusionState, InterventionType } from '../types';
+import { PKState, Vitals, MOASSLevel, LogEntry, Patient, TrendPoint, DrugParams, InfusionState, InterventionType, AirwayDevice } from '../types';
 import { DRUG_DATABASE } from '../engine/drugs';
 import { createInitialPKState, stepPK } from '../engine/pkModel';
 import { combinedEffect, effectToMOASS } from '../engine/pdModel';
@@ -42,6 +42,8 @@ interface SimState {
   // Interventions
   interventions: Set<InterventionType>;
   fio2: number; // 0.21-1.0
+  airwayDevice: AirwayDevice;
+  o2FlowRate: number; // L/min, used for nasal cannula
 
   // History for trend graphs (keep last 10 minutes = 600 points at 1 Hz)
   trendData: TrendPoint[];
@@ -72,6 +74,8 @@ interface SimState {
   applyIntervention: (intervention: InterventionType) => void;
   removeIntervention: (intervention: InterventionType) => void;
   setFiO2: (fio2: number) => void;
+  setAirwayDevice: (device: AirwayDevice) => void;
+  setO2FlowRate: (rate: number) => void;
   startIVFluid: (fluid: string, rate: number, isBolus: boolean, bolusVolume: number) => void;
   stopIVFluid: () => void;
   setIVAccess: (location: string, gauge: string) => void;
@@ -113,6 +117,8 @@ const useSimStore = create<SimState>((set, get) => ({
 
   interventions: new Set(),
   fio2: 0.21,
+  airwayDevice: 'room_air' as AirwayDevice,
+  o2FlowRate: 2,
 
   trendData: [],
   maxTrendPoints: 600,
@@ -426,6 +432,52 @@ const useSimStore = create<SimState>((set, get) => ({
     });
   },
 
+  setAirwayDevice: (device) => {
+    const state = get();
+
+    // Auto-set FiO2 based on device defaults
+    const deviceFiO2Defaults: Record<AirwayDevice, number> = {
+      room_air: 0.21,
+      nasal_cannula: 0.21 + 0.04 * state.o2FlowRate, // dynamic based on flow
+      nasal_hood: 0.40,
+      oral_airway: 0.21,
+      nasal_airway: 0.21,
+      lma: 0.60,
+      ett: 1.00,
+      cricothyroidotomy: 1.00,
+      tracheostomy: 1.00,
+    };
+
+    const newFio2 = deviceFiO2Defaults[device];
+
+    const logEntry: LogEntry = {
+      time: state.elapsedSeconds,
+      type: 'intervention',
+      message: `Airway: ${device.replace(/_/g, ' ')} — FiO2 auto-set to ${Math.round(newFio2 * 100)}%`,
+      severity: 'info',
+    };
+
+    set({
+      airwayDevice: device,
+      fio2: newFio2,
+      eventLog: [...state.eventLog, logEntry],
+    });
+  },
+
+  setO2FlowRate: (rate) => {
+    const state = get();
+    const clampedRate = Math.max(1, Math.min(6, rate));
+
+    // If nasal cannula is selected, auto-update FiO2
+    let updates: Partial<typeof state> = { o2FlowRate: clampedRate };
+    if (state.airwayDevice === 'nasal_cannula') {
+      const newFio2 = Math.min(0.44, 0.21 + 0.04 * clampedRate);
+      updates = { ...updates, fio2: newFio2 };
+    }
+
+    set(updates);
+  },
+
   startIVFluid: (fluid, rate, isBolus, bolusVolume) => {
     const state = get();
     const location = state.ivFluids.location;
@@ -486,6 +538,8 @@ const useSimStore = create<SimState>((set, get) => ({
       moass: 5,
       combinedEff: 0,
       fio2: 0.21,
+      airwayDevice: 'room_air' as AirwayDevice,
+      o2FlowRate: 2,
       trendData: [],
       eventLog: [],
       activeAlarms: [],
