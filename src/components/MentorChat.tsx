@@ -1,10 +1,11 @@
 // src/components/MentorChat.tsx
 // AI Mentor Sidebar Chat Component
 import React, { useState, useRef, useEffect } from 'react';
-import { MentorMessage, generateMentorResponse, getSuggestedQuestions } from '../ai/mentor';
+import { MentorMessage, generateMentorResponse, getSuggestedQuestions, autoObserve } from '../ai/mentor';
 import { Vitals, MOASSLevel, LogEntry } from '../types';
 import { EEGState } from '../engine/eegModel';
 import { DigitalTwin } from '../engine/digitalTwin';
+import useSimStore from '../store/useSimStore';
 
 interface MentorChatProps {
   vitals: Vitals;
@@ -23,13 +24,29 @@ const MentorChat: React.FC<MentorChatProps> = ({
   const [messages, setMessages] = useState<MentorMessage[]>([
     {
       role: 'mentor',
-      content: 'Welcome to SedSim AI Mentor. I can help you with EEG interpretation, drug titration guidance, and clinical decision-making. Ask me anything or click a suggested question below.',
+      content: 'Welcome to SedSim AI Mentor. I provide real-time clinical guidance driven by the simulation state. Start the simulation and administer drugs to receive contextual observations. Ask me anything below.',
       timestamp: Date.now(),
     }
   ]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastObservationTimeRef = useRef<number>(0);
+
+  const elapsedSeconds = useSimStore(s => s.elapsedSeconds);
+  const isRunning = useSimStore(s => s.isRunning);
+
+  // Auto-generate observations every 15 simulation-seconds when running
+  useEffect(() => {
+    if (!isRunning) return;
+    if (elapsedSeconds - lastObservationTimeRef.current < 15) return;
+    lastObservationTimeRef.current = elapsedSeconds;
+
+    const obs = autoObserve({ vitals, moass, eeg: eegState ?? undefined, pkStates, elapsedSeconds });
+    if (obs) {
+      setMessages(prev => [...prev, obs]);
+    }
+  }, [elapsedSeconds, isRunning, vitals, moass, eegState, pkStates]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

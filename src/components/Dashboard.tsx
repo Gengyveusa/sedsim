@@ -18,6 +18,8 @@ export const Dashboard: React.FC = () => {
     eventLog: s.eventLog,
     pkStates: s.pkStates,
     patient: s.patient,
+    eegState: s.eegState,
+    digitalTwin: s.digitalTwin,
   }));
 
   const tabs: { id: AITab; label: string; icon: string }[] = [
@@ -77,13 +79,48 @@ export const Dashboard: React.FC = () => {
 
       {/* Tab Content */}
       <div className="p-3 max-h-[600px] overflow-y-auto">
-        {activeTab === 'eeg' && <EEGPanel eegState={null} isRunning={simState.isRunning} />}
+        {activeTab === 'eeg' && (
+          <EEGPanel eegState={simState.eegState} isRunning={simState.isRunning} />
+        )}
+        {activeTab === 'eeg' && simState.digitalTwin && (
+          <div className="mt-3 p-2 bg-gray-800/60 rounded text-xs space-y-1">
+            <div className="text-gray-400 font-semibold mb-1">Digital Twin – Risk Metrics</div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Hypotension Risk</span>
+              <span className={simState.digitalTwin.predictedOutcome.hypotensionRisk > 50 ? 'text-red-400' : simState.digitalTwin.predictedOutcome.hypotensionRisk > 25 ? 'text-yellow-400' : 'text-green-400'}>
+                {simState.digitalTwin.predictedOutcome.hypotensionRisk}%
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Desaturation Risk</span>
+              <span className={simState.digitalTwin.predictedOutcome.desaturationRisk > 50 ? 'text-red-400' : simState.digitalTwin.predictedOutcome.desaturationRisk > 25 ? 'text-yellow-400' : 'text-green-400'}>
+                {simState.digitalTwin.predictedOutcome.desaturationRisk}%
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Awareness Risk</span>
+              <span className={simState.digitalTwin.predictedOutcome.awarenessRisk > 30 ? 'text-yellow-400' : 'text-green-400'}>
+                {simState.digitalTwin.predictedOutcome.awarenessRisk}%
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Est. Time to Emergence</span>
+              <span className="text-cyan-400">{simState.digitalTwin.predictedOutcome.timeToEmergence} min</span>
+            </div>
+            {simState.digitalTwin.comorbidities.length > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-400">Comorbidities</span>
+                <span className="text-orange-400">{simState.digitalTwin.comorbidities.join(', ')}</span>
+              </div>
+            )}
+          </div>
+        )}
         {activeTab === 'mentor' && (
           <MentorChat
             vitals={simState.vitals}
             moass={simState.moass}
-            eegState={null}
-            digitalTwin={null}
+            eegState={simState.eegState}
+            digitalTwin={simState.digitalTwin}
             eventLog={simState.eventLog}
             pkStates={simState.pkStates}
             isOpen={mentorOpen}

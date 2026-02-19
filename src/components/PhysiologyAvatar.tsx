@@ -345,11 +345,11 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
         <text x={cx - 75} y={cy + 278} fill="#64748b" fontSize="10" fontWeight="bold" textAnchor="middle">ALVEOLUS</text>
       </g>
       <g onMouseEnter={(e) => onHover('pao2', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
-        <text x={cx - 75} y={cy + 298} fill="#94a3b8" fontSize="10">PAO\u2082</text>
+        <text x={cx - 75} y={cy + 298} fill="#94a3b8" fontSize="10">{"PAO\u2082"}</text>
         <text x={cx - 75} y={cy + 316} fill="#f59e0b" fontSize="18" fontWeight="bold" textAnchor="middle">{cs.pao2Alveolar.toFixed(0)}</text>
       </g>
       <g onMouseEnter={(e) => onHover('paco2', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
-        <text x={cx - 75} y={cy + 332} fill="#94a3b8" fontSize="10">PACO\u2082</text>
+        <text x={cx - 75} y={cy + 332} fill="#94a3b8" fontSize="10">{"PACO₂"}</text>
         <text x={cx - 75} y={cy + 350} fill="#a855f7" fontSize="18" fontWeight="bold" textAnchor="middle">{cs.paco2.toFixed(0)}</text>
       </g>
 
@@ -363,9 +363,9 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
       <g onMouseEnter={(e) => onHover('capillary', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <rect x={cx + 10} y={cy + 275} width={195} height={80} rx={9} fill="#0f172a" stroke="#334155" strokeWidth={1.5} />
         <text x={cx + 107} y={cy + 290} fill="#64748b" fontSize="10" fontWeight="bold" textAnchor="middle">PULM CAPILLARY</text>
-        <text x={cx + 45} y={cy + 310} fill="#94a3b8" fontSize="10">PcO\u2082</text>
+        <text x={cx + 45} y={cy + 310} fill="#94a3b8" fontSize="10">{"PcO₂"}</text>
         <text x={cx + 45} y={cy + 326} fill="#f59e0b" fontSize="16" fontWeight="bold">{cs.capPo2.toFixed(0)}</text>
-        <text x={cx + 115} y={cy + 310} fill="#94a3b8" fontSize="10">PcCO\u2082</text>
+        <text x={cx + 115} y={cy + 310} fill="#94a3b8" fontSize="10">{"PcCO₂"}</text>
         <text x={cx + 115} y={cy + 326} fill="#a855f7" fontSize="16" fontWeight="bold">{cs.paco2.toFixed(0)}</text>
       </g>
       <g onMouseEnter={(e) => onHover('hydrostatic', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
@@ -377,9 +377,9 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
 
       {/* O2/CO2 diffusion arrows */}
       <line x1={cx - 20} y1={cy + 300} x2={cx + 8} y2={cy + 300} stroke="#f59e0b" strokeWidth={2} markerEnd="url(#arrowBlue)" />
-      <text x={cx - 7} y={cy + 295} fill="#f59e0b" fontSize="9" textAnchor="middle">O\u2082</text>
+      <text x={cx - 7} y={cy + 295} fill="#f59e0b" fontSize="9" textAnchor="middle">{"O₂"}</text>
       <line x1={cx + 8} y1={cy + 340} x2={cx - 20} y2={cy + 340} stroke="#a855f7" strokeWidth={2} markerEnd="url(#arrowPurple)" />
-      <text x={cx - 7} y={cy + 352} fill="#a855f7" fontSize="9" textAnchor="middle">CO\u2082</text>
+      <text x={cx - 7} y={cy + 352} fill="#a855f7" fontSize="9" textAnchor="middle">{"CO₂"}</text>
 
       {/* Edema fluid in alveolus when PCWP high */}
       {cs.pulmonaryEdema !== 'none' && (
@@ -396,11 +396,11 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
         <text x={cx - 180} y={cy + 418} fill={cs.aaGradient > 25 ? '#ef4444' : cs.aaGradient > 15 ? '#f59e0b' : '#22c55e'} fontSize="18" fontWeight="bold">{cs.aaGradient.toFixed(0)} mmHg</text>
       </g>
       <g onMouseEnter={(e) => onHover('arterialPo2', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
-        <text x={cx - 40} y={cy + 400} fill="#94a3b8" fontSize="11" fontWeight="bold">PaO\u2082</text>
+        <text x={cx - 40} y={cy + 400} fill="#94a3b8" fontSize="11" fontWeight="bold">{"PaO₂"}</text>
         <text x={cx - 40} y={cy + 418} fill={cs.pao2 < 60 ? '#ef4444' : cs.pao2 < 80 ? '#f59e0b' : '#22c55e'} fontSize="18" fontWeight="bold">{cs.pao2.toFixed(0)} mmHg</text>
       </g>
       <g onMouseEnter={(e) => onHover('paco2', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
-        <text x={cx + 100} y={cy + 400} fill="#94a3b8" fontSize="11" fontWeight="bold">PaCO\u2082</text>
+        <text x={cx + 100} y={cy + 400} fill="#94a3b8" fontSize="11" fontWeight="bold">{"PaCO₂"}</text>
         <text x={cx + 100} y={cy + 418} fill={cs.paco2 > 50 ? '#ef4444' : cs.paco2 < 30 ? '#3b82f6' : '#22c55e'} fontSize="18" fontWeight="bold">{cs.paco2.toFixed(0)} mmHg</text>
       </g>
 

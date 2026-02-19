@@ -53,6 +53,12 @@ html, body {
   animation: pulse-vital 1s ease-in-out infinite;
 }
 
+/* Generic pulse keyframe (used by Tailwind animate-pulse and custom components) */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* Avatar body animations for SedationGauge */
 @keyframes heartbeat {
   0%, 70%, 100% { transform: scale(1); }
