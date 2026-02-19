@@ -89,7 +89,7 @@ export default function SedationGauge() {
   const outerR = 278;
 
   // Avatar mode uses larger size
-  const avatarSize = 700;
+  const avatarSize = 1050;
 
   // Get active sedation drugs
   const localAnesthetics = ['lidocaine_epi', 'articaine_epi', 'bupivacaine'];
