@@ -163,7 +163,8 @@ const useSimStore = create<SimState>((set, get) => ({
     const moass = effectToMOASS(combinedEff);
 
     // Calculate new vitals using physiology engine
-    const newVitals = calculateVitals(newPkStates, patient, prevVitals, fio2);
+    const prevRhythm = prevVitals.rhythm ?? 'normal_sinus';
+    const newVitals = calculateVitals(newPkStates, patient, prevVitals, fio2, prevRhythm, state.elapsedSeconds);
 
     // Check for alarms
     const activeAlarms = checkAlarms(newVitals);
@@ -203,6 +204,22 @@ const useSimStore = create<SimState>((set, get) => ({
       }
     });
 
+    // Log rhythm changes
+    const newRhythm = newVitals.rhythm ?? 'normal_sinus';
+    if (newRhythm !== prevRhythm) {
+      const isLethal = [
+        'ventricular_fibrillation', 'ventricular_tachycardia', 'polymorphic_vt',
+        'asystole', 'pea',
+      ].includes(newRhythm);
+      newLogs.push({
+        time: newTime,
+        type: 'alert',
+        message: isLethal
+          ? `🚨 ARRHYTHMIA: ${newRhythm.replace(/_/g, ' ').toUpperCase()}`
+          : `RHYTHM CHANGE: ${prevRhythm.replace(/_/g, ' ')} → ${newRhythm.replace(/_/g, ' ')}`,
+        severity: isLethal ? 'danger' : 'warning',
+      });
+    }
     // Generate EEG state from effect-site concentrations
     const propCe = newPkStates['propofol']?.ce || 0;
     const dexCe = newPkStates['dexmedetomidine']?.ce || 0;
@@ -217,7 +234,8 @@ const useSimStore = create<SimState>((set, get) => ({
       newPkStates,
       newVitals.hr,
       newVitals.spo2,
-      dt
+      dt,
+      newRhythm
     );
 
     // Accumulate IV fluid infused (rate is mL/hr, dt is 1 second -> mL/3600)

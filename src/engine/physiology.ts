@@ -1,4 +1,5 @@
-import { Vitals, Patient, PKState } from '../types';
+import { Vitals, Patient, PKState, CardiacRhythm } from '../types';
+import { determineRhythm } from './cardiacRhythm';
 
 /**
  * Comprehensive Physiology Engine
@@ -299,7 +300,9 @@ export function calculateVitals(
   pkStates: Record<string, PKState>,
   patient: Patient,
   prevVitals: Vitals = BASELINE_VITALS,
-  fio2: number = 0.21
+  fio2: number = 0.21,
+  prevRhythm: CardiacRhythm = 'normal_sinus',
+  elapsedSeconds: number = 0
 ): Vitals {
   // Get patient-adjusted baseline
   const baseline = { ...BASELINE_VITALS };
@@ -341,7 +344,8 @@ export function calculateVitals(
   // EtCO2
   const etco2 = computeEtCO2(rr, baseline.etco2);
 
-  return {
+  // Determine cardiac rhythm
+  const partialVitals: Vitals = {
     hr: hemodynamics.hr,
     sbp: hemodynamics.sbp,
     dbp: hemodynamics.dbp,
@@ -350,4 +354,24 @@ export function calculateVitals(
     spo2,
     etco2,
   };
+  const prevArrestStart = (prevVitals as Vitals & { _arrestStart?: number | null })._arrestStart ?? null;
+  const rhythmResult = determineRhythm(
+    partialVitals, pkStates, patient, prevRhythm, elapsedSeconds, prevArrestStart
+  );
+
+  const result: Vitals & { _arrestStart?: number | null } = {
+    hr: hemodynamics.hr,
+    sbp: hemodynamics.sbp,
+    dbp: hemodynamics.dbp,
+    map: hemodynamics.map,
+    rr,
+    spo2,
+    etco2,
+    rhythm: rhythmResult.rhythm,
+    qrsWidth: rhythmResult.qrsWidth,
+    prInterval: rhythmResult.prInterval,
+    qtInterval: rhythmResult.qtInterval,
+    _arrestStart: rhythmResult.arrestStartSeconds,
+  };
+  return result;
 }

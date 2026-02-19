@@ -106,6 +106,18 @@ export const Dashboard: React.FC = () => {
               </span>
             </div>
             <div className="flex justify-between">
+              <span className="text-gray-400">Arrhythmia Risk</span>
+              <span className={simState.digitalTwin.predictedOutcome.arrhythmiaRisk > 50 ? 'text-red-400' : simState.digitalTwin.predictedOutcome.arrhythmiaRisk > 25 ? 'text-yellow-400' : 'text-green-400'}>
+                {simState.digitalTwin.predictedOutcome.arrhythmiaRisk}%
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Rhythm</span>
+              <span className="text-cyan-400 text-right" style={{ maxWidth: 140, wordBreak: 'break-word' }}>
+                {simState.digitalTwin.predictedOutcome.predictedRhythm.replace(/_/g, ' ')}
+              </span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-gray-400">Est. Time to Emergence</span>
               <span className="text-cyan-400">{simState.digitalTwin.predictedOutcome.timeToEmergence} min</span>
             </div>
@@ -113,6 +125,14 @@ export const Dashboard: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-gray-400">Comorbidities</span>
                 <span className="text-orange-400">{simState.digitalTwin.comorbidities.join(', ')}</span>
+              </div>
+            )}
+            {simState.digitalTwin.predictedOutcome.aclsGuidance.length > 0 && (
+              <div className="mt-2 p-2 bg-red-900/40 border border-red-700 rounded">
+                <div className="text-red-400 font-bold text-xs mb-1">⚠ ACLS Guidance</div>
+                {simState.digitalTwin.predictedOutcome.aclsGuidance.map((g, i) => (
+                  <div key={i} className="text-red-300 text-xs">• {g}</div>
+                ))}
               </div>
             )}
           </div>
