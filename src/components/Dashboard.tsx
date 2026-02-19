@@ -2,12 +2,23 @@ import React, { useState } from 'react';
 import EEGPanel from './EEGPanel';
 import MentorChat from './MentorChat';
 import { ScenarioPanel } from './ScenarioPanel';
+import useSimStore from '../store/useSimStore';
 
 type AITab = 'eeg' | 'mentor' | 'scenarios';
 
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AITab>('eeg');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [mentorOpen, setMentorOpen] = useState(true);
+
+  const simState = useSimStore((s) => ({
+    vitals: s.vitals,
+    moass: s.moass,
+    isRunning: s.isRunning,
+    eventLog: s.eventLog,
+    pkStates: s.pkStates,
+    patient: s.patient,
+  }));
 
   const tabs: { id: AITab; label: string; icon: string }[] = [
     { id: 'eeg', label: 'EEG Monitor', icon: '🧠' },
@@ -23,7 +34,7 @@ export const Dashboard: React.FC = () => {
           className="bg-gray-800 border border-gray-600 rounded-l-lg px-2 py-4 text-white hover:bg-gray-700 transition-colors shadow-lg"
           title="Open AI Dashboard"
         >
-          <span className="text-lg">🤖</span>
+          <span className="text-lg">🧠</span>
           <div className="text-xs mt-1 writing-vertical">AI</div>
         </button>
       </div>
@@ -35,14 +46,14 @@ export const Dashboard: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700">
         <h2 className="text-sm font-bold text-white flex items-center gap-2">
-          <span>🤖</span> AI Dashboard
+          <span>🧠</span> AI Dashboard
         </h2>
         <button
           onClick={() => setIsCollapsed(true)}
           className="text-gray-400 hover:text-white text-sm px-1"
           title="Collapse"
         >
-          ✕
+          x
         </button>
       </div>
 
@@ -66,8 +77,19 @@ export const Dashboard: React.FC = () => {
 
       {/* Tab Content */}
       <div className="p-3 max-h-[600px] overflow-y-auto">
-        {activeTab === 'eeg' && <EEGPanel />}
-        {activeTab === 'mentor' && <MentorChat />}
+        {activeTab === 'eeg' && <EEGPanel eegState={null} isRunning={simState.isRunning} />}
+        {activeTab === 'mentor' && (
+          <MentorChat
+            vitals={simState.vitals}
+            moass={simState.moass}
+            eegState={null}
+            digitalTwin={null}
+            eventLog={simState.eventLog}
+            pkStates={simState.pkStates}
+            isOpen={mentorOpen}
+            onToggle={() => setMentorOpen(!mentorOpen)}
+          />
+        )}
         {activeTab === 'scenarios' && <ScenarioPanel />}
       </div>
     </div>
