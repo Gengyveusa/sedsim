@@ -4,6 +4,7 @@ import { DRUG_DATABASE } from '../engine/drugs';
 import { hillEffect } from '../engine/pdModel';
 import { MOASSLevel } from '../types';
 import PhysiologyAvatar from './PhysiologyAvatar';
+import OxyHbCurve from './OxyHbCurve';
 
 const DRUG_CLASSES: Record<string, string[]> = {
   opioid: ['fentanyl', 'remifentanil'],
@@ -78,7 +79,7 @@ function petalPath(cx: number, cy: number, angleDeg: number, innerR: number, out
 }
 
 export default function SedationGauge() {
-  const { combinedEff, moass, pkStates, vitals, patient } = useSimStore();
+  const { combinedEff, moass, pkStates, vitals, patient, fio2, airwayDevice } = useSimStore();
   const [mode, setMode] = useState<GaugeMode>('petals');
   const [autoSwitched, setAutoSwitched] = useState(false);
 
@@ -179,6 +180,9 @@ export default function SedationGauge() {
         <div style={{ overflowX: 'auto', overflowY: 'visible', width: '100%' }}>
           <div style={{ minWidth: '800px' }}>
             <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} rhythm={vitals.rhythm} size={avatarSize} />
+          </div>
+          <div className="mt-4 flex justify-center">
+            <OxyHbCurve vitals={vitals} fio2={fio2} patient={patient} airwayDevice={airwayDevice} />
           </div>
         </div>
       )}

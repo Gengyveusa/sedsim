@@ -55,7 +55,6 @@ export default function App() {
             <LocalAnesthPanel />
             <EmergencyDrugsPanel />
             <IVFluidsPanel />
-            <InterventionPanel />
           </div>
 
           {/* Center - Hero Gauge + Monitor */}
@@ -67,6 +66,11 @@ export default function App() {
             <div className="flex-1 flex items-center justify-center">
               <SedationGauge />
             </div>
+          </div>
+
+          {/* Right Sidebar - Intervention Panel */}
+          <div className="w-56 border-l border-gray-700 overflow-y-auto p-2">
+            <InterventionPanel />
           </div>
 
           {/* Right side: Event Log + Collapsible Trends */}

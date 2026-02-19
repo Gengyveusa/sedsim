@@ -124,15 +124,28 @@ export interface AirwayState {
   intervention: 'none' | 'jaw_thrust' | 'oral_airway' | 'nasal_airway' | 'bag_mask';
 }
 
-// Intervention types
+// Airway device (mutually exclusive - one at a time)
+export type AirwayDevice =
+  | 'room_air'
+  | 'nasal_cannula'
+  | 'nasal_hood'
+  | 'oral_airway'
+  | 'nasal_airway'
+  | 'lma'
+  | 'ett'
+  | 'cricothyroidotomy'
+  | 'tracheostomy';
+
+// Intervention types (supplementary, non-mutually-exclusive)
 export type InterventionType = 
   | 'jaw_thrust'
   | 'chin_lift'
-  | 'oral_airway'
-  | 'nasal_airway'
   | 'bag_mask'
   | 'suction'
-  | 'increase_fio2';
+  | 'increase_fio2'
+  // legacy device types kept for backward compatibility
+  | 'oral_airway'
+  | 'nasal_airway';
 
 // Alarm configuration
 export interface AlarmConfig {
