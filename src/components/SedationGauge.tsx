@@ -175,8 +175,12 @@ export default function SedationGauge() {
       </div>
 
       {/* ===== MODE C: AVATAR (standalone rendering) ===== */}
-      {mode === 'avatar' && (
-        <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} size={avatarSize} />
+            {mode === 'avatar' && (
+        <div style={{ overflowX: 'auto', overflowY: 'visible', width: '100%' }}>
+          <div style={{ minWidth: '800px' }}>
+            <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} size={avatarSize} />
+          </div>
+        </div>
       )}
 
       {/* ===== MODES D & E: Radar and Petals use the gauge SVG ===== */}
