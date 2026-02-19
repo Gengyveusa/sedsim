@@ -133,7 +133,7 @@ function drawSweepWaveform(
   canvas: HTMLCanvasElement,
   color: string,
   waveformFn: (phase: number) => number,
-  sweepX: number,
+  _sweepX: number,
   cyclePixels: number,
   baselineY: number,
   amplitude: number,
