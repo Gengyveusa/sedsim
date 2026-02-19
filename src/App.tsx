@@ -63,7 +63,7 @@ export default function App() {
             <MonitorPanel vitals={useSimStore.getState().vitals} history={trendData.map(t => t.vitals)} />
 
             {/* HERO: Giant Sedation Gauge - takes up most of center */}
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 overflow-y-auto">
               <SedationGauge />
             </div>
           </div>

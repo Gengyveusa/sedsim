@@ -194,7 +194,7 @@ export default function SedationGauge() {
               </div>
               <span className="text-gray-500 text-xs">{oxyHbExpanded ? '▲' : '▼'}</span>
             </button>
-            <div style={{ overflow: 'hidden', maxHeight: oxyHbExpanded ? '500px' : '0', transition: 'max-height 0.3s ease-in-out' }}>
+            <div style={{ overflow: 'hidden', maxHeight: oxyHbExpanded ? '600px' : '0', transition: 'max-height 0.3s ease-in-out' }}>
               <div className="px-2 pb-2">
                 <OxyHbCurve vitals={vitals} fio2={fio2} patient={patient} airwayDevice={airwayDevice} />
               </div>
