@@ -6,6 +6,8 @@ import DrugPanel from './components/DrugPanel';
 import InterventionPanel from './components/InterventionPanel';
 import MonitorPanel from './components/MonitorPanel';
 import LocalAnesthPanel from './components/LocalAnesthPanel';
+import EmergencyDrugsPanel from './components/EmergencyDrugsPanel';
+import IVFluidsPanel from './components/IVFluidsPanel';
 import TrendGraph from './components/TrendGraph';
 import ControlBar from './components/ControlBar';
 import EventLog from './components/EventLog';
@@ -50,8 +52,10 @@ export default function App() {
           <div className="w-80 border-r border-gray-700 overflow-y-auto p-2 space-y-2">
             <PatientSelector />
             <DrugPanel />
-            <InterventionPanel />
             <LocalAnesthPanel />
+            <EmergencyDrugsPanel />
+            <IVFluidsPanel />
+            <InterventionPanel />
           </div>
 
           {/* Center - Hero Gauge + Monitor */}

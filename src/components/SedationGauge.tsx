@@ -213,10 +213,36 @@ export default function SedationGauge() {
                 const angle = (i * 360) / axisCount;
                 const p = polarToCartesian(cx, cy, 240, angle);
                 const lp = polarToCartesian(cx, cy, 260, angle);
+                // Intermediate tick labels per axis
+                const spokeTickDefs: { norm: number; text: string }[][] = [
+                  // Sed: MOASS 1,3,5
+                  [{ norm: normalize(1, 0, 5), text: '1' }, { norm: normalize(3, 0, 5), text: '3' }, { norm: normalize(5, 0, 5), text: '5' }],
+                  // HR: 40, 80, 120
+                  [{ norm: normalize(40, 40, 120) * 0.5 + 0.25, text: '40' }, { norm: normalize(80, 40, 120) * 0.5 + 0.25, text: '80' }, { norm: normalize(120, 40, 120) * 0.5 + 0.25, text: '120' }],
+                  // SpO2: 80, 90, 100
+                  [{ norm: normalize(80, 70, 100), text: '80' }, { norm: normalize(90, 70, 100), text: '90' }, { norm: normalize(100, 70, 100), text: '100' }],
+                  // CO2: low=good, show etco2 20,40,60 (inverted)
+                  [{ norm: 1 - normalize(20, 20, 60), text: '20' }, { norm: 1 - normalize(40, 20, 60), text: '40' }, { norm: 1 - normalize(60, 20, 60), text: '60' }],
+                  // RR: 5, 15, 25
+                  [{ norm: normalize(5, 0, 25) * 0.7 + 0.15, text: '5' }, { norm: normalize(15, 0, 25) * 0.7 + 0.15, text: '15' }, { norm: normalize(25, 0, 25) * 0.7 + 0.15, text: '25' }],
+                  // MAP: 60, 80, 100
+                  [{ norm: normalize(60, 50, 110) * 0.6 + 0.2, text: '60' }, { norm: normalize(80, 50, 110) * 0.6 + 0.2, text: '80' }, { norm: normalize(100, 50, 110) * 0.6 + 0.2, text: '100' }],
+                  // Drug effect %
+                  [{ norm: 0.25, text: '25%' }, { norm: 0.5, text: '50%' }, { norm: 0.75, text: '75%' }],
+                  // Risk
+                  [{ norm: 0.33, text: 'Low' }, { norm: 0.66, text: 'Med' }, { norm: 1.0, text: 'High' }],
+                ];
+                const ticks = spokeTickDefs[i] || [];
                 return (
                   <g key={label}>
                     <line x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#475569" strokeWidth={0.5} />
                     <text x={lp.x} y={lp.y} fill={radarValues[i] > 0.75 ? '#f97316' : '#94a3b8'} fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" letterSpacing="0.05em">{label}</text>
+                    {ticks.map(tick => {
+                      const tp = polarToCartesian(cx, cy, tick.norm * radarR + 30, angle);
+                      return (
+                        <text key={tick.text} x={tp.x} y={tp.y} fill="#475569" fontSize="7" textAnchor="middle" dominantBaseline="middle">{tick.text}</text>
+                      );
+                    })}
                   </g>
                 );
               })}
