@@ -1,68 +1,77 @@
+import { useState } from 'react';
 import useSimStore from '../store/useSimStore';
 import { LA_META, LA_DRUG_KEYS } from '../engine/drugs';
 
+// Colors for each local anesthetic
+const LA_COLORS: Record<string, string> = {
+  lidocaine_epi: '#ec4899',   // pink
+  articaine_epi: '#f97316',   // orange
+  bupivacaine: '#a855f7',     // purple
+};
+
+const LA_NAMES: Record<string, string> = {
+  lidocaine_epi: 'Lidocaine 2% + Epi',
+  articaine_epi: 'Articaine 4% + Epi',
+  bupivacaine: 'Bupivacaine 0.5%',
+};
+
 export default function LocalAnesthPanel() {
   const { patient, administerBolus } = useSimStore();
+  const [carpuleCounts, setCarpuleCounts] = useState<Record<string, number>>({});
 
-  const handleCartridge = (drugKey: string) => {
+  const handleCarpule = (drugKey: string) => {
     const meta = LA_META[drugKey];
     if (!meta) return;
-
-    // Administer one full cartridge worth of medication
     administerBolus(drugKey, meta.mgPerCartridge);
+    setCarpuleCounts(prev => ({ ...prev, [drugKey]: (prev[drugKey] || 0) + 1 }));
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-cyan-400 border-b border-cyan-700 pb-2">
-        LOCAL ANESTHETICS
-      </h2>
-
+    <div className="space-y-1">
       {LA_DRUG_KEYS.map((drugKey) => {
         const meta = LA_META[drugKey];
+        const color = LA_COLORS[drugKey] || '#ec4899';
+        const name = LA_NAMES[drugKey] || drugKey;
+        const count = carpuleCounts[drugKey] || 0;
         const maxDoseMg = patient.weight * meta.maxDosePerKg;
-        const maxCartridges = Math.floor(maxDoseMg / meta.mgPerCartridge);
+        const maxCarpules = Math.floor(maxDoseMg / meta.mgPerCartridge);
+        const atLimit = count >= maxCarpules;
 
         return (
           <div
             key={drugKey}
-            className="border border-pink-700 bg-pink-950/30 rounded p-3 space-y-2"
+            className="mb-1"
+            style={{ borderLeft: `3px solid ${color}`, background: 'rgba(255,255,255,0.02)' }}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-pink-300">
-                  {meta.mgPerMl}mg/mL {drugKey.includes('lidocaine') ? 'Lidocaine' : drugKey.includes('articaine') ? 'Articaine' : 'Bupivacaine'}
-                  {meta.hasEpi && ` + Epi ${meta.epiConcentration}`}
-                </h3>
-                <div className="text-xs text-gray-400 space-y-0.5">
-                  <div>{meta.mgPerCartridge}mg per cartridge ({meta.mlPerCartridge}mL)</div>
-                  <div>Max: {maxDoseMg.toFixed(0)}mg ({maxCartridges} cartridges)</div>
-                  <div>Onset: {meta.onsetMinutes}min | Duration: {meta.durationMinutes}min</div>
-                  <div>Toxic level: &gt;{meta.toxicPlasmaLevel} mcg/mL plasma</div>
-                </div>
-              </div>
+            {/* Header row: name + count */}
+            <div className="flex items-center px-2 py-1">
+              <span className="font-bold text-xs" style={{ color, minWidth: 70 }}>{name}</span>
+              {count > 0 && (
+                <span className="text-xs font-mono text-gray-500 ml-1">x{count}</span>
+              )}
+              <div className="flex-1" />
+              <span className="text-xs text-gray-600">{count}/{maxCarpules}</span>
+            </div>
+            {/* Carpule button row */}
+            <div className="flex gap-1 px-2 pb-1">
               <button
-                onClick={() => handleCartridge(drugKey)}
-                className="bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded font-semibold text-sm whitespace-nowrap"
+                onClick={() => handleCarpule(drugKey)}
+                disabled={atLimit}
+                className="flex-1 py-0.5 rounded text-xs font-mono hover:brightness-125 transition-all flex items-center justify-center gap-1"
+                style={{
+                  background: atLimit ? '#33333366' : `${color}22`,
+                  color: atLimit ? '#666' : color,
+                  border: `1px solid ${atLimit ? '#44444466' : color + '44'}`,
+                  fontSize: 11,
+                  cursor: atLimit ? 'not-allowed' : 'pointer',
+                }}
               >
-                + Cartridge
+                + Carpule
               </button>
             </div>
           </div>
         );
       })}
-
-      <div className="text-xs text-gray-400 bg-gray-800/50 p-2 rounded">
-        <div className="font-semibold text-yellow-400 mb-1">{"\u26A0\uFE0F"} Oral Surgery Context</div>
-        <div>Local anesthetics are administered via infiltration or nerve block for procedures like:</div>
-        <ul className="list-disc list-inside ml-2 mt-1">
-          <li>Wisdom teeth extractions</li>
-          <li>Dental implants</li>
-          <li>Bone grafting</li>
-          <li>Complex oral surgery</li>
-        </ul>
-        <div className="mt-2">All IV sedation drugs use intravenous bolus pharmacokinetics.</div>
-      </div>
     </div>
   );
 }
