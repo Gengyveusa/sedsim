@@ -4,10 +4,9 @@
  * and Scenario Generator to provide a unified AI experience.
  * Acts as the central nervous system for all AI features.
  */
-
 import { DigitalTwin, TwinState, DrugBolus } from './digitalTwin';
 import { EEGModel, EEGSnapshot } from './eegModel';
-import { MentorEngine, MentorResponse } from './mentor';
+import { generateMentorResponse, MentorMessage } from './mentor';
 import { generateScenario, Scenario } from './scenarioGenerator';
 
 export interface AgentMessage {
@@ -32,7 +31,6 @@ type AgentCallback = (messages: AgentMessage[]) => void;
 export class MultiAgentOrchestrator {
   private twin: DigitalTwin | null = null;
   private eeg: EEGModel;
-  private mentor: MentorEngine;
   private callbacks: AgentCallback[] = [];
   private alertHistory: AgentMessage[] = [];
   private isRunning: boolean = false;
@@ -41,7 +39,6 @@ export class MultiAgentOrchestrator {
 
   constructor() {
     this.eeg = new EEGModel();
-    this.mentor = new MentorEngine();
   }
 
   setTwin(twin: DigitalTwin): void {
@@ -203,33 +200,24 @@ export class MultiAgentOrchestrator {
     }
   }
 
-  async askMentor(question: string, context?: Record<string, unknown>): Promise<MentorResponse> {
+  async askMentor(question: string, context?: Record<string, unknown>): Promise<MentorMessage> {
     const simContext = {
+      vitals: this.twin?.getState()?.vitals || { hr: 0, sbp: 0, dbp: 0, map: 0, spo2: 0, rr: 0, etco2: 0, bis: 97 },
+      moass: 5 as const,
+      eventLog: [] as Array<{ message: string; type: string; severity: string; timestamp: number }>,
+      pkStates: {} as Record<string, { ce: number }>,
       ...context,
-      twinState: this.twin?.getState(),
-      eegBIS: this.eeg ? undefined : undefined,
-      recentAlerts: this.alertHistory.slice(-5),
     };
-    return this.mentor.ask(question, simContext);
+    return generateMentorResponse(question, simContext);
   }
 
-  async generateNewScenario(
+  generateNewScenario(
     difficulty: string,
-    focusArea: string
-  ): Promise<Scenario> {
-    const currentState = this.twin
-      ? {
-          drugs: [],
-          vitals: this.twin.getState().vitals,
-          patient: this.twin.getProfile(),
-        }
-      : undefined;
-
-    return generateScenario({
-      difficulty,
-      focusArea,
-      currentState,
-    });
+    _focusArea: string
+  ): Scenario {
+    return generateScenario(
+      difficulty as 'easy' | 'moderate' | 'hard' | 'expert'
+    );
   }
 
   getState(): OrchestratorState {
