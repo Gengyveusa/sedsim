@@ -45,19 +45,28 @@ const DEFAULT_SCALES = {
 // ─── Pleth / Capno waveform generators ───────────────────────────────────────
 
 function plethWaveform(phase: number): number {
-  if (phase < 0.12) {
-    const t = phase / 0.12;
-    return -30 * t * t * (3 - 2 * t);
-  } else if (phase < 0.22) {
-    const t = (phase - 0.12) / 0.10;
-    return -30 + 18 * t * t * (3 - 2 * t);
-  } else if (phase < 0.35) {
-    const t = (phase - 0.22) / 0.13;
-    return -12 + 5 * Math.sin(t * Math.PI);
-  } else {
-    const t = (phase - 0.35) / 0.65;
-    return -7 + 7 * t;
+  // Systolic upstroke: rapid rise to peak = 1.0
+  if (phase < 0.08) {
+    const t = phase / 0.08;
+    return t * t * (3 - 2 * t);  // smooth S-curve 0 → 1.0
   }
+  // Systolic peak + initial descent
+  if (phase < 0.15) {
+    const t = (phase - 0.08) / 0.07;
+    return 1.0 - 0.45 * t * t * (3 - 2 * t); // 1.0 → 0.55
+  }
+  // Dicrotic notch (aortic valve closure dip)
+  if (phase < 0.20) {
+    const t = (phase - 0.15) / 0.05;
+    return 0.55 - 0.15 * Math.sin(t * Math.PI); // dips to 0.40, back to 0.55
+  }
+  // Dicrotic wave + diastolic exponential decay
+  if (phase < 0.45) {
+    const t = (phase - 0.20) / 0.25;
+    return 0.55 * Math.exp(-4.0 * t); // exponential decay → ~0.01
+  }
+  // Flat baseline (isoelectric)
+  return 0;
 }
 
 function capnoWaveform(phase: number, etco2Height: number): number {
@@ -530,7 +539,16 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
           if (!plethInitRef.current) {
             initCanvasBg(plethCanvas, ML);
             drawScaleTicks(ctx, spo2Scale.ticks, spo2Scale.min, spo2Scale.max, h, w, ML);
-            plethPrevYRef.current = h * 0.6;
+            // Draw faint dashed baseline reference line
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+            ctx.lineWidth = 0.5;
+            ctx.setLineDash([4, 6]);
+            ctx.beginPath();
+            ctx.moveTo(ML, h * 0.85);
+            ctx.lineTo(w, h * 0.85);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            plethPrevYRef.current = h * 0.85;
             plethInitRef.current = true;
           }
 
@@ -555,7 +573,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
             );
 
             const pVal = plethWaveform(phase);
-            newY = h * 0.6 - pVal * (h * 0.28) * ppScale;
+            newY = h * 0.85 - pVal * (h * 0.7) * ppScale;
           }
 
           const prevX = ML + (prevSweep % drawWidth);
