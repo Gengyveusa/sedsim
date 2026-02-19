@@ -187,6 +187,9 @@ export function torsadesEnvelope(cycleIndex: number): number {
   return 0.2 + 0.8 * Math.abs(Math.sin(cycleIndex * 0.35));
 }
 
+// Named reference to the P-wave component in NORMAL_SINUS template
+const NORMAL_SINUS_P_WAVE: GaussianComponent = { theta: -1.20, amplitude: 0.15, width: 0.09 };
+
 /**
  * Complete Heart Block: independent P-wave generator (atrial ~75/min) and
  * wide ventricular escape QRS (~35/min), evaluated independently then summed.
@@ -200,7 +203,7 @@ export function completeHeartBlockWaveform(
 ): number {
   // Atrial P-wave only (narrow, small)
   const pTheta = (pPhase * 2 * Math.PI) - Math.PI;
-  const pComp = NORMAL_SINUS[0]; // P-wave component
+  const pComp = NORMAL_SINUS_P_WAVE;
   const pVal = gaussian(pTheta, { ...pComp, amplitude: pComp.amplitude * 0.5 });
 
   // Wide ventricular escape QRS

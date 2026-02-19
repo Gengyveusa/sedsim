@@ -233,6 +233,18 @@ const SWEEP_SPEED = 2;
 // Pleth delay: ~200 ms pulse-transit time → 200 ms × 120 px/s = 24 pixels
 const PLETH_DELAY_PX = 24;
 
+// Beats visible across the full canvas width at any one time
+const BEATS_PER_SCREEN = 8;
+
+// Independent atrial rate used for Complete Heart Block P-wave generator (bpm)
+const CHB_ATRIAL_RATE_BPM = 75;
+
+// Pulse pressure normalisation reference (mmHg): pleth amplitude = 1.0 at this value
+const PULSE_PRESSURE_REF_MMHG = 40;
+// Minimum and maximum pleth amplitude scale factors (prevents flat-line or clipping)
+const PLETH_AMP_MIN = 0.1;
+const PLETH_AMP_MAX = 1.8;
+
 // Draw Y-axis scale ticks on a canvas channel
 function drawScaleTicks(
   ctx: CanvasRenderingContext2D,
@@ -471,7 +483,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
         }
 
         const drawWidth = w - ML;
-        const baseCycleLen = (60 / hr) * (drawWidth / 8);
+        const baseCycleLen = (60 / hr) * (drawWidth / BEATS_PER_SCREEN);
         const cycleLen = getRRVariation(currentRhythm, baseCycleLen);
 
         const prevSweep = sweepRef.current;
@@ -482,8 +494,11 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
         if (phase < prevPhaseRef.current) cycleIndexRef.current += 1;
         prevPhaseRef.current = phase;
 
-        // P-wave phase for complete heart block (independent atrial rate ~75/min)
-        const pPhase = hr > 0 ? (nextSweep / (drawWidth / 8) * (75 / 60) % 1 + 1) % 1 : 0;
+        // P-wave phase for complete heart block (independent atrial rate)
+        const pixelsPerBeat = drawWidth / BEATS_PER_SCREEN;
+        const pPhase = hr > 0
+          ? ((nextSweep / pixelsPerBeat) * (CHB_ATRIAL_RATE_BPM / 60) % 1 + 1) % 1
+          : 0;
 
         const amplitude = evaluateECG(
           currentRhythm, phase, hr,
@@ -527,14 +542,17 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
           if (pulseless) {
             newY = h / 2; // flatline
           } else {
-            const cycleLen = (60 / hr) * (drawWidth / 8);
+            const cycleLen = (60 / hr) * (drawWidth / BEATS_PER_SCREEN);
             // Pleth delayed by ~200 ms (PLETH_DELAY_PX) relative to ECG
             const plethSweep = nextSweep - PLETH_DELAY_PX;
             const phase = ((plethSweep % cycleLen) + cycleLen) % cycleLen / cycleLen;
 
-            // Scale pleth amplitude by pulse pressure (SBP - DBP) normalised to 40 mmHg
-            const pulsePressure = (vitals.sbp - vitals.dbp) || 40;
-            const ppScale = Math.min(Math.max(pulsePressure / 40, 0.1), 1.8);
+            // Scale pleth amplitude by pulse pressure (SBP - DBP) normalised to reference
+            const pulsePressure = (vitals.sbp - vitals.dbp) || PULSE_PRESSURE_REF_MMHG;
+            const ppScale = Math.min(
+              Math.max(pulsePressure / PULSE_PRESSURE_REF_MMHG, PLETH_AMP_MIN),
+              PLETH_AMP_MAX,
+            );
 
             const pVal = plethWaveform(phase);
             newY = h * 0.6 - pVal * (h * 0.28) * ppScale;
@@ -573,7 +591,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
           if (rr === 0) {
             newY = h - 5; // flatline
           } else {
-            const cycleLen = (60 / rr) * (drawWidth / 8);
+            const cycleLen = (60 / rr) * (drawWidth / BEATS_PER_SCREEN);
             const phase = ((nextSweep % cycleLen) + cycleLen) % cycleLen / cycleLen;
             const etco2H = (etco2 / 60) * (h - 10);
             const cVal = capnoWaveform(phase, etco2H);
