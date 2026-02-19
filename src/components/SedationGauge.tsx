@@ -3,7 +3,6 @@ import useSimStore from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
 import { hillEffect } from '../engine/pdModel';
 import { MOASSLevel } from '../types';
-import PhysiologyAvatar from './PhysiologyAvatar';
 import OxyHbCurve from './OxyHbCurve';
 
 const DRUG_CLASSES: Record<string, string[]> = {
@@ -89,9 +88,6 @@ export default function SedationGauge() {
   const cy = size / 2;
   const outerR = 278;
 
-  // Avatar mode uses larger size
-  const avatarSize = 1050;
-
   // Get active sedation drugs
   const localAnesthetics = ['lidocaine_epi', 'articaine_epi', 'bupivacaine'];
   const activeDrugs = Object.entries(pkStates)
@@ -176,14 +172,9 @@ export default function SedationGauge() {
       </div>
 
       {/* ===== MODE C: AVATAR (standalone rendering) ===== */}
-            {mode === 'avatar' && (
-        <div style={{ overflowX: 'auto', overflowY: 'visible', width: '100%' }}>
-          <div style={{ minWidth: '800px' }}>
-            <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} rhythm={vitals.rhythm} size={avatarSize} />
-          </div>
-          <div className="mt-4 flex justify-center">
-            <OxyHbCurve vitals={vitals} fio2={fio2} patient={patient} airwayDevice={airwayDevice} />
-          </div>
+      {mode === 'avatar' && (
+        <div className="w-full flex-1" style={{ minHeight: '400px' }}>
+          <OxyHbCurve vitals={vitals} fio2={fio2} patient={patient} airwayDevice={airwayDevice} />
         </div>
       )}
 
