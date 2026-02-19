@@ -19,6 +19,7 @@ export default function App() {
   const { isRunning, speedMultiplier, tick, trendData } = useSimStore();
   const [showTutorial, setShowTutorial] = useState(false);
   const [trendsExpanded, setTrendsExpanded] = useState(false);
+  const [airwayExpanded, setAirwayExpanded] = useState(false);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -68,9 +69,42 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Sidebar - Intervention Panel */}
-          <div className="w-56 border-l border-gray-700 overflow-y-auto p-2">
-            <InterventionPanel />
+          {/* Right Sidebar - Collapsible Intervention Panel */}
+          <div
+            className={`transition-all duration-300 ease-in-out border-l border-gray-700 overflow-hidden flex flex-col ${
+              airwayExpanded ? 'w-56' : 'w-10'
+            }`}
+          >
+            {!airwayExpanded && (
+              <button
+                onClick={() => setAirwayExpanded(true)}
+                className="h-full w-10 flex items-center justify-center bg-gray-800/60 hover:bg-gray-700/80 transition-colors group"
+                title="Show Airway & O₂"
+              >
+                <span className="writing-mode-vertical text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase"
+                  style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                >
+                  Airway
+                </span>
+              </button>
+            )}
+            {airwayExpanded && (
+              <div className="flex flex-col h-full bg-sim-panel">
+                <div className="flex items-center justify-between px-2 py-1 border-b border-gray-700">
+                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Airway & O₂</span>
+                  <button
+                    onClick={() => setAirwayExpanded(false)}
+                    className="text-gray-400 hover:text-white text-sm px-1"
+                    title="Collapse Airway"
+                  >
+                    &laquo;
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2">
+                  <InterventionPanel />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right side: Event Log + Collapsible Trends */}
