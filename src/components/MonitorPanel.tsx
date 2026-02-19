@@ -18,7 +18,23 @@ const COLORS = {
   etco2: '#ffcc00',
   background: '#0a0a12',
   gridLine: 'rgba(255,255,255,0.04)',
-  dimText: 'rgba(255,255,255,0.3)',
+  scaleText: 'rgba(255,255,255,0.35)',
+  dashLine: 'rgba(255,255,255,0.07)',
+};
+
+// Scale configuration for each channel
+interface ScaleConfig {
+  ticks: number[];
+  min: number;
+  max: number;
+}
+
+const DEFAULT_SCALES = {
+  hr:    { ticks: [40, 60, 80, 100, 120, 140, 160], min: 40, max: 160 },
+  spo2:  { ticks: [80, 85, 90, 95, 100], min: 80, max: 100 },
+  bp:    { ticks: [60, 80, 100, 120, 140, 160, 180], min: 60, max: 180 },
+  rr:    { ticks: [0, 5, 10, 15, 20, 25], min: 0, max: 25 },
+  etco2: { ticks: [20, 30, 40, 50, 60], min: 20, max: 60 },
 };
 
 // Clean ECG template: [phase, amplitude] pairs for one cardiac cycle
@@ -77,7 +93,42 @@ function capnoWaveform(phase: number, etco2Height: number): number {
   return 0;
 }
 
-// Sweep-style waveform renderer - NO vertical tracer line
+// Draw Y-axis scale ticks on a canvas channel
+function drawScaleTicks(
+  ctx: CanvasRenderingContext2D,
+  ticks: number[],
+  scaleMin: number,
+  scaleMax: number,
+  canvasHeight: number,
+  canvasWidth: number,
+  marginLeft: number = 28
+) {
+  const range = scaleMax - scaleMin;
+  ctx.font = '9px monospace';
+  ctx.fillStyle = COLORS.scaleText;
+  ctx.textAlign = 'right';
+
+  ticks.forEach(tick => {
+    const yFrac = 1 - (tick - scaleMin) / range;
+    const y = yFrac * canvasHeight;
+    if (y < 2 || y > canvasHeight - 2) return;
+
+    // Dashed gridline
+    ctx.strokeStyle = COLORS.dashLine;
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(marginLeft, y);
+    ctx.lineTo(canvasWidth, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label
+    ctx.fillText(String(tick), marginLeft - 2, y + 3);
+  });
+}
+
+// Sweep-style waveform renderer with scale ticks
 function drawSweepWaveform(
   canvas: HTMLCanvasElement,
   color: string,
@@ -85,11 +136,15 @@ function drawSweepWaveform(
   sweepX: number,
   cyclePixels: number,
   baselineY: number,
-  amplitude: number
+  amplitude: number,
+  scaleTicks?: number[],
+  scaleMin?: number,
+  scaleMax?: number
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const { width, height } = canvas;
+  const marginLeft = scaleTicks ? 28 : 0;
 
   ctx.fillStyle = COLORS.background;
   ctx.fillRect(0, 0, width, height);
@@ -99,15 +154,20 @@ function drawSweepWaveform(
   ctx.lineWidth = 0.5;
   for (let gy = 0; gy < height; gy += 20) {
     ctx.beginPath();
-    ctx.moveTo(0, gy);
+    ctx.moveTo(marginLeft, gy);
     ctx.lineTo(width, gy);
     ctx.stroke();
   }
-  for (let gx = 0; gx < width; gx += 20) {
+  for (let gx = marginLeft; gx < width; gx += 20) {
     ctx.beginPath();
     ctx.moveTo(gx, 0);
     ctx.lineTo(gx, height);
     ctx.stroke();
+  }
+
+  // Draw scale ticks if provided
+  if (scaleTicks && scaleMin !== undefined && scaleMax !== undefined) {
+    drawScaleTicks(ctx, scaleTicks, scaleMin, scaleMax, height, width, marginLeft);
   }
 
   // Draw waveform trace with erase-ahead gap (no vertical line)
@@ -119,11 +179,11 @@ function drawSweepWaveform(
 
   const gapWidth = Math.max(20, width * 0.04);
 
-  for (let x = 0; x < width; x++) {
+  for (let x = marginLeft; x < width; x++) {
     const dist = (sweepX - x + width) % width;
     if (dist < gapWidth) continue;
 
-    const phase = (x % cyclePixels) / cyclePixels;
+    const phase = ((x - marginLeft) % cyclePixels) / cyclePixels;
     const val = waveformFn(phase);
     const y = baselineY + val * amplitude;
 
@@ -134,7 +194,6 @@ function drawSweepWaveform(
     }
   }
   ctx.stroke();
-  // No vertical sweep/tracer line drawn
 }
 
 // Alarm threshold helpers
@@ -168,6 +227,30 @@ function getEtCO2Color(etco2: number): string {
   return COLORS.etco2;
 }
 
+// Compute dynamic scale that expands when value exceeds default range
+const TARGET_TICK_COUNT = 6;
+const TICK_ROUNDING = 5;
+
+function computeScale(value: number, defaultScale: ScaleConfig): ScaleConfig {
+  if (value >= defaultScale.min && value <= defaultScale.max) return defaultScale;
+  // Expand the range
+  const margin = (defaultScale.max - defaultScale.min) * 0.2;
+  const newMin = value < defaultScale.min ? Math.floor((value - margin) / 10) * 10 : defaultScale.min;
+  const newMax = value > defaultScale.max ? Math.ceil((value + margin) / 10) * 10 : defaultScale.max;
+  // Regenerate evenly spaced ticks rounded to TICK_ROUNDING multiples
+  const step = Math.ceil((newMax - newMin) / TARGET_TICK_COUNT / TICK_ROUNDING) * TICK_ROUNDING || TICK_ROUNDING;
+  const ticks: number[] = [];
+  for (let t = Math.ceil(newMin / step) * step; t <= newMax; t += step) {
+    ticks.push(t);
+  }
+  return { ticks, min: newMin, max: newMax };
+}
+
+interface ScaleToast {
+  channel: string;
+  visible: boolean;
+}
+
 export default function MonitorPanel({ vitals, history: _history }: MonitorPanelProps) {
   const ecgCanvasRef = useRef<HTMLCanvasElement>(null);
   const plethCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -177,6 +260,70 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   const [showPleth, setShowPleth] = useState(true);
   const [showCapno, setShowCapno] = useState(true);
   const [alarmFlash, setAlarmFlash] = useState(false);
+
+  // Dynamic scale tracking - use refs to track current scale ranges without them being in deps
+  const [hrScale, setHrScale] = useState<ScaleConfig>(DEFAULT_SCALES.hr);
+  const [spo2Scale, setSpo2Scale] = useState<ScaleConfig>(DEFAULT_SCALES.spo2);
+  const [etco2Scale, setEtco2Scale] = useState<ScaleConfig>(DEFAULT_SCALES.etco2);
+  const hrScaleRef = useRef<ScaleConfig>(DEFAULT_SCALES.hr);
+  const spo2ScaleRef = useRef<ScaleConfig>(DEFAULT_SCALES.spo2);
+  const bpScaleRef = useRef<ScaleConfig>(DEFAULT_SCALES.bp);
+  const rrScaleRef = useRef<ScaleConfig>(DEFAULT_SCALES.rr);
+  const etco2ScaleRef = useRef<ScaleConfig>(DEFAULT_SCALES.etco2);
+  const [scaleToast, setScaleToast] = useState<ScaleToast | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showScaleToast = useCallback((channel: string) => {
+    setScaleToast({ channel, visible: true });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      setScaleToast(null);
+    }, 2500);
+  }, []);
+
+  // Update scales when vitals change
+  useEffect(() => {
+    const newHr = computeScale(vitals.hr, DEFAULT_SCALES.hr);
+    if (newHr.max !== hrScaleRef.current.max || newHr.min !== hrScaleRef.current.min) {
+      hrScaleRef.current = newHr;
+      setHrScale(newHr);
+      showScaleToast('HR');
+    }
+  }, [vitals.hr, showScaleToast]);
+
+  useEffect(() => {
+    const newSpo2 = computeScale(vitals.spo2, DEFAULT_SCALES.spo2);
+    if (newSpo2.max !== spo2ScaleRef.current.max || newSpo2.min !== spo2ScaleRef.current.min) {
+      spo2ScaleRef.current = newSpo2;
+      setSpo2Scale(newSpo2);
+      showScaleToast('SpO2');
+    }
+  }, [vitals.spo2, showScaleToast]);
+
+  useEffect(() => {
+    const newBp = computeScale(vitals.sbp, DEFAULT_SCALES.bp);
+    if (newBp.max !== bpScaleRef.current.max || newBp.min !== bpScaleRef.current.min) {
+      bpScaleRef.current = newBp;
+      showScaleToast('BP');
+    }
+  }, [vitals.sbp, showScaleToast]);
+
+  useEffect(() => {
+    const newRr = computeScale(vitals.rr, DEFAULT_SCALES.rr);
+    if (newRr.max !== rrScaleRef.current.max || newRr.min !== rrScaleRef.current.min) {
+      rrScaleRef.current = newRr;
+      showScaleToast('RR');
+    }
+  }, [vitals.rr, showScaleToast]);
+
+  useEffect(() => {
+    const newEtco2 = computeScale(vitals.etco2, DEFAULT_SCALES.etco2);
+    if (newEtco2.max !== etco2ScaleRef.current.max || newEtco2.min !== etco2ScaleRef.current.min) {
+      etco2ScaleRef.current = newEtco2;
+      setEtco2Scale(newEtco2);
+      showScaleToast('EtCO2');
+    }
+  }, [vitals.etco2, showScaleToast]);
 
   // Alarm flash toggle
   useEffect(() => {
@@ -199,7 +346,8 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
       drawSweepWaveform(
         ecgCanvas, COLORS.ecg, interpolateECG,
         sweepRef.current % ecgCanvas.width, cycleLen,
-        ecgCanvas.height / 2, 0.9
+        ecgCanvas.height / 2, 0.9,
+        hrScale.ticks, hrScale.min, hrScale.max
       );
     }
 
@@ -211,7 +359,8 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
         drawSweepWaveform(
           plethCanvas, COLORS.spo2, plethWaveform,
           sweepRef.current % plethCanvas.width, cycleLen,
-          plethCanvas.height * 0.6, 0.7
+          plethCanvas.height * 0.6, 0.7,
+          spo2Scale.ticks, spo2Scale.min, spo2Scale.max
         );
       }
     }
@@ -226,14 +375,15 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
           capnoCanvas, COLORS.capno,
           (phase) => capnoWaveform(phase, etco2H),
           sweepRef.current % capnoCanvas.width, cycleLen,
-          capnoCanvas.height - 5, 1
+          capnoCanvas.height - 5, 1,
+          etco2Scale.ticks, etco2Scale.min, etco2Scale.max
         );
       }
     }
 
     sweepRef.current += 1.5;
     animRef.current = requestAnimationFrame(drawAll);
-  }, [vitals.hr, vitals.rr, vitals.etco2, showPleth, showCapno]);
+  }, [vitals.hr, vitals.rr, vitals.etco2, showPleth, showCapno, hrScale, spo2Scale, etco2Scale]);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(drawAll);
@@ -252,13 +402,38 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   const isAlarmActive = vitals.spo2 < 90 || vitals.hr < 50 || vitals.hr > 120 || vitals.sbp < 80 || vitals.rr < 6;
 
   return (
-    <div style={{ background: COLORS.background, borderRadius: 8, overflow: 'hidden', border: '1px solid #222' }}>
+    <div style={{ background: COLORS.background, borderRadius: 8, overflow: 'hidden', border: '1px solid #222', position: 'relative' }}>
+
+      {/* Scale change toast notification */}
+      {scaleToast && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 6,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+            background: '#92400e',
+            color: '#fde68a',
+            padding: '2px 12px',
+            borderRadius: 99,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            pointerEvents: 'none',
+            animation: 'fadeInOut 2.5s ease-in-out',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ⚠ {scaleToast.channel} Scale Changed
+        </div>
+      )}
 
       {/* === ROW 1: ECG + HR/SpO2 numerics === */}
       <div className="flex" style={{ borderBottom: '1px solid #1a1a2e' }}>
         {/* ECG Waveform */}
         <div className="flex-1 relative">
-          <span style={{ position: 'absolute', top: 4, left: 8, color: COLORS.ecg, fontSize: 10, fontWeight: 700, zIndex: 1 }}>
+          <span style={{ position: 'absolute', top: 4, left: 30, color: COLORS.ecg, fontSize: 10, fontWeight: 700, zIndex: 1 }}>
             II
           </span>
           <canvas ref={ecgCanvasRef} width={500} height={80} style={{ width: '100%', height: 80 }} />

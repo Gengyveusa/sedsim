@@ -7,6 +7,16 @@ import { calculateVitals, checkAlarms, BASELINE_VITALS, PATIENT_ARCHETYPES } fro
 import { generateEEG, EEGState } from '../engine/eegModel';
 import { DigitalTwin, createDigitalTwin, updateTwin } from '../engine/digitalTwin';
 
+export interface IVFluidState {
+  activeFluid: string | null;
+  rate: number; // mL/hr
+  location: string;
+  gauge: string;
+  totalInfused: number; // mL
+  isBolus: boolean;
+  bolusVolume: number;
+}
+
 interface SimState {
   // Time
   elapsedSeconds: number;
@@ -47,6 +57,9 @@ interface SimState {
   // Digital Twin (risk predictions)
   digitalTwin: DigitalTwin | null;
 
+  // IV Fluids
+  ivFluids: IVFluidState;
+
   // Actions
   tick: () => void;
   administerBolus: (drugName: string, dose: number) => void;
@@ -59,6 +72,10 @@ interface SimState {
   applyIntervention: (intervention: InterventionType) => void;
   removeIntervention: (intervention: InterventionType) => void;
   setFiO2: (fio2: number) => void;
+  startIVFluid: (fluid: string, rate: number, isBolus: boolean, bolusVolume: number) => void;
+  stopIVFluid: () => void;
+  setIVAccess: (location: string, gauge: string) => void;
+  logEvent: (message: string, type?: LogEntry['type'], severity?: LogEntry['severity']) => void;
   reset: () => void;
 }
 
@@ -104,6 +121,16 @@ const useSimStore = create<SimState>((set, get) => ({
 
   eegState: null,
   digitalTwin: createDigitalTwin(PATIENT_ARCHETYPES.healthy_adult),
+
+  ivFluids: {
+    activeFluid: null,
+    rate: 0,
+    location: 'Right Hand',
+    gauge: '20G',
+    totalInfused: 0,
+    isBolus: false,
+    bolusVolume: 0,
+  },
 
   // Tick function - runs every simulation second
   tick: () => {
@@ -193,6 +220,12 @@ const useSimStore = create<SimState>((set, get) => ({
       dt
     );
 
+    // Accumulate IV fluid infused (rate is mL/hr, dt is 1 second -> mL/3600)
+    const newIvFluids = { ...state.ivFluids };
+    if (state.ivFluids.activeFluid && !state.ivFluids.isBolus && state.ivFluids.rate > 0) {
+      newIvFluids.totalInfused = state.ivFluids.totalInfused + state.ivFluids.rate / 3600;
+    }
+
     set({
       elapsedSeconds: newTime,
       pkStates: newPkStates,
@@ -204,6 +237,7 @@ const useSimStore = create<SimState>((set, get) => ({
       activeAlarms,
       eegState: newEegState,
       digitalTwin: newDigitalTwin,
+      ivFluids: newIvFluids,
     });
   },
 
@@ -374,6 +408,47 @@ const useSimStore = create<SimState>((set, get) => ({
     });
   },
 
+  startIVFluid: (fluid, rate, isBolus, bolusVolume) => {
+    const state = get();
+    const location = state.ivFluids.location;
+    const gauge = state.ivFluids.gauge;
+    const message = isBolus
+      ? `[IV] ${fluid} ${bolusVolume}mL bolus started (${location} ${gauge})`
+      : `[IV] ${fluid} ${rate} mL/hr started (${location} ${gauge})`;
+    set({
+      ivFluids: {
+        ...state.ivFluids,
+        activeFluid: fluid,
+        rate,
+        isBolus,
+        bolusVolume,
+        totalInfused: isBolus ? state.ivFluids.totalInfused + bolusVolume : state.ivFluids.totalInfused,
+      },
+      eventLog: [...state.eventLog, { time: state.elapsedSeconds, type: 'intervention', message, severity: 'info' }],
+    });
+  },
+
+  stopIVFluid: () => {
+    const state = get();
+    if (!state.ivFluids.activeFluid) return;
+    set({
+      ivFluids: { ...state.ivFluids, activeFluid: null, rate: 0, isBolus: false, bolusVolume: 0 },
+      eventLog: [...state.eventLog, { time: state.elapsedSeconds, type: 'intervention', message: `[IV] ${state.ivFluids.activeFluid} stopped`, severity: 'info' }],
+    });
+  },
+
+  setIVAccess: (location, gauge) => {
+    const state = get();
+    set({ ivFluids: { ...state.ivFluids, location, gauge } });
+  },
+
+  logEvent: (message, type = 'intervention', severity = 'info') => {
+    const state = get();
+    set({
+      eventLog: [...state.eventLog, { time: state.elapsedSeconds, type, message, severity }],
+    });
+  },
+
   reset: () => {
     const patient = get().patient;
     set({
@@ -398,6 +473,15 @@ const useSimStore = create<SimState>((set, get) => ({
       activeAlarms: [],
       eegState: null,
       digitalTwin: createDigitalTwin(patient),
+      ivFluids: {
+        activeFluid: null,
+        rate: 0,
+        location: 'Right Hand',
+        gauge: '20G',
+        totalInfused: 0,
+        isBolus: false,
+        bolusVolume: 0,
+      },
     });
   },
 }));
