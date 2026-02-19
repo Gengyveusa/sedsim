@@ -202,9 +202,9 @@ export class MultiAgentOrchestrator {
 
   async askMentor(question: string, context?: Record<string, unknown>): Promise<MentorMessage> {
     const simContext = {
-      vitals: this.twin?.getState()?.vitals || { hr: 0, sbp: 0, dbp: 0, map: 0, spo2: 0, rr: 0, etco2: 0, bis: 97 },
+      vitals: this.twin?.getState()?.vitals || { hr: 72, sbp: 120, dbp: 80, map: 93, spo2: 98, rr: 14, etco2: 38 },
       moass: 5 as const,
-      eventLog: [] as Array<{ message: string; type: string; severity: string; timestamp: number }>,
+      eventLog: [] as Array<{ time: number; type: 'bolus' | 'infusion_start' | 'infusion_stop' | 'infusion_change' | 'alert' | 'vitals' | 'intervention'; message: string; severity?: 'info' | 'warning' | 'danger' }>,
       pkStates: {} as Record<string, { ce: number }>,
       ...context,
     };
