@@ -13,6 +13,7 @@ interface SimState {
 
   // Patient
   patient: Patient;
+  archetypeKey: string;
   availableArchetypes: string[];
 
   // Drug PK states
@@ -66,6 +67,7 @@ const useSimStore = create<SimState>((set, get) => ({
   speedMultiplier: 1,
 
   patient: PATIENT_ARCHETYPES.healthy_adult,
+  archetypeKey: 'healthy_adult',
   availableArchetypes: Object.keys(PATIENT_ARCHETYPES),
 
   pkStates: {
@@ -73,7 +75,7 @@ const useSimStore = create<SimState>((set, get) => ({
     midazolam: createInitialPKState(),
     fentanyl: createInitialPKState(),
     ketamine: createInitialPKState(),
-        lidocaine_epi: createInitialPKState(),
+    lidocaine_epi: createInitialPKState(),
     articaine_epi: createInitialPKState(),
     bupivacaine: createInitialPKState(),
   },
@@ -90,7 +92,6 @@ const useSimStore = create<SimState>((set, get) => ({
   trendData: [],
   maxTrendPoints: 600,
   eventLog: [],
-
   activeAlarms: [],
 
   // Tick function - runs every simulation second
@@ -107,7 +108,6 @@ const useSimStore = create<SimState>((set, get) => ({
       const drug = DRUG_DATABASE[drugName];
       const infusion = infusions[drugName];
       const infusionRate = infusion?.isRunning ? infusion.rate : 0;
-
       newPkStates[drugName] = stepPK(
         pkStates[drugName],
         drug,
@@ -135,7 +135,7 @@ const useSimStore = create<SimState>((set, get) => ({
     const newTrendPoint: TrendPoint = {
       time: newTime,
       vitals: newVitals,
-            cp: Object.fromEntries(Object.entries(newPkStates).map(([name, s]) => [name, s.c1])),
+      cp: Object.fromEntries(Object.entries(newPkStates).map(([name, s]) => [name, s.c1])),
       ce: Object.fromEntries(
         Object.entries(newPkStates).map(([name, state]) => [name, state.ce])
       ),
@@ -183,9 +183,9 @@ const useSimStore = create<SimState>((set, get) => ({
 
     // Step PK forward with bolus
     const newState = stepPK(
-              state.pkStates[drugName],
+      state.pkStates[drugName],
       drug,
-            dose, // flat dose in mg (or mcg for fentanyl)
+      dose, // flat dose in mg (or mcg for fentanyl)
       0,
       1
     );
@@ -286,6 +286,7 @@ const useSimStore = create<SimState>((set, get) => ({
 
     set(state => ({
       patient,
+      archetypeKey,
       eventLog: [...state.eventLog, logEntry],
     }));
   },
@@ -328,6 +329,7 @@ const useSimStore = create<SimState>((set, get) => ({
 
   setFiO2: (fio2) => {
     const state = get();
+
     const logEntry: LogEntry = {
       time: state.elapsedSeconds,
       type: 'intervention',
@@ -350,9 +352,9 @@ const useSimStore = create<SimState>((set, get) => ({
         midazolam: createInitialPKState(),
         fentanyl: createInitialPKState(),
         ketamine: createInitialPKState(),
-                lidocaine_epi: createInitialPKState(),
-                articaine_epi: createInitialPKState(),
-                bupivacaine: createInitialPKState(),
+        lidocaine_epi: createInitialPKState(),
+        articaine_epi: createInitialPKState(),
+        bupivacaine: createInitialPKState(),
       },
       infusions: {},
       vitals: BASELINE_VITALS,
