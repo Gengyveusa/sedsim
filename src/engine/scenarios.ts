@@ -102,7 +102,7 @@ export const SCENARIOS: Record<string, ClinicalScenario> = {
         drug: 'lidocaine_epi',
         dose: 36,
         narration: 'Second cartridge: Ensuring complete regional anesthesia for the extraction site.',
-        voiceText: 'And a second cartridge to ensure complete regional anesthesia. Notice on the pharmacokinetic graph how the lidocaine is gradually absorbed from the subcutaneous depot. Peak plasma levels occur in ten to twenty minutes.',
+        voiceText: 'And a second cartridge to ensure complete regional anesthesia. Notice on the pharmacokinetic graph how the lidocaine is gradually absorbed from the local injection site. Peak plasma levels occur in ten to twenty minutes.',
         highlight: ['local-anesth-panel', 'trend-graph']
       },
       {
