@@ -1,11 +1,12 @@
 // src/ai/mentor.ts
 // Conversational Explainable AI Mentor/Tutor
 // Provides real-time guidance, post-session debrief, and adaptive feedback
-// Uses WebLLM for offline inference or API fallback
+// Uses Claude Opus API with offline KNOWLEDGE_BASE fallback
 
 import { Vitals, LogEntry, MOASSLevel } from '../types';
 import { EEGState } from '../engine/eegModel';
 import { DigitalTwin } from '../engine/digitalTwin';
+import { streamClaude, offlineFallback, ClaudeContext } from './claudeClient';
 
 export interface MentorMessage {
   role: 'user' | 'mentor' | 'system';
@@ -13,6 +14,7 @@ export interface MentorMessage {
   timestamp: number;
   citations?: string[];    // Source references (ASA, NYSORA, etc.)
   confidence?: number;     // 0-1 confidence score
+  isStreaming?: boolean;   // true while Claude is still streaming
 }
 
 export interface MentorState {
@@ -71,20 +73,12 @@ export const getSuggestedQuestions = (
 };
 
 // Knowledge base for offline mentor responses (RAG-lite)
-const KNOWLEDGE_BASE: Record<string, string> = {
-  'desaturation': 'Per ASA guidelines for sedation, SpO2 < 90% requires immediate intervention: increase FiO2, perform jaw thrust/chin lift, consider airway adjunct. If BVM ventilation needed, pause procedure. Risk factors include OSA, obesity, opioid synergy.',
-  'bradycardia': 'Bradycardia during sedation commonly results from dexmedetomidine or high-dose opioids. Per ACLS: if symptomatic (HR < 50 with hypotension), consider atropine 0.5mg IV. Reduce or stop causative agent.',
-  'hypotension': 'Propofol-induced hypotension is dose-dependent via vasodilation and myocardial depression. Manage with fluid bolus (250-500mL crystalloid), reduce infusion rate, consider vasopressor if persistent. Elderly patients are more susceptible.',
-  'burst_suppression': 'Burst suppression on EEG indicates excessive sedation depth (BIS < 20). This pattern shows alternating high-amplitude bursts and periods of electrical silence. Reduce or stop hypnotic agents. Risk of hemodynamic instability.',
-  'awareness': 'Risk of awareness: BIS > 60 with clinical signs of light sedation. Verify drug delivery, check IV patency. Consider supplemental bolus. NYSORA recommends maintaining BIS 40-60 for procedural sedation.',
-  'eeg_interpretation': 'Normal awake EEG: dominant alpha (8-13 Hz). Light sedation: alpha slowing + beta activation. Moderate: theta/delta emergence (4-8 Hz). Deep: high-amplitude delta with possible burst suppression. Propofol characteristically produces frontal alpha.',
-  'propofol_titration': 'Propofol for procedural sedation (ASA): Loading dose 0.5-1 mg/kg over 1-3 min, then infusion 25-75 mcg/kg/min. Titrate to MOASS 2-3. Elderly: reduce dose by 30-50%. EC50 for loss of consciousness ~3-4 mcg/mL.',
-  'drug_synergy': 'Opioid-hypnotic synergy: fentanyl significantly reduces propofol requirements (up to 50% reduction in EC50). Midazolam-propofol synergy is supra-additive. Always account for combined respiratory depression.',
-  'pediatric': 'Pediatric sedation considerations: Higher weight-based dosing due to larger volume of distribution. More rapid redistribution. Higher risk of airway obstruction. Emergence agitation common with propofol.',
-  'osa': 'OSA patients require special monitoring: increased sensitivity to respiratory depressants, higher risk of airway obstruction, consider reduced opioid dosing. STOP-BANG score guides risk stratification.',
-};
+// Keep for offline fallback — imported by claudeClient.ts as well
+export { KNOWLEDGE_BASE } from './claudeClient';
 
-// Generate mentor response based on query and simulation context
+// Generate mentor response based on query and simulation context.
+// Uses Claude API when available; falls back to the offline KNOWLEDGE_BASE.
+// Pass `onChunk` to receive streaming tokens as they arrive.
 export const generateMentorResponse = async (
   query: string,
   context: {
@@ -94,81 +88,57 @@ export const generateMentorResponse = async (
     eeg?: EEGState;
     eventLog: LogEntry[];
     pkStates: Record<string, { ce: number }>;
-  }
+    learnerLevel?: 'novice' | 'intermediate' | 'advanced';
+  },
+  onChunk?: (text: string) => void
 ): Promise<MentorMessage> => {
-  const queryLower = query.toLowerCase();
-
-  // Build context string
-  const contextStr = [
-    `Patient: ${context.twin?.age}yo ${context.twin?.sex}, ${context.twin?.weight}kg`,
-    `Vitals: HR ${context.vitals.hr}, BP ${context.vitals.sbp}/${context.vitals.dbp}, SpO2 ${context.vitals.spo2}%, RR ${context.vitals.rr}`,
-    `MOASS: ${context.moass}/5`,
-    context.eeg ? `BIS: ${context.eeg.bisIndex}, State: ${context.eeg.sedationState}` : '',
-    `Comorbidities: ${context.twin?.comorbidities?.join(', ') || 'None'}`,
-    `Recent events: ${context.eventLog.slice(-3).map(e => e.message).join('; ')}`,
-    `Drug Ce: ${Object.entries(context.pkStates).map(([d, s]) => `${d}: ${s.ce.toFixed(2)}`).join(', ')}`,
-  ].filter(Boolean).join('\n');
-
-  // Match knowledge base entries
-  let response = '';
-  let citations: string[] = [];
-  let confidence = 0.85;
-
-  // Pattern matching for common queries
-  if (queryLower.includes('spo2') || queryLower.includes('desat') || queryLower.includes('oxygen')) {
-    response = KNOWLEDGE_BASE['desaturation'];
-    citations = ['ASA Practice Guidelines for Sedation 2018', 'NYSORA Sedation Monitoring'];
-    if (context.vitals.spo2 < 92) {
-      response += `\n\nCURRENT STATUS: SpO2 is ${context.vitals.spo2}% - IMMEDIATE ACTION REQUIRED.`;
-      confidence = 0.95;
-    }
-  } else if (queryLower.includes('brady') || queryLower.includes('heart rate') || queryLower.includes('hr')) {
-    response = KNOWLEDGE_BASE['bradycardia'];
-    citations = ['ACLS Guidelines', 'ASA Sedation Standards'];
-  } else if (queryLower.includes('hypotension') || queryLower.includes('blood pressure') || queryLower.includes('bp')) {
-    response = KNOWLEDGE_BASE['hypotension'];
-    citations = ['Miller\'s Anesthesia Ch. 26', 'ASA Sedation Guidelines'];
-  } else if (queryLower.includes('burst') || queryLower.includes('suppression')) {
-    response = KNOWLEDGE_BASE['burst_suppression'];
-    citations = ['Purdon et al. 2013 NEJM', 'BIS Monitoring Guidelines'];
-  } else if (queryLower.includes('awareness') || queryLower.includes('too light')) {
-    response = KNOWLEDGE_BASE['awareness'];
-    citations = ['NYSORA Awareness Prevention', 'ASA Practice Advisory'];
-  } else if (queryLower.includes('eeg') || queryLower.includes('interpret')) {
-    response = KNOWLEDGE_BASE['eeg_interpretation'];
-    if (context.eeg) {
-      response += `\n\nCURRENT EEG: BIS ${context.eeg.bisIndex}, ${context.eeg.sedationState}. ` +
-        `SEF: ${context.eeg.channels['Fp1']?.sef || 'N/A'} Hz. ` +
-        `Suppression Ratio: ${context.eeg.channels['Fp1']?.suppressionRatio || 0}%.`;
-    }
-    citations = ['Purdon et al. 2013', 'Rampil 1998 Anesthesiology'];
-  } else if (queryLower.includes('titrat') || queryLower.includes('dose') || queryLower.includes('how much')) {
-    response = KNOWLEDGE_BASE['propofol_titration'];
-    citations = ['ASA Sedation Guidelines', 'Eleveld et al. 2018'];
-  } else if (queryLower.includes('synergy') || queryLower.includes('interaction')) {
-    response = KNOWLEDGE_BASE['drug_synergy'];
-    citations = ['Bouillon Response Surface Model', 'Minto et al. 2000'];
-  } else {
-    // Generic context-aware response
-    response = `Based on current simulation state:\n${contextStr}\n\n`;
-    if (context.vitals.spo2 < 94) {
-      response += 'Note: SpO2 trending low - monitor closely. ';
-    }
-    if (context.moass <= 1) {
-      response += 'Patient appears deeply sedated. ';
-    }
-    response += 'Consider the overall clinical picture and titrate to effect. What specific aspect would you like guidance on?';
-    citations = ['Clinical judgment based on current state'];
-    confidence = 0.7;
-  }
-
-  return {
-    role: 'mentor',
-    content: response,
-    timestamp: Date.now(),
-    citations,
-    confidence,
+  // Build ClaudeContext
+  const claudeCtx: ClaudeContext = {
+    patient: context.twin
+      ? {
+          age: context.twin.age,
+          weight: context.twin.weight,
+          sex: context.twin.sex,
+          asa: context.twin.asa,
+          comorbidities: context.twin.comorbidities ?? [],
+          mallampati: context.twin.mallampati,
+          osa: context.twin.osa,
+          drugSensitivity: context.twin.drugSensitivity,
+        }
+      : undefined,
+    vitals: context.vitals,
+    moass: context.moass,
+    eeg: context.eeg,
+    pkStates: context.pkStates,
+    learnerLevel: context.learnerLevel,
+    recentEvents: context.eventLog.slice(-5).map(e => e.message),
   };
+
+  // Try Claude API first
+  try {
+    const fullText = await streamClaude(
+      query,
+      claudeCtx,
+      (chunk) => onChunk?.(chunk)
+    );
+    return {
+      role: 'mentor',
+      content: fullText,
+      timestamp: Date.now(),
+      citations: ['Claude AI (SedSim Mentor)'],
+      confidence: 0.92,
+    };
+  } catch {
+    // Fall back to offline knowledge base
+    const fallback = offlineFallback(query, claudeCtx);
+    return {
+      role: 'mentor',
+      content: fallback.text,
+      timestamp: Date.now(),
+      citations: fallback.citations,
+      confidence: fallback.confidence,
+    };
+  }
 };
 
 // Generate post-session debrief

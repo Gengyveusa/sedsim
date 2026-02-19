@@ -78,12 +78,14 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="p-3 max-h-[600px] overflow-y-auto">
+      <div className={`${activeTab === 'mentor' ? 'flex flex-col' : 'p-3 overflow-y-auto'} max-h-[600px]`}>
         {activeTab === 'eeg' && (
-          <EEGPanel eegState={simState.eegState} isRunning={simState.isRunning} />
+          <div className="p-3">
+            <EEGPanel eegState={simState.eegState} isRunning={simState.isRunning} />
+          </div>
         )}
         {activeTab === 'eeg' && simState.digitalTwin && (
-          <div className="mt-3 p-2 bg-gray-800/60 rounded text-xs space-y-1">
+          <div className="mx-3 mb-3 p-2 bg-gray-800/60 rounded text-xs space-y-1">
             <div className="text-gray-400 font-semibold mb-1">Digital Twin – Risk Metrics</div>
             <div className="flex justify-between">
               <span className="text-gray-400">Hypotension Risk</span>
@@ -127,7 +129,11 @@ export const Dashboard: React.FC = () => {
             onToggle={() => setMentorOpen(!mentorOpen)}
           />
         )}
-        {activeTab === 'scenarios' && <ScenarioPanel />}
+        {activeTab === 'scenarios' && (
+          <div className="p-3 overflow-y-auto max-h-[600px]">
+            <ScenarioPanel />
+          </div>
+        )}
       </div>
     </div>
   );

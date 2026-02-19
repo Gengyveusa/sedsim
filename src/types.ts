@@ -125,3 +125,41 @@ export const DEFAULT_ALARM_CONFIG: AlarmConfig = {
   rrLow: 8,
   etco2High: 55,
 };
+
+// Ghost dose — hypothetical drug administration preview
+export interface GhostDose {
+  drugName: string;
+  dose: number;
+  isActive: boolean;
+}
+
+// Prediction result for ghost dose / forward simulation
+export interface PredictionResult {
+  secondsAhead: number;
+  predictedCe: Record<string, number>;
+  predictedMoass: MOASSLevel;
+  predictedSpo2: number;
+  predictedRr: number;
+  predictedSbp?: number;
+  aiExplanation?: string;
+}
+
+// Tutorial step definition
+export interface TutorialStep {
+  id: string;
+  title: string;
+  content: string;
+  targetElement?: string;   // CSS selector or element ID to highlight
+  action?: 'click' | 'observe' | 'administer' | 'read';
+  completionHint?: string;
+}
+
+// Tutorial state persisted across sessions
+export interface TutorialState {
+  isActive: boolean;
+  track: 'quick_start' | 'deep_dive';
+  currentStepIndex: number;
+  completedSteps: string[];
+  learnerLevel: 'novice' | 'intermediate' | 'advanced';
+  lastSaved: number;
+}

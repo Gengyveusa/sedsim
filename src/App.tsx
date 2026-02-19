@@ -11,7 +11,7 @@ import IVFluidsPanel from './components/IVFluidsPanel';
 import TrendGraph from './components/TrendGraph';
 import ControlBar from './components/ControlBar';
 import EventLog from './components/EventLog';
-import { TutorialMode } from './components/TutorialMode';
+import TutorialOverlay from './components/TutorialOverlay';
 import SedationGauge from './components/SedationGauge';
 import { Dashboard } from './components/Dashboard';
 
@@ -127,9 +127,8 @@ export default function App() {
           <Dashboard />
         </div>
       {showTutorial && (
-        <TutorialMode
+        <TutorialOverlay
           onClose={() => setShowTutorial(false)}
-          onSelectScenario={() => setShowTutorial(false)}
         />
       )}
     </>

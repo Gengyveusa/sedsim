@@ -15,6 +15,9 @@ export interface Scenario {
   triggerConditions: TriggerCondition[];
   learningObjectives: string[];
   timeLimit?: number; // seconds
+  // AI-generated teaching content
+  teachingPoints?: string[];
+  clinicalReasoning?: string;
 }
 
 export interface Complication {
@@ -161,6 +164,10 @@ export const generateScenario = (
     ...complications.map(c => `Manage ${c.type.replace('_', ' ')} appropriately`),
   ];
 
+  // Generate contextual teaching points based on patient and complications
+  const teachingPoints = generateTeachingPoints(patient, complications, difficulty);
+  const clinicalReasoning = generateClinicalReasoning(patient, procedure, difficulty);
+
   return {
     id: `scenario_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name: `${procedure} - ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`,
@@ -178,6 +185,8 @@ export const generateScenario = (
     })),
     learningObjectives: objectives,
     timeLimit: difficulty === 'easy' ? 300 : difficulty === 'moderate' ? 600 : 900,
+    teachingPoints,
+    clinicalReasoning,
   };
 };
 
@@ -227,6 +236,82 @@ const generatePatientForDifficulty = (difficulty: Scenario['difficulty']): Parti
         drugSensitivity: 1.4 + Math.random() * 0.4,
       };
   }
+};
+
+// Generate patient-specific teaching points based on demographics and complications
+const generateTeachingPoints = (
+  patient: Partial<Patient>,
+  complications: Complication[],
+  difficulty: Scenario['difficulty']
+): string[] => {
+  const points: string[] = [];
+
+  if (patient.age && patient.age > 65) {
+    points.push(`Elderly patient (${patient.age}yo): reduce propofol dose by 30-50%. Schnider model predicts lower V1 and slower clearance in older patients.`);
+  }
+  if (patient.osa) {
+    points.push('OSA: elevated sensitivity to opioids and hypnotics. Expect faster SpO2 desaturation and increased airway obstruction risk.');
+  }
+  if (patient.hepaticImpairment) {
+    points.push('Hepatic impairment: reduced propofol and midazolam clearance. Expect prolonged effect. Reduce infusion rates accordingly.');
+  }
+  if (patient.drugSensitivity && patient.drugSensitivity > 1.2) {
+    points.push(`High drug sensitivity (${patient.drugSensitivity.toFixed(1)}x): EC50 effectively reduced. Start with 60% of standard doses.`);
+  }
+  if (patient.mallampati && patient.mallampati >= 3) {
+    points.push(`Mallampati ${patient.mallampati}: difficult airway predicted. Prepare oral/nasal airway and bag-mask ventilation before starting sedation.`);
+  }
+
+  // Complication-specific points
+  complications.forEach(c => {
+    if (c.type === 'hypotension') {
+      points.push('Propofol causes vasodilation and reduced SVR. Anticipate BP drop 60-90s after bolus. Have fluid bolus ready.');
+    }
+    if (c.type === 'laryngospasm') {
+      points.push('Laryngospasm: partial (stridor) → jaw thrust + CPAP. Complete (silent) → deepen with propofol or succinylcholine 0.5mg/kg IV.');
+    }
+    if (c.type === 'apnea') {
+      points.push('Drug-induced apnea: stop infusion, apply bag-mask, consider naloxone for opioid-related apnea. Keep Ce in mind — effect outlasts plasma.');
+    }
+  });
+
+  if (difficulty === 'expert') {
+    points.push('Expert level: use Bouillon interaction surface model to account for opioid-hypnotic synergy. Fentanyl shifts propofol EC50 leftward by up to 50%.');
+  }
+
+  return points;
+};
+
+// Generate narrative clinical reasoning for the scenario
+const generateClinicalReasoning = (
+  patient: Partial<Patient>,
+  procedure: string,
+  difficulty: Scenario['difficulty']
+): string => {
+  const age = patient.age ?? 50;
+  const weight = patient.weight ?? 75;
+  const comorbidities: string[] = [];
+  if (patient.osa) comorbidities.push('OSA');
+  if (patient.copd) comorbidities.push('COPD');
+  if (patient.hepaticImpairment) comorbidities.push('hepatic impairment');
+
+  let reasoning = `This ${age}-year-old, ${weight}kg patient requires procedural sedation for ${procedure}.`;
+
+  if (comorbidities.length) {
+    reasoning += ` Comorbidities (${comorbidities.join(', ')}) increase pharmacodynamic sensitivity and airway risk.`;
+  }
+
+  if (age > 65) {
+    reasoning += ' Apply Schnider model adjustments: reduced V1, higher Ce at equivalent doses. Target MOASS 2-3 with careful titration.';
+  } else {
+    reasoning += ' Standard Marsh model parameters apply. Titrate to MOASS 2-3 for optimal procedural conditions.';
+  }
+
+  if (difficulty === 'hard' || difficulty === 'expert') {
+    reasoning += ' Multiple complications may occur sequentially — prioritise airway and haemodynamic stability. Consider pre-emptive interventions based on risk profile.';
+  }
+
+  return reasoning;
 };
 
 // Multi-Agent message generation based on simulation state
