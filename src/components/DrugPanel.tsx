@@ -38,7 +38,7 @@ function CompactDrugCard({ drug }: { drug: DrugParams }) {
         )}
         {infusion?.isRunning && (
           <span className="text-xs ml-1 animate-pulse" style={{ color: '#22c55e' }}>
-            \u25CF {infusion.rate}{drug.unit}/min
+            {'\u25CF'} {infusion.rate}{drug.unit}/min
           </span>
         )}
         <div className="flex-1" />

@@ -274,7 +274,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
 
         {/* SpO2 Numeric */}
         <div style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
-          <div style={{ fontSize: 10, color: getSpO2Color(spo2Val), fontWeight: 700, opacity: 0.8 }}>SpO\u2082 <span style={{ float: 'right', fontWeight: 400 }}>%</span></div>
+          <div style={{ fontSize: 10, color: getSpO2Color(spo2Val), fontWeight: 700, opacity: 0.8 }}>{'SpO\u2082'} <span style={{ float: 'right', fontWeight: 400 }}>%</span></div>
           <div style={{ fontSize: 32, fontWeight: 700, color: getSpO2Color(spo2Val), fontFamily: 'monospace', lineHeight: 1, opacity: isAlarmActive && alarmFlash && spo2Val < 90 ? 0.3 : 1 }}>
             {spo2Val}
           </div>
@@ -313,7 +313,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
           className="flex items-center gap-1 px-2 py-0.5 hover:opacity-80"
           style={{ color: COLORS.capno, fontSize: '10px', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          {showCapno ? '\u25BC' : '\u25B6'} CO\u2082
+          {showCapno ? '\u25BC' : '\u25B6'} {'CO\u2082'}
         </button>
         {showCapno && (
           <div className="flex">
@@ -327,7 +327,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
               </div>
             </div>
             <div style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
-              <div style={{ fontSize: 10, color: getEtCO2Color(etco2Val), fontWeight: 700, opacity: 0.8 }}>EtCO\u2082</div>
+              <div style={{ fontSize: 10, color: getEtCO2Color(etco2Val), fontWeight: 700, opacity: 0.8 }}>{'EtCO\u2082'}</div>
               <div style={{ fontSize: 28, fontWeight: 700, color: getEtCO2Color(etco2Val), fontFamily: 'monospace', lineHeight: 1 }}>
                 {etco2Val}
               </div>

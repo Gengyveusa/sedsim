@@ -4,6 +4,8 @@ import { DRUG_DATABASE } from '../engine/drugs';
 import { createInitialPKState, stepPK } from '../engine/pkModel';
 import { combinedEffect, effectToMOASS } from '../engine/pdModel';
 import { calculateVitals, checkAlarms, BASELINE_VITALS, PATIENT_ARCHETYPES } from '../engine/physiology';
+import { generateEEG, EEGState } from '../engine/eegModel';
+import { DigitalTwin, createDigitalTwin, updateTwin } from '../engine/digitalTwin';
 
 interface SimState {
   // Time
@@ -38,6 +40,12 @@ interface SimState {
 
   // Alarms
   activeAlarms: { type: string; message: string; severity: 'warning' | 'danger' }[];
+
+  // EEG state (updated every tick)
+  eegState: EEGState | null;
+
+  // Digital Twin (risk predictions)
+  digitalTwin: DigitalTwin | null;
 
   // Actions
   tick: () => void;
@@ -93,6 +101,9 @@ const useSimStore = create<SimState>((set, get) => ({
   maxTrendPoints: 600,
   eventLog: [],
   activeAlarms: [],
+
+  eegState: null,
+  digitalTwin: createDigitalTwin(PATIENT_ARCHETYPES.healthy_adult),
 
   // Tick function - runs every simulation second
   tick: () => {
@@ -165,6 +176,23 @@ const useSimStore = create<SimState>((set, get) => ({
       }
     });
 
+    // Generate EEG state from effect-site concentrations
+    const propCe = newPkStates['propofol']?.ce || 0;
+    const dexCe = newPkStates['dexmedetomidine']?.ce || 0;
+    const ketCe = newPkStates['ketamine']?.ce || 0;
+    const midazCe = newPkStates['midazolam']?.ce || 0;
+    const fentCe = newPkStates['fentanyl']?.ce || 0;
+    const newEegState = generateEEG(propCe, dexCe, ketCe, midazCe, fentCe, patient.age, newTime, state.eegState ?? undefined);
+
+    // Update digital twin with current PK states
+    const newDigitalTwin = updateTwin(
+      state.digitalTwin || createDigitalTwin(patient),
+      newPkStates,
+      newVitals.hr,
+      newVitals.spo2,
+      dt
+    );
+
     set({
       elapsedSeconds: newTime,
       pkStates: newPkStates,
@@ -174,6 +202,8 @@ const useSimStore = create<SimState>((set, get) => ({
       trendData,
       eventLog: [...state.eventLog, ...newLogs],
       activeAlarms,
+      eegState: newEegState,
+      digitalTwin: newDigitalTwin,
     });
   },
 
@@ -287,6 +317,7 @@ const useSimStore = create<SimState>((set, get) => ({
     set(state => ({
       patient,
       archetypeKey,
+      digitalTwin: createDigitalTwin(patient),
       eventLog: [...state.eventLog, logEntry],
     }));
   },
@@ -344,6 +375,7 @@ const useSimStore = create<SimState>((set, get) => ({
   },
 
   reset: () => {
+    const patient = get().patient;
     set({
       elapsedSeconds: 0,
       isRunning: false,
@@ -364,6 +396,8 @@ const useSimStore = create<SimState>((set, get) => ({
       trendData: [],
       eventLog: [],
       activeAlarms: [],
+      eegState: null,
+      digitalTwin: createDigitalTwin(patient),
     });
   },
 }));

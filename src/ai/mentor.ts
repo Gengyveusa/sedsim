@@ -220,3 +220,81 @@ export const generateDebrief = (
 };
 
 export default { generateMentorResponse, generateDebrief, getSuggestedQuestions };
+
+// Auto-generate a contextual observation based on current simulation state.
+// Called periodically (e.g. every 30 sim-seconds) to produce proactive mentor notes.
+export const autoObserve = (context: {
+  vitals: Vitals;
+  moass: MOASSLevel;
+  eeg?: EEGState;
+  pkStates: Record<string, { ce: number }>;
+  elapsedSeconds: number;
+}): MentorMessage | null => {
+  const { vitals, moass, eeg, pkStates, elapsedSeconds } = context;
+  const propCe = pkStates['propofol']?.ce || 0;
+  const fentCe = pkStates['fentanyl']?.ce || 0;
+  const dexCe = pkStates['dexmedetomidine']?.ce || 0;
+
+  const observations: string[] = [];
+
+  // EEG-based observations
+  if (eeg) {
+    if (eeg.bisIndex <= 20) {
+      observations.push(`\u26A0 BIS ${eeg.bisIndex} – burst suppression detected. Sedation is excessively deep. Consider reducing hypnotic dose.`);
+    } else if (eeg.bisIndex <= 40) {
+      observations.push(`BIS ${eeg.bisIndex} (${eeg.sedationState}). Deep sedation. Monitor for hemodynamic depression.`);
+    } else if (eeg.bisIndex <= 60) {
+      observations.push(`BIS ${eeg.bisIndex} – moderate sedation. Appropriate range for procedural sedation (target 40-60).`);
+    } else if (eeg.bisIndex > 75 && moass >= 3) {
+      observations.push(`BIS ${eeg.bisIndex} – patient may be under-sedated (MOASS ${moass}). Consider supplemental dose if clinically indicated.`);
+    }
+  }
+
+  // Vital sign observations
+  if (vitals.spo2 < 90) {
+    observations.push(`\u26A0 SpO\u2082 critically low at ${vitals.spo2}%. Increase FiO2, apply jaw thrust, reduce respiratory-depressant infusion.`);
+  } else if (vitals.spo2 < 94) {
+    observations.push(`SpO\u2082 trending down to ${vitals.spo2}%. Increase supplemental oxygen. Monitor airway patency.`);
+  }
+
+  if (vitals.sbp < 80) {
+    observations.push(`\u26A0 Hypotension: BP ${vitals.sbp}/${vitals.dbp} mmHg. Fluid bolus, reduce propofol rate, consider vasopressor.`);
+  } else if (vitals.sbp < 90 && propCe > 2) {
+    observations.push(`BP ${vitals.sbp}/${vitals.dbp} – borderline hypotension with propofol Ce ${propCe.toFixed(1)} mcg/mL. Consider reducing infusion rate.`);
+  }
+
+  if (vitals.hr < 45) {
+    observations.push(`\u26A0 Bradycardia HR ${vitals.hr} bpm. ${dexCe > 0.3 ? 'Likely dexmedetomidine-related. ' : ''}Consider atropine 0.5 mg IV if symptomatic.`);
+  }
+
+  if (vitals.rr <= 6 || vitals.rr === 0) {
+    observations.push(`\u26A0 Respiratory rate ${vitals.rr}/min. ${fentCe > 0.003 ? 'Opioid-related respiratory depression – consider naloxone 0.04 mg increments. ' : 'Consider airway maneuvers and BVM readiness.'}`);
+  }
+
+  // Drug-specific observations
+  if (propCe > 4) {
+    observations.push(`Propofol Ce ${propCe.toFixed(1)} mcg/mL – approaching burst-suppression threshold (>4 mcg/mL). Assess for over-sedation.`);
+  }
+
+  if (fentCe > 0.003 && vitals.rr < 10) {
+    observations.push(`Fentanyl Ce ${(fentCe * 1000).toFixed(1)} ng/mL with RR ${vitals.rr}/min. Opioid synergy with hypnotic – monitor closely.`);
+  }
+
+  // Periodic status messages (every 60 seconds)
+  if (observations.length === 0 && elapsedSeconds > 0 && elapsedSeconds % 60 < 2) {
+    if (moass >= 2 && moass <= 3) {
+      observations.push(`Status check at T+${Math.floor(elapsedSeconds / 60)}min: MOASS ${moass}/5 – target sedation depth maintained. Vitals stable.`);
+    } else if (moass === 1) {
+      observations.push(`Status at T+${Math.floor(elapsedSeconds / 60)}min: Deep sedation (MOASS 1). ${eeg ? `BIS ${eeg.bisIndex}. ` : ''}Monitor airway and hemodynamics.`);
+    }
+  }
+
+  if (observations.length === 0) return null;
+
+  return {
+    role: 'mentor',
+    content: observations[0],
+    timestamp: Date.now(),
+    confidence: 0.9,
+  };
+};
