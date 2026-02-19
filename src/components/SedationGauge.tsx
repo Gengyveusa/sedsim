@@ -41,6 +41,7 @@ const PETAL_COLORS: Record<string, string> = {
   etomidate: '#6366f1',
   remifentanil: '#f97316',
 };
+
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
@@ -75,6 +76,7 @@ function petalPath(cx: number, cy: number, angleDeg: number, innerR: number, out
   const cpR = { x: right.x + cpDist * Math.cos(rad + spreadRad * 0.3), y: right.y + cpDist * Math.sin(rad + spreadRad * 0.3) };
   return `M ${cx} ${cy} Q ${left.x} ${left.y} ${cpL.x} ${cpL.y} L ${tip.x} ${tip.y} L ${cpR.x} ${cpR.y} Q ${right.x} ${right.y} ${cx} ${cy} Z`;
 }
+
 export default function SedationGauge() {
   const { combinedEff, moass, pkStates, vitals, patient } = useSimStore();
   const [mode, setMode] = useState<GaugeMode>('petals');
@@ -85,6 +87,9 @@ export default function SedationGauge() {
   const cx = size / 2;
   const cy = size / 2;
   const outerR = 278;
+
+  // Avatar mode uses larger size
+  const avatarSize = 700;
 
   // Get active sedation drugs
   const localAnesthetics = ['lidocaine_epi', 'articaine_epi', 'bupivacaine'];
@@ -131,7 +136,6 @@ export default function SedationGauge() {
     combinedEff,
     Math.min(1, combinedEff * 0.5 + activeSynergies.length * 0.2 + (isCrisis ? 0.5 : 0)),
   ];
-
   const axisCount = radarAxes.length;
   const radarR = 195;
   const radarPoints = radarValues.map((v, i) => {
@@ -154,308 +158,279 @@ export default function SedationGauge() {
   ];
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center gap-4">
       {/* Mode selector - aviation style tab bar */}
-      <div className="flex gap-1 mb-2">
+      <div className="flex gap-2">
         {(['avatar', 'risk', 'petals'] as GaugeMode[]).map(m => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`px-3 py-1.5 text-sm rounded font-bold tracking-wide transition-all ${
-              mode === m
-                ? m === 'avatar' ? 'bg-cyan-500 text-black'
-                : m === 'petals' ? 'bg-emerald-500 text-black'
-                : 'bg-orange-500 text-black'
-                : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-            }`}
-          >
+          <button key={m} onClick={() => setMode(m)} className={`px-3 py-1.5 text-sm rounded font-bold tracking-wide transition-all ${
+            mode === m
+              ? m === 'avatar' ? 'bg-cyan-500 text-black'
+              : m === 'petals' ? 'bg-emerald-500 text-black'
+              : 'bg-orange-500 text-black'
+              : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+          }`}>
             {MODE_LABELS[m]}
           </button>
         ))}
       </div>
 
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {/* SVG Defs */}
-        <defs>
-          <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.15)" />
-            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-          </radialGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="softGlow">
-            <feGaussianBlur stdDeviation="8" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="strongGlow">
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feColorMatrix in="blur" type="saturate" values="2" result="saturated" />
-            <feMerge><feMergeNode in="saturated" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <clipPath id="circleClip">
-            <circle cx={cx} cy={cy} r={outerR} />
-          </clipPath>
-        </defs>
-
-        {/* Outer ring always visible */}
-        <circle cx={cx} cy={cy} r={outerR} fill="none" stroke="#334155" strokeWidth="4" />
-
-        {/* Drug effect arc */}
-        {combinedEff > 0.01 && (
-          <path d={describeArc(cx, cy, outerR, 0, combinedEff * 360)} fill="none" stroke={gaugeColor} strokeWidth="8" strokeLinecap="round" opacity="0.8" />
-        )}
-
-        {/* ===== MODE C: AVATAR ===== */}
+      {/* ===== MODE C: AVATAR (standalone rendering) ===== */}
       {mode === 'avatar' && (
-        <foreignObject x="0" y="0" width={size} height={size}>
-          <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} size={size} />
-        </foreignObject>
+        <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} size={avatarSize} />
       )}
 
-        {/* ===== MODE D: RISK RADAR ===== */}
-        {mode === 'risk' && (
-          <g>
-            {[60, 120, 180, 240].map(r => <circle key={r} cx={cx} cy={cy} r={r} fill="none" stroke="#1e293b" strokeWidth="1" />)}
-            {radarAxes.map((label, i) => {
-              const angle = (i * 360) / axisCount;
-              const p = polarToCartesian(cx, cy, 240, angle);
-              const lp = polarToCartesian(cx, cy, 260, angle);
-              return (
-                <g key={label}>
-                  <line x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#334155" strokeWidth="1" />
-                  <text x={lp.x} y={lp.y} fill={radarValues[i] > 0.75 ? '#f97316' : '#94a3b8'} fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" letterSpacing="0.05em">{label}</text>
-                </g>
-              );
-            })}
-            <polygon points={radarPoints} fill={radarFill} stroke={gaugeColor} strokeWidth="3" />
-            {radarValues.map((v, i) => {
-              const p = polarToCartesian(cx, cy, v * radarR + 30, (i * 360 / axisCount));
-              return <circle key={i} cx={p.x} cy={p.y} r="6" fill={radarValues[i] > 0.75 ? '#f97316' : gaugeColor} />;
-            })}
-          </g>
-        )}
+      {/* ===== MODES D & E: Radar and Petals use the gauge SVG ===== */}
+      {mode !== 'avatar' && (
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-2xl">
+          {/* SVG Defs */}
+          <defs>
+            <style>{`
+              @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+              @keyframes heartbeat { 0%,100% { r: 8; } 50% { r: 11; } }
+              @keyframes pulse-ring { 0% { opacity: 0.6; r: 20; } 100% { opacity: 0; r: 45; } }
+            `}</style>
+          </defs>
 
-        {/* ===== MODE E: PETALS (Aviation Glass Cockpit Style) ===== */}
-        {mode === 'petals' && (
-          <g>
-            {/* Horizon line - aviation style */}
-            <line x1={cx - outerR} y1={cy} x2={cx + outerR} y2={cy} stroke="rgba(59,130,246,0.15)" strokeWidth="1" />
-            <rect x={cx - outerR} y={cy} width={outerR * 2} height={outerR} fill="rgba(120,80,40,0.04)" clipPath="url(#circleClip)" />
-            <rect x={cx - outerR} y={cy - outerR} width={outerR * 2} height={outerR} fill="rgba(59,130,246,0.04)" clipPath="url(#circleClip)" />
+          {/* Outer ring always visible */}
+          <circle cx={cx} cy={cy} r={outerR} fill="none" stroke={gaugeColor} strokeWidth={4} opacity={0.6} />
 
-            {/* Safety halo ring - color-coded segments */}
-            {safetySegments.map((seg) => {
-              const startA = seg.angle - 30;
-              const endA = seg.angle + 30;
-              return (
-                <g key={seg.label}>
-                  <path d={describeArc(cx, cy, outerR - 3, startA, endA)} fill="none" stroke={seg.color} strokeWidth="6" opacity="0.7" />
-                  {(() => { const lp = polarToCartesian(cx, cy, outerR + 18, seg.angle); return (
-                    <text x={lp.x} y={lp.y} fill={seg.color} fontSize="11" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" opacity="0.9" letterSpacing="0.05em">{seg.label}</text>
-                  ); })()}
-                </g>
-              );
-            })}
+          {/* Drug effect arc */}
+          {combinedEff > 0.01 && (
+            <path d={describeArc(cx, cy, outerR + 8, 0, combinedEff * 360)}
+              fill="none" stroke={gaugeColor} strokeWidth={6} strokeLinecap="round" opacity={0.8} />
+          )}
 
-            {/* Inner dark circle background for center */}
-            <circle cx={cx} cy={cy} r={98} fill="rgba(0,0,0,0.75)" />
-            <circle cx={cx} cy={cy} r={98} fill="url(#centerGlow)" />
-
-            {/* Drug Petals - 4 quadrant leaf shapes, larger and more readable */}
-            {petalDrugs.map((drugName, i) => {
-              const pkState = pkStates[drugName];
-              const ce = pkState ? pkState.ce : 0;
-              const drug = DRUG_DATABASE[drugName];
-              const maxCe = drug ? drug.EC50 * 3 : 5;
-              const fillAmount = Math.min(1, ce / maxCe);
-              const angle = PETAL_ANGLES[i];
-              const color = PETAL_COLORS[drugName] || '#64748b';
-              const isActive = ce > 0.001;
-              const innerR = 82;
-              const outerPetalR = innerR + 90 * (isActive ? Math.max(0.3, fillAmount) : 0.15);
-              const lp = polarToCartesian(cx, cy, innerR + 52, angle);
-              const ceLp = polarToCartesian(cx, cy, innerR + 30, angle);
-              return (
-                <g key={drugName} opacity={isActive ? 1 : 0.3}>
-                  <path
-                    d={petalPath(cx, cy, angle, innerR, outerPetalR, 28)}
-                    fill={color}
-                    opacity={isActive ? 0.4 : 0.1}
-                    stroke={color}
-                    strokeWidth={isActive ? 2 : 0.5}
-                    filter={isActive ? 'url(#softGlow)' : undefined}
-                  />
-                  {/* Drug name - larger, bolder for aviation readability */}
-                  <text x={lp.x} y={lp.y} fill={color} fontSize="15" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" letterSpacing="0.05em" style={{ textShadow: `0 0 8px ${color}` }}>
-                    {drug ? drug.name : drugName}
-                  </text>
-                  {/* Ce value - larger */}
-                  {isActive && (
-                    <text x={ceLp.x} y={ceLp.y + 16} fill="#e2e8f0" fontSize="12" fontWeight="600" textAnchor="middle" dominantBaseline="middle">
-                      Ce {ce.toFixed(3)}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-
-            {/* Avatar silhouette in center with breathing */}
-            <g style={{ animation: vitals.rr > 0 ? `breathe ${breatheRate}s ease-in-out infinite` : 'none', transformOrigin: `${cx}px ${cy}px` }}>
-              <ellipse cx={cx} cy={cy - 45} rx="15" ry="18" fill="rgba(148,163,184,0.3)" stroke="rgba(148,163,184,0.2)" strokeWidth="0.5" />
-              <rect x={cx - 5} y={cy - 29} width="10" height="12" fill="rgba(148,163,184,0.2)" rx="3" />
-              <ellipse cx={cx} cy={cy + 3} rx="27" ry="30" fill="rgba(148,163,184,0.15)" stroke="rgba(148,163,184,0.15)" strokeWidth="0.5" />
-              <circle cx={cx - 5} cy={cy - 3} r="7" fill="rgba(239,68,68,0.15)" style={{ animation: vitals.hr > 0 ? `heartbeat ${60/vitals.hr}s infinite` : 'none' }} />
-              <polyline points={`${cx-22},${cy-3} ${cx-12},${cy-3} ${cx-8},${cy-15} ${cx-3},${cy+9} ${cx+3},${cy-3} ${cx+22},${cy-3}`} fill="none" stroke="rgba(239,68,68,0.4)" strokeWidth="1.5" />
+          {/* ===== MODE D: RISK RADAR ===== */}
+          {mode === 'risk' && (
+            <g>
+              {[60, 120, 180, 240].map(r => <circle key={r} cx={cx} cy={cy} r={r} fill="none" stroke="#334155" strokeWidth={0.5} />)}
+              <polygon points={radarPoints} fill={radarFill} stroke={gaugeColor} strokeWidth={2} />
+              {radarAxes.map((label, i) => {
+                const angle = (i * 360) / axisCount;
+                const p = polarToCartesian(cx, cy, 240, angle);
+                const lp = polarToCartesian(cx, cy, 260, angle);
+                return (
+                  <g key={label}>
+                    <line x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#475569" strokeWidth={0.5} />
+                    <text x={lp.x} y={lp.y} fill={radarValues[i] > 0.75 ? '#f97316' : '#94a3b8'} fontSize="14" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" letterSpacing="0.05em">{label}</text>
+                  </g>
+                );
+              })}
+              {radarValues.map((v, i) => {
+                const p = polarToCartesian(cx, cy, v * radarR + 30, (i * 360 / axisCount));
+                return <circle key={i} cx={p.x} cy={p.y} r={5} fill={radarValues[i] > 0.75 ? '#f97316' : gaugeColor} />;
+              })}
             </g>
+          )}
 
-            {/* === VITAL READOUTS - Aviation Glass Cockpit Style === */}
-            {/* HR at 12 o'clock */}
-            {(() => { const p = polarToCartesian(cx, cy, outerR - 38, 0); return (
-              <g>
-                <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="12" fontWeight="bold" textAnchor="middle" letterSpacing="0.1em">HR</text>
-                <text x={p.x} y={p.y + 8} fill="#22c55e" fontSize="24" fontWeight="bold" textAnchor="middle" filter="url(#glow)">{vitals.hr.toFixed(0)}</text>
-                <text x={p.x} y={p.y + 22} fill="#64748b" fontSize="10" textAnchor="middle">bpm</text>
+          {/* ===== MODE E: PETALS (Aviation Glass Cockpit Style) ===== */}
+          {mode === 'petals' && (
+            <g>
+              {/* Horizon line - aviation style */}
+              <line x1={cx - outerR} y1={cy} x2={cx + outerR} y2={cy} stroke="#334155" strokeWidth={0.5} />
+
+              {/* Safety halo ring - color-coded segments */}
+              {safetySegments.map((seg) => {
+                const startA = seg.angle - 30;
+                const endA = seg.angle + 30;
+                return (
+                  <g key={seg.label}>
+                    <path d={describeArc(cx, cy, outerR + 4, startA, endA)} fill="none" stroke={seg.color} strokeWidth={8} strokeLinecap="round" opacity={0.7} />
+                    {(() => {
+                      const lp = polarToCartesian(cx, cy, outerR + 18, seg.angle);
+                      return (
+                        <text x={lp.x} y={lp.y} fill={seg.color} fontSize="8" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{seg.label}</text>
+                      );
+                    })()}
+                  </g>
+                );
+              })}
+
+              {/* Inner dark circle background for center */}
+              <circle cx={cx} cy={cy} r={78} fill="#0f172a" opacity={0.8} />
+
+              {/* Drug Petals - 4 quadrant leaf shapes */}
+              {petalDrugs.map((drugName, i) => {
+                const pkState = pkStates[drugName];
+                const ce = pkState ? pkState.ce : 0;
+                const drug = DRUG_DATABASE[drugName];
+                const maxCe = drug ? drug.EC50 * 3 : 5;
+                const fillAmount = Math.min(1, ce / maxCe);
+                const angle = PETAL_ANGLES[i];
+                const color = PETAL_COLORS[drugName] || '#64748b';
+                const isActive = ce > 0.001;
+                const innerR = 82;
+                const outerPetalR = innerR + 90 * (isActive ? Math.max(0.3, fillAmount) : 0.15);
+                const lp = polarToCartesian(cx, cy, innerR + 52, angle);
+                const ceLp = polarToCartesian(cx, cy, innerR + 30, angle);
+                return (
+                  <g key={drugName}>
+                    <path d={petalPath(cx, cy, angle, innerR, outerPetalR, 28)} fill={color} opacity={isActive ? 0.6 : 0.15} stroke={color} strokeWidth={isActive ? 1.5 : 0.5} />
+                    {/* Drug name */}
+                    <text x={lp.x} y={lp.y} fill={isActive ? color : '#64748b'} fontSize="11" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{drug ? drug.name : drugName}</text>
+                    {/* Ce value */}
+                    {isActive && (
+                      <text x={ceLp.x} y={ceLp.y} fill={color} fontSize="9" textAnchor="middle" dominantBaseline="middle">Ce {ce.toFixed(3)}</text>
+                    )}
+                  </g>
+                );
+              })}
+
+              {/* Avatar silhouette in center with breathing */}
+              <g style={{ animation: breatheRate > 0 ? `breathe ${breatheRate}s ease-in-out infinite` : 'none', transformOrigin: `${cx}px ${cy}px` }}>
+                <ellipse cx={cx} cy={cy - 18} rx={18} ry={22} fill="#1e293b" stroke="#475569" strokeWidth={1.5} />
+                <ellipse cx={cx} cy={cy + 25} rx={28} ry={35} fill="#1e293b" stroke="#475569" strokeWidth={1.5} />
+                <circle cx={cx} cy={cy + 5} r={8} fill="#ef4444" opacity={0.7} style={{ animation: vitals.hr > 0 ? `heartbeat ${60/vitals.hr}s infinite` : 'none' }} />
               </g>
-            ); })()}
 
-            {/* BP at ~2 o'clock */}
-            {(() => { const p = polarToCartesian(cx, cy, outerR - 38, 60); return (
-              <g>
-                <text x={p.x} y={p.y - 16} fill="#94a3b8" fontSize="10" fontWeight="bold" textAnchor="middle" letterSpacing="0.1em">BP</text>
-                <text x={p.x} y={p.y + 2} fill="#ef4444" fontSize="19" fontWeight="bold" textAnchor="middle" filter="url(#glow)">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</text>
-                <text x={p.x} y={p.y + 18} fill="#f97316" fontSize="12" fontWeight="600" textAnchor="middle">MAP {vitals.map.toFixed(0)}</text>
-              </g>
-            ); })()}
+              {/* === VITAL READOUTS - Aviation Glass Cockpit Style === */}
+              {/* HR at 12 o'clock */}
+              {(() => {
+                const p = polarToCartesian(cx, cy, outerR - 38, 0);
+                return (
+                  <g>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">HR</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.hr < 50 || vitals.hr > 120 ? '#ef4444' : '#22c55e'} fontSize="14" fontWeight="bold" textAnchor="middle">{vitals.hr.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="7" textAnchor="middle">bpm</text>
+                  </g>
+                );
+              })()}
 
-            {/* SpO2 at ~4 o'clock */}
-            {(() => { const p = polarToCartesian(cx, cy, outerR - 38, 120); return (
-              <g>
-                <text x={p.x} y={p.y - 14} fill="#94a3b8" fontSize="10" fontWeight="bold" textAnchor="middle" letterSpacing="0.1em">SpO2</text>
-                <text x={p.x} y={p.y + 8} fill="#3b82f6" fontSize="24" fontWeight="bold" textAnchor="middle" filter="url(#glow)">{vitals.spo2.toFixed(0)}%</text>
-                <polyline points={`${p.x-18},${p.y+22} ${p.x-12},${p.y+18} ${p.x-6},${p.y+12} ${p.x},${p.y+22} ${p.x+6},${p.y+18} ${p.x+12},${p.y+12} ${p.x+18},${p.y+22}`} fill="none" stroke="#3b82f6" strokeWidth="1.5" opacity="0.6" />
-              </g>
-            ); })()}
+              {/* BP at ~2 o'clock */}
+              {(() => {
+                const p = polarToCartesian(cx, cy, outerR - 38, 60);
+                return (
+                  <g>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">BP</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.map < 60 ? '#ef4444' : '#22c55e'} fontSize="12" fontWeight="bold" textAnchor="middle">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 18} fill="#64748b" fontSize="7" textAnchor="middle">MAP {vitals.map.toFixed(0)}</text>
+                  </g>
+                );
+              })()}
 
-            {/* EtCO2 at ~6 o'clock */}
-            {(() => { const p = polarToCartesian(cx, cy, outerR - 38, 180); return (
-              <g>
-                <text x={p.x} y={p.y - 14} fill="#94a3b8" fontSize="10" fontWeight="bold" textAnchor="middle" letterSpacing="0.1em">EtCO2</text>
-                <text x={p.x} y={p.y + 8} fill="#eab308" fontSize="22" fontWeight="bold" textAnchor="middle" filter="url(#glow)">{vitals.etco2.toFixed(0)}</text>
-                <text x={p.x} y={p.y + 22} fill="#64748b" fontSize="10" textAnchor="middle">mmHg</text>
-              </g>
-            ); })()}
+              {/* SpO2 at ~4 o'clock */}
+              {(() => {
+                const p = polarToCartesian(cx, cy, outerR - 38, 120);
+                return (
+                  <g>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">SpO2</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.spo2 < 90 ? '#ef4444' : vitals.spo2 < 94 ? '#f59e0b' : '#22c55e'} fontSize="14" fontWeight="bold" textAnchor="middle">{vitals.spo2.toFixed(0)}%</text>
+                  </g>
+                );
+              })()}
 
-            {/* RR at ~8 o'clock */}
-            {(() => { const p = polarToCartesian(cx, cy, outerR - 38, 240); return (
-              <g>
-                <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="12" fontWeight="bold" textAnchor="middle" letterSpacing="0.1em">RR</text>
-                <text x={p.x} y={p.y + 8} fill="#22c55e" fontSize="22" fontWeight="bold" textAnchor="middle" filter="url(#glow)">{vitals.rr.toFixed(0)}</text>
-              </g>
-            ); })()}
+              {/* EtCO2 at ~6 o'clock */}
+              {(() => {
+                const p = polarToCartesian(cx, cy, outerR - 38, 180);
+                return (
+                  <g>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">EtCO2</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.etco2 > 50 ? '#ef4444' : '#22c55e'} fontSize="14" fontWeight="bold" textAnchor="middle">{vitals.etco2.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="7" textAnchor="middle">mmHg</text>
+                  </g>
+                );
+              })()}
 
-            {/* Forward projection at ~10 o'clock */}
-            {(() => { const p = polarToCartesian(cx, cy, outerR - 45, 300); return (
-              <g opacity="0.5">
-                <text x={p.x} y={p.y - 14} fill="#94a3b8" fontSize="10" fontWeight="bold" textAnchor="middle" letterSpacing="0.05em">2-min Ce</text>
-                <polygon points={`${p.x-22},${p.y+3} ${p.x-8},${p.y-5} ${p.x-8},${p.y+11}`} fill="#94a3b8" />
-                <polygon points={`${p.x-12},${p.y+3} ${p.x+2},${p.y-5} ${p.x+2},${p.y+11}`} fill="#64748b" />
-              </g>
-            ); })()}
+              {/* RR at ~8 o'clock */}
+              {(() => {
+                const p = polarToCartesian(cx, cy, outerR - 38, 240);
+                return (
+                  <g>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="8" fontWeight="bold" textAnchor="middle">RR</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.rr < 8 ? '#ef4444' : '#22c55e'} fontSize="14" fontWeight="bold" textAnchor="middle">{vitals.rr.toFixed(0)}</text>
+                  </g>
+                );
+              })()}
 
-            {/* Synergy badge */}
-            {activeSynergies.length > 0 && (
-              <g>
-                <rect x={cx - 82} y={cy + 57} width="164" height="26" rx="13" fill="rgba(234,179,8,0.2)" stroke="#eab308" strokeWidth="1.5" />
-                <text x={cx} y={cy + 73} fill="#eab308" fontSize="11" textAnchor="middle" fontWeight="bold" letterSpacing="0.05em">
+              {/* Forward projection at ~10 o'clock */}
+              {(() => {
+                const p = polarToCartesian(cx, cy, outerR - 45, 300);
+                return (
+                  <text x={p.x} y={p.y} fill="#64748b" fontSize="8" fontWeight="bold" textAnchor="middle">2-min Ce</text>
+                );
+              })()}
+
+              {/* Synergy badge */}
+              {activeSynergies.length > 0 && (
+                <text x={cx} y={cy + 68} fill="#f59e0b" fontSize="8" fontWeight="bold" textAnchor="middle">
                   {activeSynergies.length > 0 ? 'Benzo-Hypnotic Synergy' : ''}
                 </text>
-              </g>
-            )}
+              )}
 
-            {/* Effect % arc */}
-            {combinedEff > 0.01 && (
-              <g>
-                <path d={describeArc(cx, cy, 87, 120, 120 + combinedEff * 120)} fill="none" stroke={gaugeColor} strokeWidth="4" strokeLinecap="round" opacity="0.7" />
-                <text x={cx} y={cy + 82} fill="#94a3b8" fontSize="12" fontWeight="600" textAnchor="middle">
+              {/* Effect % arc */}
+              {combinedEff > 0.01 && (
+                <text x={cx} y={cy - 68} fill={gaugeColor} fontSize="10" fontWeight="bold" textAnchor="middle">
                   Effect: {(combinedEff * 100).toFixed(0)}%
                 </text>
-              </g>
+              )}
+
+              {/* Mini risk spider in corner */}
+              {(() => {
+                const rCx = cx + 180;
+                const rCy = cy + 180;
+                const rR = 42;
+                const riskAxes = ['Air', 'BP', 'O2', 'Sed', 'Rec'];
+                const riskVals = [
+                  isCrisis ? 0.9 : vitals.spo2 < 94 ? 0.6 : 0.2,
+                  vitals.map < 60 || vitals.map > 110 ? 0.8 : 0.3,
+                  vitals.spo2 < 90 ? 0.9 : 0.2,
+                  moass <= 1 ? 0.9 : moass <= 3 ? 0.5 : 0.2,
+                  combinedEff > 0.5 ? 0.6 : 0.2,
+                ];
+                const rPts = riskVals.map((v, idx) => {
+                  const a = (idx * 360) / 5;
+                  const pt = polarToCartesian(rCx, rCy, v * rR, a);
+                  return `${pt.x},${pt.y}`;
+                }).join(' ');
+                return (
+                  <g>
+                    <circle cx={rCx} cy={rCy} r={rR} fill="#0f172a" stroke="#334155" strokeWidth={0.5} opacity={0.8} />
+                    <polygon points={rPts} fill="rgba(239,68,68,0.2)" stroke="#ef4444" strokeWidth={1} />
+                    {riskAxes.map((label, idx) => {
+                      const a = (idx * 360) / 5;
+                      const lpt = polarToCartesian(rCx, rCy, rR + 14, a);
+                      return <text key={label} x={lpt.x} y={lpt.y} fill="#94a3b8" fontSize="7" textAnchor="middle" dominantBaseline="middle">{label}</text>;
+                    })}
+                  </g>
+                );
+              })()}
+            </g>
+          )}
+
+          {/* Center MOASS display - always visible in non-avatar modes */}
+          <g>
+            <text x={cx} y={cy - 6} fill={gaugeColor} fontSize="42" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{moass}</text>
+            <text x={cx} y={cy + 22} fill={gaugeColor} fontSize="11" fontWeight="bold" textAnchor="middle" letterSpacing="0.1em">{MOASS_LABELS[moass]}</text>
+            {isCrisis && (
+              <text x={cx} y={cy + 40} fill="#ef4444" fontSize="12" fontWeight="bold" textAnchor="middle">
+                {vitals.spo2 < 90 ? '\u26A0 DESAT' : vitals.rr < 6 ? '\u26A0 APNEA' : '\u26A0 CRITICAL'}
+              </text>
             )}
-
-            {/* Mini risk spider in corner */}
-            {(() => {
-              const rCx = cx + 180;
-              const rCy = cy + 180;
-              const rR = 42;
-              const riskAxes = ['Air', 'BP', 'O2', 'Sed', 'Rec'];
-              const riskVals = [
-                isCrisis ? 0.9 : vitals.spo2 < 94 ? 0.6 : 0.2,
-                vitals.map < 60 || vitals.map > 110 ? 0.8 : 0.3,
-                vitals.spo2 < 90 ? 0.9 : 0.2,
-                moass <= 1 ? 0.9 : moass <= 3 ? 0.5 : 0.2,
-                combinedEff > 0.5 ? 0.6 : 0.2,
-              ];
-              const rPts = riskVals.map((v, idx) => {
-                const a = (idx * 360) / 5;
-                const pt = polarToCartesian(rCx, rCy, v * rR, a);
-                return `${pt.x},${pt.y}`;
-              }).join(' ');
-              return (
-                <g opacity="0.7">
-                  <circle cx={rCx} cy={rCy} r={rR} fill="none" stroke="#334155" strokeWidth="0.5" />
-                  <circle cx={rCx} cy={rCy} r={rR * 0.5} fill="none" stroke="#1e293b" strokeWidth="0.5" />
-                  <polygon points={rPts} fill="rgba(239,68,68,0.15)" stroke="#ef4444" strokeWidth="1.5" />
-                  {riskAxes.map((label, idx) => {
-                    const a = (idx * 360) / 5;
-                    const lpt = polarToCartesian(rCx, rCy, rR + 14, a);
-                    return <text key={label} x={lpt.x} y={lpt.y} fill="#64748b" fontSize="9" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{label}</text>;
-                  })}
-                </g>
-              );
-            })()}
           </g>
-        )}
-
-                {mode !== 'avatar' && (<>
-        {/* Center MOASS display - always visible, aviation-style large text */}
-        <text x={cx} y={cy - 8} fill="white" fontSize="63" fontWeight="bold" textAnchor="middle" dominantBaseline="middle" filter="url(#glow)" letterSpacing="-0.02em">
-          {moass}
-        </text>
-        <text x={cx} y={cy + 30} fill={gaugeColor} fontSize="18" textAnchor="middle" fontWeight="bold" letterSpacing="0.1em">
-          {MOASS_LABELS[moass]}
-        </text>
-
-        {isCrisis && (
-          <text x={cx} y={cy + 53} fill="#ef4444" fontSize="16" textAnchor="middle" fontWeight="bold" letterSpacing="0.05em" style={{ animation: 'blink 1s infinite' }}>
-            {vitals.spo2 < 90 ? '\u26A0 DESAT' : vitals.rr < 6 ? '\u26A0 APNEA' : '\u26A0 CRITICAL'}
-          </text>
-        )}
-                          </>)}
-      </svg>
+        </svg>
+      )}
 
       {/* Vitals row - larger text */}
-      <div className="flex gap-4 mt-3 text-sm font-semibold">
-        <span>HR <span className="text-green-400 font-bold">{vitals.hr.toFixed(0)}</span></span>
-        <span>SpO2 <span className="text-blue-400 font-bold">{vitals.spo2.toFixed(0)}%</span></span>
-        <span>RR <span className="text-green-400 font-bold">{vitals.rr.toFixed(0)}</span></span>
-        <span>BP <span className="text-red-400 font-bold">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</span></span>
+      <div className="flex gap-4 text-sm font-mono">
+        <span><span className="text-slate-400">HR</span> <span className="text-green-400 font-bold">{vitals.hr.toFixed(0)}</span></span>
+        <span><span className="text-slate-400">SpO2</span> <span className="text-blue-400 font-bold">{vitals.spo2.toFixed(0)}%</span></span>
+        <span><span className="text-slate-400">RR</span> <span className="text-cyan-400 font-bold">{vitals.rr.toFixed(0)}</span></span>
+        <span><span className="text-slate-400">BP</span> <span className="text-yellow-400 font-bold">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</span></span>
       </div>
 
       {activeDrugs.length > 0 && (
-        <div className="flex gap-2 mt-1 flex-wrap justify-center">
+        <div className="flex gap-3 text-xs font-mono">
           {activeDrugs.slice(0, 3).map(d => (
-            <span key={d.key} className="text-sm px-2 font-semibold" style={{ color: d.color }}>
-              {d.name} <span className="opacity-70">Ce {d.ce.toFixed(2)}</span>
+            <span key={d.key} style={{ color: d.color }}>
+              <span className="font-bold">{d.name}</span>
+              <span className="text-slate-500"> Ce {d.ce.toFixed(2)} </span>
             </span>
           ))}
         </div>
       )}
-
       {activeSynergies.length > 0 && (
-        <div className="text-sm text-yellow-400 mt-1 font-bold tracking-wide">
-          {"\u26A1"} Synergy
+        <div className="text-yellow-500 text-xs font-bold">
+          {'\u26A1'} Synergy
         </div>
       )}
     </div>
