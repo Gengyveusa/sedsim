@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import useSimStore from '../store/useSimStore';
-import { DRUG_LIST } from '../engine/drugs';
+  import { DRUG_LIST, LA_DRUG_KEYS } from '../engine/drugs';
 import { DrugParams } from '../types';
 
 // Drug-specific colors for visual identification
@@ -120,7 +120,7 @@ export default function DrugPanel() {
       <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">
         Drugs
       </div>
-      {DRUG_LIST.map(drug => (
+                        {DRUG_LIST.filter(d => !LA_DRUG_KEYS.some(k => d.name.toLowerCase() === k || d.name.toLowerCase().startsWith(k.split('_')[0]))).map(drug => (
         <CompactDrugCard key={drug.name} drug={drug} />
       ))}
     </div>
