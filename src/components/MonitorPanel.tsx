@@ -170,24 +170,19 @@ function drawSweepWaveform(
     drawScaleTicks(ctx, scaleTicks, scaleMin, scaleMax, height, width, marginLeft);
   }
 
-  // Draw waveform trace with erase-ahead gap (no vertical line)
+  // Draw waveform trace continuously across full canvas width
   ctx.strokeStyle = color;
   ctx.lineWidth = 1.8;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.beginPath();
 
-  const gapWidth = Math.max(20, width * 0.04);
-
   for (let x = marginLeft; x < width; x++) {
-    const dist = (sweepX - x + width) % width;
-    if (dist < gapWidth) continue;
-
     const phase = ((x - marginLeft) % cyclePixels) / cyclePixels;
     const val = waveformFn(phase);
     const y = baselineY + val * amplitude;
 
-    if (dist === gapWidth) {
+    if (x === marginLeft) {
       ctx.moveTo(x, y);
     } else {
       ctx.lineTo(x, y);
