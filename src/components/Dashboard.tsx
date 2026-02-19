@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { EEGPanel } from './EEGPanel';
-import { MentorChat } from './MentorChat';
+import EEGPanel from './EEGPanel';
+import MentorChat from './MentorChat';
 import { ScenarioPanel } from './ScenarioPanel';
 
 type AITab = 'eeg' | 'mentor' | 'scenarios';
