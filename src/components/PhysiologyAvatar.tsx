@@ -154,7 +154,7 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
   const offHover = () => setTooltip(null);
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-2xl" style={{ cursor: 'default' }}>
+          <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="drop-shadow-2xl" style={{ cursor: 'default' }}>
       <defs>
         <style>{`
           @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
