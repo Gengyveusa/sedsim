@@ -178,7 +178,7 @@ export default function SedationGauge() {
             {mode === 'avatar' && (
         <div style={{ overflowX: 'auto', overflowY: 'visible', width: '100%' }}>
           <div style={{ minWidth: '800px' }}>
-            <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} size={avatarSize} />
+            <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} rhythm={vitals.rhythm} size={avatarSize} />
           </div>
         </div>
       )}
