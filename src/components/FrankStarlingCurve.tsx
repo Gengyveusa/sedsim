@@ -1,4 +1,4 @@
-import React from 'react';
+// Frank-Starling Curve component
 import { Vitals, Patient, MOASSLevel } from '../types';
 
 interface FrankStarlingProps {
@@ -51,8 +51,8 @@ export default function FrankStarlingCurve({ vitals, patient, moass, combinedEff
   }
 
   // MOASS level effect
-  if (moass === 'deep') { svMax -= 10; k -= 0.02; }
-  else if (moass === 'moderate') { svMax -= 5; k -= 0.01; }
+  if (moass >= 4) { svMax -= 10; k -= 0.02; } // deep sedation
+  else if (moass >= 2) { svMax -= 5; k -= 0.01; } // moderate sedation
 
   // Clamp values
   svMax = Math.max(20, Math.min(120, svMax));
