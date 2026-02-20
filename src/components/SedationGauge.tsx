@@ -318,9 +318,9 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 75, 0);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">HR</text>
-                    <text x={p.x} y={p.y + 8} fill={vitals.hr < 50 || vitals.hr > 120 ? '#ef4444' : '#22c55e'} fontSize="24" fontWeight="bold" textAnchor="middle">{vitals.hr.toFixed(0)}</text>
-                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="14" textAnchor="middle">bpm</text>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">HR</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.hr < 50 || vitals.hr > 120 ? '#ef4444' : '#22c55e'} fontSize="20" fontWeight="bold" textAnchor="middle">{vitals.hr.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="12" textAnchor="middle">bpm</text>
                   </g>
                 );
               })()}
@@ -330,9 +330,9 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 75, 60);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">BP</text>
-                    <text x={p.x} y={p.y + 8} fill={vitals.map < 60 ? '#ef4444' : '#22c55e'} fontSize="22" fontWeight="bold" textAnchor="middle">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</text>
-                    <text x={p.x} y={p.y + 18} fill="#64748b" fontSize="14" textAnchor="middle">MAP {vitals.map.toFixed(0)}</text>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">BP</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.map < 60 ? '#ef4444' : '#22c55e'} fontSize="17" fontWeight="bold" textAnchor="middle">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 18} fill="#64748b" fontSize="12" textAnchor="middle">MAP {vitals.map.toFixed(0)}</text>
                   </g>
                 );
               })()}
@@ -342,8 +342,8 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 75, 120);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">SpO2</text>
-                    <text x={p.x} y={p.y + 8} fill={vitals.spo2 < 90 ? '#ef4444' : vitals.spo2 < 94 ? '#f59e0b' : '#22c55e'} fontSize="24" fontWeight="bold" textAnchor="middle">{vitals.spo2.toFixed(0)}%</text>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">SpO2</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.spo2 < 90 ? '#ef4444' : vitals.spo2 < 94 ? '#f59e0b' : '#22c55e'} fontSize="20" fontWeight="bold" textAnchor="middle">{vitals.spo2.toFixed(0)}%</text>
                   </g>
                 );
               })()}
@@ -353,9 +353,9 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 75, 180);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">EtCO2</text>
-                    <text x={p.x} y={p.y + 8} fill={vitals.etco2 > 50 ? '#ef4444' : '#22c55e'} fontSize="24" fontWeight="bold" textAnchor="middle">{vitals.etco2.toFixed(0)}</text>
-                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="14" textAnchor="middle">mmHg</text>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">EtCO2</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.etco2 > 50 ? '#ef4444' : '#22c55e'} fontSize="20" fontWeight="bold" textAnchor="middle">{vitals.etco2.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="12" textAnchor="middle">mmHg</text>
                   </g>
                 );
               })()}
@@ -365,8 +365,8 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 75, 240);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">RR</text>
-                    <text x={p.x} y={p.y + 8} fill={vitals.rr < 8 ? '#ef4444' : '#22c55e'} fontSize="24" fontWeight="bold" textAnchor="middle">{vitals.rr.toFixed(0)}</text>
+                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">RR</text>
+                    <text x={p.x} y={p.y + 6} fill={vitals.rr < 8 ? '#ef4444' : '#22c55e'} fontSize="20" fontWeight="bold" textAnchor="middle">{vitals.rr.toFixed(0)}</text>
                   </g>
                 );
               })()}
@@ -393,9 +393,40 @@ export default function SedationGauge() {
                 </text>
               )}
 
-              
-                    )}
-          {/* Center MOASS display – always visible in non-avatar modes */}
+              {/* Mini risk spider in corner */}
+              {(() => {
+                return null; const rCx = cx + 180;
+                const rCy = cy + 180;
+                const rR = 42;
+                const riskAxes = ['Air', 'BP', 'O2', 'Sed', 'Rec'];
+                const riskVals = [
+                  isCrisis ? 0.9 : vitals.spo2 < 94 ? 0.6 : 0.2,
+                  vitals.map < 60 || vitals.map > 110 ? 0.8 : 0.3,
+                  vitals.spo2 < 90 ? 0.9 : 0.2,
+                  moass <= 1 ? 0.9 : moass <= 3 ? 0.5 : 0.2,
+                  combinedEff > 0.5 ? 0.6 : 0.2,
+                ];
+                const rPts = riskVals.map((v, idx) => {
+                  const a = (idx * 360) / 5;
+                  const pt = polarToCartesian(rCx, rCy, v * rR, a);
+                  return `${pt.x},${pt.y}`;
+                }).join(' ');
+                return (
+                  <g>
+                    <circle cx={rCx} cy={rCy} r={rR} fill="#0f172a" stroke="#334155" strokeWidth={0.5} opacity={0.8} />
+                    <polygon points={rPts} fill="rgba(239,68,68,0.2)" stroke="#ef4444" strokeWidth={1} />
+                    {riskAxes.map((label, idx) => {
+                      const a = (idx * 360) / 5;
+                      const lpt = polarToCartesian(rCx, rCy, rR + 14, a);
+                      return <text key={label} x={lpt.x} y={lpt.y} fill="#94a3b8" fontSize="12" textAnchor="middle" dominantBaseline="middle">{label}</text>;
+                    })}
+                  </g>
+                );
+              })()}
+            </g>
+          )}
+
+          {/* Center MOASS display - always visible in non-avatar modes */}
           <g>
             <text x={cx} y={cy - 6} fill={gaugeColor} fontSize="48" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{moass}</text>
             <text x={cx} y={cy + 22} fill={gaugeColor} fontSize="16" fontWeight="bold" textAnchor="middle" letterSpacing="0.1em">{MOASS_LABELS[moass]}</text>
