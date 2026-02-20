@@ -318,9 +318,9 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 95, 0);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">HR</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.hr < 50 || vitals.hr > 120 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.hr.toFixed(0)}</text>
-                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="14" textAnchor="middle">bpm</text>
+                    <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">HR</text>
+                    <text x={p.x} y={p.y + 10} fill={vitals.hr < 50 || vitals.hr > 120 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.hr.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 28} fill="#64748b" fontSize="14" textAnchor="middle">bpm</text>
                   </g>
                 );
               })()}
@@ -330,9 +330,9 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 95, 60);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">BP</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.map < 60 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</text>
-                    <text x={p.x} y={p.y + 18} fill="#64748b" fontSize="14" textAnchor="middle">MAP {vitals.map.toFixed(0)}</text>
+                    <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">BP</text>
+                    <text x={p.x} y={p.y + 10} fill={vitals.map < 60 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 28} fill="#64748b" fontSize="14" textAnchor="middle">MAP {vitals.map.toFixed(0)}</text>
                   </g>
                 );
               })()}
@@ -342,8 +342,8 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 95, 120);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">SpO2</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.spo2 < 90 ? '#ef4444' : vitals.spo2 < 94 ? '#f59e0b' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.spo2.toFixed(0)}%</text>
+                    <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">SpO2</text>
+                    <text x={p.x} y={p.y + 10} fill={vitals.spo2 < 90 ? '#ef4444' : vitals.spo2 < 94 ? '#f59e0b' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.spo2.toFixed(0)}%</text>
                   </g>
                 );
               })()}
@@ -353,9 +353,9 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 95, 180);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">EtCO2</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.etco2 > 50 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.etco2.toFixed(0)}</text>
-                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="14" textAnchor="middle">mmHg</text>
+                    <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">EtCO2</text>
+                    <text x={p.x} y={p.y + 10} fill={vitals.etco2 > 50 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.etco2.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 28} fill="#64748b" fontSize="14" textAnchor="middle">mmHg</text>
                   </g>
                 );
               })()}
@@ -365,8 +365,8 @@ export default function SedationGauge() {
                 const p = polarToCartesian(cx, cy, outerR + 95, 240);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">RR</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.rr < 8 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.rr.toFixed(0)}</text>
+                    <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">RR</text>
+                    <text x={p.x} y={p.y + 10} fill={vitals.rr < 8 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.rr.toFixed(0)}</text>
                   </g>
                 );
               })()}
