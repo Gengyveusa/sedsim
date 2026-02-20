@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import EEGPanel from './EEGPanel';
 import MentorChat from './MentorChat';
 import { ScenarioPanel } from './ScenarioPanel';
+import OxyHbCurve from './OxyHbCurve';
 import useSimStore from '../store/useSimStore';
 
-type AITab = 'eeg' | 'mentor' | 'scenarios';
-
+type AITab = 'eeg' | 'mentor' | 'scenarios' | 'oxyhb';
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AITab>('eeg');
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -20,12 +20,15 @@ export const Dashboard: React.FC = () => {
     patient: s.patient,
     eegState: s.eegState,
     digitalTwin: s.digitalTwin,
+        fio2: s.fio2,
+    airwayDevice: s.airwayDevice,
   }));
 
   const tabs: { id: AITab; label: string; icon: string }[] = [
     { id: 'eeg', label: 'EEG Monitor', icon: '🧠' },
     { id: 'mentor', label: 'AI Mentor', icon: '🎓' },
     { id: 'scenarios', label: 'Scenarios', icon: '🎯' },
+        { id: 'oxyhb', label: 'O₂-Hb Curve', icon: '🩸' },
   ];
 
   if (isCollapsed) {
@@ -152,6 +155,16 @@ export const Dashboard: React.FC = () => {
         {activeTab === 'scenarios' && (
           <div className="p-3 overflow-y-auto max-h-[600px]">
             <ScenarioPanel />
+          </div>
+        )}
+                {activeTab === 'oxyhb' && (
+          <div className="p-2 overflow-y-auto max-h-[600px]">
+            <OxyHbCurve
+              vitals={simState.vitals}
+              fio2={simState.fio2}
+              patient={simState.patient}
+              airwayDevice={simState.airwayDevice}
+            />
           </div>
         )}
       </div>
