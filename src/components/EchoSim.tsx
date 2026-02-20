@@ -101,6 +101,8 @@ function UltrasoundA4C({ hemo, canvasSize }: { hemo: Hemo; canvasSize: number })
       const wallT = hemo.IVSd * 12 + wf * 4;
       const rvW = lvW * 0.65, rvL = lvL * 0.85;
       const raW = rvW * 0.85 + wf * 6, raL = rvL * 0.4 + wf * 4;
+        const laW = lvW * 0.85 + wf * 8, laL = lvL * 0.4 + wf * 5;
+  const sA = 75 * Math.PI / 180, sD = H * 0.92, aX = W / 2, aY = 8;
 const imgData = ctx.createImageData(W, H); const px = imgData.data;
       const spk = speckleRef.current!; const sd = spk.data, ss = spk.size;
       for (let py = 0; py < H; py++) {
