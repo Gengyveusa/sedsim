@@ -4,9 +4,10 @@ import MentorChat from './MentorChat';
 import { ScenarioPanel } from './ScenarioPanel';
 import OxyHbCurve from './OxyHbCurve';
 import FrankStarlingCurve from './FrankStarlingCurve';
+import EchoSim from './EchoSim';
 import useSimStore from '../store/useSimStore';
 
-type AITab = 'eeg' | 'mentor' | 'scenarios' | 'oxyhb' | 'frankstarling';
+type AITab = 'eeg' | 'mentor' | 'scenarios' | 'oxyhb' | 'frankstarling' | 'echosim';
 
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AITab | null>(null);
@@ -32,6 +33,7 @@ export const Dashboard: React.FC = () => {
     { id: 'scenarios', label: 'Scenarios', icon: '\ud83c\udfaf' },
     { id: 'oxyhb', label: 'O\u2082-Hb', icon: '\ud83e\ude78' },
         { id: 'frankstarling', label: 'F-S', icon: '\u2764' },
+        { id: 'echosim', label: 'Echo', icon: '\ud83d\udc93' },
   ];
 
   const handleTabClick = (id: AITab) => {
@@ -137,6 +139,17 @@ export const Dashboard: React.FC = () => {
                       {activeTab === 'frankstarling' && (
             <div className="p-2">
               <FrankStarlingCurve
+                vitals={simState.vitals}
+                patient={simState.patient}
+                moass={simState.moass}
+                combinedEff={simState.combinedEff}
+                pkStates={simState.pkStates}
+              />
+            </div>
+          )}
+                      {activeTab === 'echosim' && (
+            <div className="p-2">
+              <EchoSim
                 vitals={simState.vitals}
                 patient={simState.patient}
                 moass={simState.moass}
