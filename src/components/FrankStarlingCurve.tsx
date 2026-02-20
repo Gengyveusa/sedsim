@@ -15,7 +15,7 @@ interface FrankStarlingProps {
 function pvPoint(
   t: number,
   vedv: number, vesv: number,
-  pEdp: number, peakSys: number, pEsv: number
+  pEdp: number, peakSys: number, _pEsv: number
 ): [number, number] {
   // t=0: start at bottom-left (ESV, low P) -> filling -> contraction -> ejection -> relaxation
   const tau = t * 2 * Math.PI;
