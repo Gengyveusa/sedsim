@@ -82,7 +82,7 @@ export default function SedationGauge() {
   const [autoSwitched, setAutoSwitched] = useState(false);
 
       const { combinedEff, moass, pkStates, vitals, patient } = useSimStore();
-  const size = 630;
+  const size = 720;
   const cy = size / 2;
   const cx = size / 2;  
   const outerR = 278;
@@ -266,7 +266,7 @@ export default function SedationGauge() {
                   <g key={seg.label}>
                     <path d={describeArc(cx, cy, outerR + 4, startA, endA)} fill="none" stroke={seg.color} strokeWidth={8} strokeLinecap="round" opacity={0.7} />
                     {(() => {
-                      const lp = polarToCartesian(cx, cy, outerR + 18, seg.angle);
+                      const lp = polarToCartesian(cx, cy, outerR + 35, seg.angle);
                       return (
                         <text x={lp.x} y={lp.y} fill={seg.color} fontSize="13" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{seg.label}</text>
                       );
@@ -290,8 +290,8 @@ export default function SedationGauge() {
                 const isActive = ce > 0.001;
                 const innerR = 82;
                 const outerPetalR = innerR + 90 * (isActive ? Math.max(0.3, fillAmount) : 0.15);
-                const lp = polarToCartesian(cx, cy, innerR + 52, angle);
-                const ceLp = polarToCartesian(cx, cy, innerR + 30, angle);
+                const lp = polarToCartesian(cx, cy, innerR + 65, angle);
+                const ceLp = polarToCartesian(cx, cy, innerR + 42, angle);
                 return (
                   <g key={drugName}>
                     <path d={petalPath(cx, cy, angle, innerR, outerPetalR, 28)} fill={color} opacity={isActive ? 0.6 : 0.15} stroke={color} strokeWidth={isActive ? 1.5 : 0.5} />
@@ -315,65 +315,65 @@ export default function SedationGauge() {
               {/* === VITAL READOUTS - Aviation Glass Cockpit Style === */}
               {/* HR at 12 o'clock */}
               {(() => {
-                const p = polarToCartesian(cx, cy, outerR - 38, 0);
+                const p = polarToCartesian(cx, cy, outerR + 75, 0);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">HR</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.hr < 50 || vitals.hr > 120 ? '#ef4444' : '#22c55e'} fontSize="20" fontWeight="bold" textAnchor="middle">{vitals.hr.toFixed(0)}</text>
-                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="12" textAnchor="middle">bpm</text>
+                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">HR</text>
+                    <text x={p.x} y={p.y + 8} fill={vitals.hr < 50 || vitals.hr > 120 ? '#ef4444' : '#22c55e'} fontSize="24" fontWeight="bold" textAnchor="middle">{vitals.hr.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="14" textAnchor="middle">bpm</text>
                   </g>
                 );
               })()}
 
               {/* BP at ~2 o'clock */}
               {(() => {
-                const p = polarToCartesian(cx, cy, outerR - 38, 60);
+                const p = polarToCartesian(cx, cy, outerR + 75, 60);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">BP</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.map < 60 ? '#ef4444' : '#22c55e'} fontSize="17" fontWeight="bold" textAnchor="middle">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</text>
-                    <text x={p.x} y={p.y + 18} fill="#64748b" fontSize="12" textAnchor="middle">MAP {vitals.map.toFixed(0)}</text>
+                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">BP</text>
+                    <text x={p.x} y={p.y + 8} fill={vitals.map < 60 ? '#ef4444' : '#22c55e'} fontSize="22" fontWeight="bold" textAnchor="middle">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 18} fill="#64748b" fontSize="14" textAnchor="middle">MAP {vitals.map.toFixed(0)}</text>
                   </g>
                 );
               })()}
 
               {/* SpO2 at ~4 o'clock */}
               {(() => {
-                const p = polarToCartesian(cx, cy, outerR - 38, 120);
+                const p = polarToCartesian(cx, cy, outerR + 75, 120);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">SpO2</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.spo2 < 90 ? '#ef4444' : vitals.spo2 < 94 ? '#f59e0b' : '#22c55e'} fontSize="20" fontWeight="bold" textAnchor="middle">{vitals.spo2.toFixed(0)}%</text>
+                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">SpO2</text>
+                    <text x={p.x} y={p.y + 8} fill={vitals.spo2 < 90 ? '#ef4444' : vitals.spo2 < 94 ? '#f59e0b' : '#22c55e'} fontSize="24" fontWeight="bold" textAnchor="middle">{vitals.spo2.toFixed(0)}%</text>
                   </g>
                 );
               })()}
 
               {/* EtCO2 at ~6 o'clock */}
               {(() => {
-                const p = polarToCartesian(cx, cy, outerR - 38, 180);
+                const p = polarToCartesian(cx, cy, outerR + 75, 180);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">EtCO2</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.etco2 > 50 ? '#ef4444' : '#22c55e'} fontSize="20" fontWeight="bold" textAnchor="middle">{vitals.etco2.toFixed(0)}</text>
-                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="12" textAnchor="middle">mmHg</text>
+                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">EtCO2</text>
+                    <text x={p.x} y={p.y + 8} fill={vitals.etco2 > 50 ? '#ef4444' : '#22c55e'} fontSize="24" fontWeight="bold" textAnchor="middle">{vitals.etco2.toFixed(0)}</text>
+                    <text x={p.x} y={p.y + 16} fill="#64748b" fontSize="14" textAnchor="middle">mmHg</text>
                   </g>
                 );
               })()}
 
               {/* RR at ~8 o'clock */}
               {(() => {
-                const p = polarToCartesian(cx, cy, outerR - 38, 240);
+                const p = polarToCartesian(cx, cy, outerR + 75, 240);
                 return (
                   <g>
-                    <text x={p.x} y={p.y - 8} fill="#94a3b8" fontSize="13" fontWeight="bold" textAnchor="middle">RR</text>
-                    <text x={p.x} y={p.y + 6} fill={vitals.rr < 8 ? '#ef4444' : '#22c55e'} fontSize="20" fontWeight="bold" textAnchor="middle">{vitals.rr.toFixed(0)}</text>
+                    <text x={p.x} y={p.y - 12} fill="#94a3b8" fontSize="15" fontWeight="bold" textAnchor="middle">RR</text>
+                    <text x={p.x} y={p.y + 8} fill={vitals.rr < 8 ? '#ef4444' : '#22c55e'} fontSize="24" fontWeight="bold" textAnchor="middle">{vitals.rr.toFixed(0)}</text>
                   </g>
                 );
               })()}
 
               {/* Forward projection at ~10 o'clock */}
               {(() => {
-                const p = polarToCartesian(cx, cy, outerR - 45, 300);
+                const p = polarToCartesian(cx, cy, outerR + 75, 300);
                 return (
                   <text x={p.x} y={p.y} fill="#64748b" fontSize="13" fontWeight="bold" textAnchor="middle">2-min Ce</text>
                 );
@@ -393,42 +393,10 @@ export default function SedationGauge() {
                 </text>
               )}
 
-              {/* Mini risk spider in corner */}
-              {(() => {
-                const rCx = cx + 180;
-                const rCy = cy + 180;
-                const rR = 42;
-                const riskAxes = ['Air', 'BP', 'O2', 'Sed', 'Rec'];
-                const riskVals = [
-                  isCrisis ? 0.9 : vitals.spo2 < 94 ? 0.6 : 0.2,
-                  vitals.map < 60 || vitals.map > 110 ? 0.8 : 0.3,
-                  vitals.spo2 < 90 ? 0.9 : 0.2,
-                  moass <= 1 ? 0.9 : moass <= 3 ? 0.5 : 0.2,
-                  combinedEff > 0.5 ? 0.6 : 0.2,
-                ];
-                const rPts = riskVals.map((v, idx) => {
-                  const a = (idx * 360) / 5;
-                  const pt = polarToCartesian(rCx, rCy, v * rR, a);
-                  return `${pt.x},${pt.y}`;
-                }).join(' ');
-                return (
-                  <g>
-                    <circle cx={rCx} cy={rCy} r={rR} fill="#0f172a" stroke="#334155" strokeWidth={0.5} opacity={0.8} />
-                    <polygon points={rPts} fill="rgba(239,68,68,0.2)" stroke="#ef4444" strokeWidth={1} />
-                    {riskAxes.map((label, idx) => {
-                      const a = (idx * 360) / 5;
-                      const lpt = polarToCartesian(rCx, rCy, rR + 14, a);
-                      return <text key={label} x={lpt.x} y={lpt.y} fill="#94a3b8" fontSize="12" textAnchor="middle" dominantBaseline="middle">{label}</text>;
-                    })}
-                  </g>
-                );
-              })()}
-            </g>
-          )}
-
+              
           {/* Center MOASS display - always visible in non-avatar modes */}
           <g>
-            <text x={cx} y={cy - 6} fill={gaugeColor} fontSize="42" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{moass}</text>
+            <text x={cx} y={cy - 6} fill={gaugeColor} fontSize="48" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{moass}</text>
             <text x={cx} y={cy + 22} fill={gaugeColor} fontSize="16" fontWeight="bold" textAnchor="middle" letterSpacing="0.1em">{MOASS_LABELS[moass]}</text>
             {isCrisis && (
               <text x={cx} y={cy + 40} fill="#ef4444" fontSize="17" fontWeight="bold" textAnchor="middle">
