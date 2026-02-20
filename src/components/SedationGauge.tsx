@@ -394,7 +394,8 @@ export default function SedationGauge() {
               )}
 
               
-          )}            {/* Center MOASS display - always visible in non-avatar modes */}
+                    )}
+          {/* Center MOASS display – always visible in non-avatar modes */}
           <g>
             <text x={cx} y={cy - 6} fill={gaugeColor} fontSize="48" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{moass}</text>
             <text x={cx} y={cy + 22} fill={gaugeColor} fontSize="16" fontWeight="bold" textAnchor="middle" letterSpacing="0.1em">{MOASS_LABELS[moass]}</text>
