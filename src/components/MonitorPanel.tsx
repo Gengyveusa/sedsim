@@ -237,7 +237,7 @@ function drawSweepStep(
 }
 
 // Sweep speed: pixels advanced per animation frame (~60 fps → 120 px/s ≈ 25 mm/s at default scale)
-const SWEEP_SPEED = 2;
+const SWEEP_PX_PER_SEC = 120;
 
 // Pleth delay: ~200 ms pulse-transit time → 200 ms × 120 px/s = 24 pixels
 const PLETH_DELAY_PX = 24;
@@ -353,6 +353,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
   const cycleIndexRef = useRef(0);
   const prevPhaseRef = useRef(0);
   const vfibOffsetRef = useRef(0);
+    const lastTimeRef = useRef(0);
 
   // Per-channel sweep state: previous canvas-Y value and write-X position
   const ecgPrevYRef   = useRef(40);   // ECG canvas height/2
@@ -428,8 +429,7 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
     if (newEtco2.max !== etco2ScaleRef.current.max || newEtco2.min !== etco2ScaleRef.current.min) {
       etco2ScaleRef.current = newEtco2;
       setEtco2Scale(newEtco2);
-      showScaleToast('EtCO2');
-    }
+vfibOffsetRef.current += 0.012    }
   }, [vitals.etco2, showScaleToast]);
 
   // Alarm flash toggle
@@ -469,10 +469,14 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
     const rr = vitals.rr || 14;
     const etco2 = vitals.etco2 || 38;
     const currentRhythm = vitals.rhythm ?? 'normal_sinus';
+        const now = performance.now();
+    const dt = lastTimeRef.current === 0 ? 1 / 60 : Math.min((now - lastTimeRef.current) / 1000, 0.05);
+    lastTimeRef.current = now;
+    const SWEEP_SPEED = dt * SWEEP_PX_PER_SEC;
     const pulseless = isPulselessRhythm(currentRhythm);
 
-    vfibOffsetRef.current += 0.012;
-    const vfibOffset = vfibOffsetRef.current;
+        vfibOffsetRef.current += dt * 0.72;
+const vfibOffset = vfibOffsetRef.current;
 
     // ── ECG ───────────────────────────────────────────────────────────────────
     const ecgCanvas = ecgCanvasRef.current;
