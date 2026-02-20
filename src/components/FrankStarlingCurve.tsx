@@ -38,6 +38,7 @@ function pvPoint(
 
 export default function FrankStarlingCurve({ vitals, patient, moass, combinedEff, pkStates }: FrankStarlingProps) {
   const [phase, setPhase] = useState(0);
+    const [speed, setSpeed] = useState(1);
   const animRef = useRef<number>(0);
   const lastTime = useRef<number>(0);
 
@@ -85,7 +86,7 @@ export default function FrankStarlingCurve({ vitals, patient, moass, combinedEff
 
   // Animation: dot traces the loop at heart rate
   useEffect(() => {
-    const cycleDuration = 60000 / Math.max(30, hr); // ms per beat
+        const cycleDuration = (60000 / Math.max(30, hr)) / speed; // ms per beat, adjusted by speed
     const animate = (time: number) => {
       if (lastTime.current === 0) lastTime.current = time;
       const dt = time - lastTime.current;
@@ -98,7 +99,7 @@ export default function FrankStarlingCurve({ vitals, patient, moass, combinedEff
     };
     animRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animRef.current);
-  }, [hr]);
+    }, [hr, speed]);
 
   // Generate full loop points (N=80 for smoothness)
   const N = 80;
@@ -208,6 +209,20 @@ export default function FrankStarlingCurve({ vitals, patient, moass, combinedEff
         <span>SV: <b style={{ color: loopColor }}>{sv.toFixed(0)}</b> mL</span>
         <span>EF: <b style={{ color: loopColor }}>{ef.toFixed(0)}%</b></span>
         <span>Ees: {ees.toFixed(2)}</span>
+      </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '4px' }}>
+        {[0.1, 0.25, 0.5, 1].map(s => (
+          <button
+            key={s}
+            onClick={() => setSpeed(s)}
+            style={{
+              fontSize: '8px', padding: '2px 6px', borderRadius: '3px', border: 'none', cursor: 'pointer',
+              background: speed === s ? '#3b82f6' : '#334155', color: speed === s ? '#fff' : '#94a3b8',
+            }}
+          >
+            {s === 1 ? '1x' : s === 0.5 ? '0.5x' : s === 0.25 ? '0.25x' : '0.1x'}
+          </button>
+        ))}
       </div>
       <div style={{ fontSize: '9px', color: '#93c5fd', marginTop: '2px', textAlign: 'center' }}>
         {phaseLabel}
