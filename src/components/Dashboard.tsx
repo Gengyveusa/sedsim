@@ -3,9 +3,10 @@ import EEGPanel from './EEGPanel';
 import MentorChat from './MentorChat';
 import { ScenarioPanel } from './ScenarioPanel';
 import OxyHbCurve from './OxyHbCurve';
+import FrankStarlingCurve from './FrankStarlingCurve';
 import useSimStore from '../store/useSimStore';
 
-type AITab = 'eeg' | 'mentor' | 'scenarios' | 'oxyhb';
+type AITab = 'eeg' | 'mentor' | 'scenarios' | 'oxyhb' | 'frankstarling';
 
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AITab | null>(null);
@@ -22,6 +23,7 @@ export const Dashboard: React.FC = () => {
     digitalTwin: s.digitalTwin,
     fio2: s.fio2,
     airwayDevice: s.airwayDevice,
+        combinedEff: s.combinedEff,
   }));
 
   const tabs: { id: AITab; label: string; icon: string }[] = [
@@ -29,6 +31,7 @@ export const Dashboard: React.FC = () => {
     { id: 'mentor', label: 'Mentor', icon: '\ud83c\udf93' },
     { id: 'scenarios', label: 'Scenarios', icon: '\ud83c\udfaf' },
     { id: 'oxyhb', label: 'O\u2082-Hb', icon: '\ud83e\ude78' },
+        { id: 'frankstarling', label: 'F-S', icon: '\u2764' },
   ];
 
   const handleTabClick = (id: AITab) => {
@@ -131,6 +134,17 @@ export const Dashboard: React.FC = () => {
                 />
               </div>
             )}
+                      {activeTab === 'frankstarling' && (
+            <div className="p-2">
+              <FrankStarlingCurve
+                vitals={simState.vitals}
+                patient={simState.patient}
+                moass={simState.moass}
+                combinedEff={simState.combinedEff}
+                pkStates={simState.pkStates}
+              />
+            </div>
+          )}
           </div>
         </div>
       )}
