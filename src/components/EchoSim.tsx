@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface HemoParams {
   preload: number; afterload: number; contractility: number; heartRate: number; compliance: number;
@@ -15,10 +15,6 @@ interface Hemo {
   diastolicGrade: string; pvLoop: PVPoint[]; fsCurve: FSPoint[];
   fsPoint: FSPoint; Ees: number; V0: number;
 }
-
-const DEFAULT_PARAMS: HemoParams = {
-  preload: 120, afterload: 100, contractility: 1.0, heartRate: 72, compliance: 0.06,
-};
 
 function computeHemodynamicsQuick(params: HemoParams) {
   const { preload: EDV, afterload, contractility } = params;
@@ -102,12 +98,10 @@ function UltrasoundA4C({ hemo, canvasSize }: { hemo: Hemo; canvasSize: number })
       else { const ap = (phase - 0.85) / 0.15; wf = 0.15 * Math.sin(ap * Math.PI); }
       const lvWd = hemo.LVIDd_cm * 28, lvWs = hemo.LVIDs_cm * 28;
       const lvW = lvWd - (lvWd - lvWs) * wf, lvL = lvW * 2.1;
-      const wallT = hemo.IVSd * 12 + wf * 4, _pwT = hemo.LVPWd * 12 + wf * 3;
+      const wallT = hemo.IVSd * 12 + wf * 4;
       const rvW = lvW * 0.65, rvL = lvL * 0.85;
-      const laW = lvW * 0.85 + wf * 8, laL = lvL * 0.4 + wf * 5;
       const raW = rvW * 0.85 + wf * 6, raL = rvL * 0.4 + wf * 4;
-      const sA = 75 * Math.PI / 180, sD = H * 0.92, aX = W / 2, aY = 8;
-      const imgData = ctx.createImageData(W, H); const px = imgData.data;
+const imgData = ctx.createImageData(W, H); const px = imgData.data;
       const spk = speckleRef.current!; const sd = spk.data, ss = spk.size;
       for (let py = 0; py < H; py++) {
         for (let ppx = 0; ppx < W; ppx++) {
