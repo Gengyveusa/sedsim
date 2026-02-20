@@ -77,6 +77,7 @@ function UltrasoundA4C({ hemo, canvasSize }: { hemo: Hemo; canvasSize: number })
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const speckleRef = useRef<{ data: Float32Array; size: number } | null>(null);
   const timeRef = useRef(0);
+    const lastTimeRef = useRef(0);
   useEffect(() => {
     const NS = 512; const speckle = new Float32Array(NS * NS);
     for (let i = 0; i < NS * NS; i++) { const g1 = (Math.random() - 0.5) * 2; const g2 = (Math.random() - 0.5) * 2; speckle[i] = Math.sqrt(g1 * g1 + g2 * g2); }
@@ -87,7 +88,11 @@ function UltrasoundA4C({ hemo, canvasSize }: { hemo: Hemo; canvasSize: number })
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     const W = canvas.width, H = canvas.height; let animId: number;
     const draw = () => {
-      timeRef.current += 1 / 60; const t = timeRef.current;
+            const now = performance.now();
+        const dt = lastTimeRef.current === 0 ? 1 / 60 : Math.min((now - lastTimeRef.current) / 1000, 0.05);
+        lastTimeRef.current = now;
+        timeRef.current += dt;
+        const t = timeRef.current;
       const period = 60 / hemo.heartRate; const phase = (t % period) / period;
       let wf: number;
       if (phase < 0.05) wf = phase / 0.05 * 0.3;
