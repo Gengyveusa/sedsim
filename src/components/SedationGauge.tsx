@@ -84,6 +84,7 @@ export default function SedationGauge() {
       const { combinedEff, moass, pkStates, vitals, patient } = useSimStore();
   const size = 630;
   const cy = size / 2;
+  const cx = size / 2;  
   const outerR = 278;
   const avatarSize = 1050;
 
