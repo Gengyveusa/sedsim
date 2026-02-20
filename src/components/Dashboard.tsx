@@ -50,7 +50,7 @@ export const Dashboard: React.FC = () => {
               className="text-gray-400 hover:text-white text-sm px-1"
               title="Close"
             >
-              \u00d7
+              ×
             </button>
           </div>
           {/* Panel content */}
@@ -60,7 +60,7 @@ export const Dashboard: React.FC = () => {
                 <EEGPanel eegState={simState.eegState} isRunning={simState.isRunning} />
                 {simState.digitalTwin && (
                   <div className="px-3 py-2 border-t border-gray-700">
-                    <h3 className="text-xs font-bold text-blue-400 mb-2">Digital Twin \u2013 Risk Metrics</h3>
+                    <h3 className="text-xs font-bold text-blue-400 mb-2">Digital Twin – Risk Metrics</h3>
                     <div className="space-y-1 text-xs">
                       <div className="flex justify-between">
                         <span className="text-gray-400">Hypotension Risk</span>
@@ -102,9 +102,9 @@ export const Dashboard: React.FC = () => {
                       )}
                       {simState.digitalTwin.predictedOutcome.aclsGuidance.length > 0 && (
                         <div className="mt-2">
-                          <div className="text-yellow-400 font-bold">\u26a0 ACLS Guidance</div>
+                          <div className="text-yellow-400 font-bold">⚠ ACLS Guidance</div>
                           {simState.digitalTwin.predictedOutcome.aclsGuidance.map((g: string, i: number) => (
-                            <div key={i} className="text-yellow-200 text-xs">\u2022 {g}</div>
+                            <div key={i} className="text-yellow-200 text-xs">• {g}</div>
                           ))}
                         </div>
                       )}
