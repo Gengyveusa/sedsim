@@ -57,7 +57,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex-1 overflow-y-auto">
             {activeTab === 'eeg' && (
               <>
-                <EEGPanel />
+                <EEGPanel eegState={simState.eegState} isRunning={simState.isRunning} />
                 {simState.digitalTwin && (
                   <div className="px-3 py-2 border-t border-gray-700">
                     <h3 className="text-xs font-bold text-blue-400 mb-2">Digital Twin \u2013 Risk Metrics</h3>
@@ -114,7 +114,7 @@ export const Dashboard: React.FC = () => {
               </>
             )}
             {activeTab === 'mentor' && (
-              <MentorChat isOpen={mentorOpen} onToggle={() => setMentorOpen(!mentorOpen)} />
+              <MentorChat vitals={simState.vitals} moass={simState.moass} eegState={simState.eegState} digitalTwin={simState.digitalTwin} eventLog={simState.eventLog} pkStates={simState.pkStates} isOpen={mentorOpen} onToggle={() => setMentorOpen(!mentorOpen)} />
             )}
             {activeTab === 'scenarios' && (
               <div className="p-2">
