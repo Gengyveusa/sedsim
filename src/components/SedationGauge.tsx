@@ -316,8 +316,10 @@ export default function SedationGauge() {
               {/* HR at 12 o'clock */}
               {(() => {
                 const p = polarToCartesian(cx, cy, outerR + 95, 0);
+                const hrColor = vitals.hr < 45 || vitals.hr > 140 ? '#ef4444' : vitals.hr < 50 || vitals.hr > 120 ? '#f59e0b' : '#22c55e';
                 return (
                   <g>
+                    <circle cx={p.x} cy={p.y + 10} r={38} fill={hrColor} opacity={0.25} />
                     <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">HR</text>
                     <text x={p.x} y={p.y + 10} fill={vitals.hr < 50 || vitals.hr > 120 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.hr.toFixed(0)}</text>
                     <text x={p.x} y={p.y + 28} fill="#64748b" fontSize="14" textAnchor="middle">bpm</text>
@@ -328,8 +330,10 @@ export default function SedationGauge() {
               {/* BP at ~2 o'clock */}
               {(() => {
                 const p = polarToCartesian(cx, cy, outerR + 95, 60);
+                const bpColor = vitals.map < 60 || vitals.map > 110 ? '#ef4444' : vitals.map < 70 ? '#f59e0b' : '#22c55e';
                 return (
                   <g>
+                    <circle cx={p.x} cy={p.y + 10} r={38} fill={bpColor} opacity={0.25} />
                     <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">BP</text>
                     <text x={p.x} y={p.y + 10} fill={vitals.map < 60 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.sbp.toFixed(0)}/{vitals.dbp.toFixed(0)}</text>
                     <text x={p.x} y={p.y + 28} fill="#64748b" fontSize="14" textAnchor="middle">MAP {vitals.map.toFixed(0)}</text>
@@ -340,8 +344,10 @@ export default function SedationGauge() {
               {/* SpO2 at ~4 o'clock */}
               {(() => {
                 const p = polarToCartesian(cx, cy, outerR + 95, 120);
+                const spo2Color = vitals.spo2 < 90 ? '#ef4444' : vitals.spo2 < 94 ? '#f59e0b' : '#22c55e';
                 return (
                   <g>
+                    <circle cx={p.x} cy={p.y + 10} r={38} fill={spo2Color} opacity={0.25} />
                     <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">SpO2</text>
                     <text x={p.x} y={p.y + 10} fill={vitals.spo2 < 90 ? '#ef4444' : vitals.spo2 < 94 ? '#f59e0b' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.spo2.toFixed(0)}%</text>
                   </g>
@@ -351,8 +357,10 @@ export default function SedationGauge() {
               {/* EtCO2 at ~6 o'clock */}
               {(() => {
                 const p = polarToCartesian(cx, cy, outerR + 95, 180);
+                const etco2Color = vitals.etco2 < 15 || vitals.etco2 > 55 ? '#ef4444' : vitals.etco2 < 20 || vitals.etco2 > 50 ? '#f59e0b' : '#22c55e';
                 return (
                   <g>
+                    <circle cx={p.x} cy={p.y + 10} r={38} fill={etco2Color} opacity={0.25} />
                     <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">EtCO2</text>
                     <text x={p.x} y={p.y + 10} fill={vitals.etco2 > 50 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.etco2.toFixed(0)}</text>
                     <text x={p.x} y={p.y + 28} fill="#64748b" fontSize="14" textAnchor="middle">mmHg</text>
@@ -363,8 +371,10 @@ export default function SedationGauge() {
               {/* RR at ~8 o'clock */}
               {(() => {
                 const p = polarToCartesian(cx, cy, outerR + 95, 240);
+                const rrColor = vitals.rr < 6 || vitals.rr > 30 ? '#ef4444' : vitals.rr < 8 || vitals.rr > 25 ? '#f59e0b' : '#22c55e';
                 return (
                   <g>
+                    <circle cx={p.x} cy={p.y + 10} r={38} fill={rrColor} opacity={0.25} />
                     <text x={p.x} y={p.y - 18} fill="#94a3b8" fontSize="16" fontWeight="bold" textAnchor="middle">RR</text>
                     <text x={p.x} y={p.y + 10} fill={vitals.rr < 8 ? '#ef4444' : '#22c55e'} fontSize="30" fontWeight="bold" textAnchor="middle">{vitals.rr.toFixed(0)}</text>
                   </g>
