@@ -29,6 +29,8 @@ const WELCOME_MSG: MentorMessage = {
   confidence: 1.0,
 };
 
+const DEDUPLICATION_WINDOW_MS = 60000;
+
 const MentorChat: React.FC<MentorChatProps> = ({
   vitals, moass, eegState, digitalTwin, eventLog, pkStates, isOpen, onToggle
 }) => {
@@ -41,6 +43,7 @@ const MentorChat: React.FC<MentorChatProps> = ({
   const [numericAnswer, setNumericAnswer] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastObservationTimeRef = useRef<number>(0);
+  const lastAutoObsRef = useRef<{ content: string; time: number }>({ content: '', time: 0 });
   const streamingIdxRef = useRef<number | null>(null);
 
   // Scenario Q&A state from store
@@ -90,6 +93,12 @@ const MentorChat: React.FC<MentorChatProps> = ({
 
     const obs = autoObserve({ vitals, moass, eeg: eegState ?? undefined, pkStates, elapsedSeconds });
     if (obs) {
+      // Deduplicate: skip if same message within deduplication window
+      const last = lastAutoObsRef.current;
+      if (obs.content === last.content && (Date.now() - last.time) < DEDUPLICATION_WINDOW_MS) {
+        return;
+      }
+      lastAutoObsRef.current = { content: obs.content, time: Date.now() };
       setMessages(prev => [...prev, obs]);
     }
   }, [elapsedSeconds, isRunning, vitals, moass, eegState, pkStates]);

@@ -156,6 +156,7 @@ export class ScenarioEngine {
     }
     this.awaitingAnswer = null;
     useAIStore.getState().setCurrentQuestion(null);
+    useAIStore.getState().setActiveHighlights(null);
     // Mark step as fired
     this.firedStepIds.add(stepId);
   }
@@ -166,6 +167,7 @@ export class ScenarioEngine {
     this.started = false;
     useAIStore.getState().setScenarioRunning(false);
     useAIStore.getState().setCurrentQuestion(null);
+    useAIStore.getState().setActiveHighlights(null);
     this.awaitingAnswer = null;
     // Stop the sim
     const sim = useSimStore.getState();
@@ -236,6 +238,14 @@ export class ScenarioEngine {
   }
 
   private fireStep(step: InteractiveScenarioStep) {
+    // Clear previous highlights and set new ones if this step has highlights
+    const text = step.millieDialogue.join(' ');
+    useAIStore.getState().setActiveHighlights(
+      step.highlight && step.highlight.length > 0
+        ? step.highlight.map(h => ({ targetId: h, text }))
+        : null
+    );
+
     // If no question, fire immediately (including sim actions + teaching points)
     if (!step.question) {
       this.speakAsMillie(step.millieDialogue);

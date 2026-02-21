@@ -63,6 +63,7 @@ export const EASY_COLONOSCOPY: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.29 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: ['ASA classification drives your sedation plan and monitoring level.'],
     },
     {
@@ -89,6 +90,7 @@ export const EASY_COLONOSCOPY: InteractiveScenario = {
         { type: 'administer_drug', drug: 'midazolam', dose: 1 },
         { type: 'advance_time', seconds: 90 },
       ],
+      highlight: ['midazolam-1'],
       teachingPoints: [
         'Benzodiazepines provide anxiolysis and amnesia but can cause respiratory depression.',
         'Allow 60-90 seconds between doses to see full effect before redosing.',
@@ -118,6 +120,7 @@ export const EASY_COLONOSCOPY: InteractiveScenario = {
         { type: 'administer_drug', drug: 'fentanyl', dose: 50 },
         { type: 'advance_time', seconds: 120 },
       ],
+      highlight: ['fentanyl-50'],
       teachingPoints: [
         'Opioid-benzodiazepine synergy: combined effect on respiratory drive is greater than either alone.',
         'Monitor RR and EtCO2 closely after adding fentanyl to midazolam.',
@@ -153,6 +156,7 @@ export const EASY_COLONOSCOPY: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'jaw_thrust' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['spo2-display', 'fio2-slider'],
       teachingPoints: [
         'Simple airway maneuvers and supplemental O2 correct most early desaturation.',
         'EtCO2 rises before SpO2 falls - capnography is your early warning system.',
@@ -269,6 +273,7 @@ export const EASY_DENTAL_EXTRACTION: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_hood' },
         { type: 'set_fio2', fio2: 0.35 },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'ASA guidelines require monitors (SpO2, NIBP, ECG, capnography) active before sedation starts.',
         'IV access is mandatory for reversal agents and rescue drugs.',
@@ -298,6 +303,7 @@ export const EASY_DENTAL_EXTRACTION: InteractiveScenario = {
         { type: 'administer_drug', drug: 'midazolam', dose: 1 },
         { type: 'advance_time', seconds: 90 },
       ],
+      highlight: ['midazolam-1'],
       teachingPoints: [
         'Weight matters: lower-weight patients need proportionally lower doses.',
         'Anxious baseline HR will fall as sedation takes effect — do not chase it with more drug.',
@@ -333,6 +339,7 @@ export const EASY_DENTAL_EXTRACTION: InteractiveScenario = {
         { type: 'administer_drug', drug: 'fentanyl', dose: 25 },
         { type: 'advance_time', seconds: 180 },
       ],
+      highlight: ['fentanyl-25'],
       teachingPoints: [
         'A small fentanyl dose (25-50 mcg) blunts the sympathetic response to injection and extraction.',
         'With midazolam on board, use the lower end of the opioid range.',
@@ -477,6 +484,7 @@ export const EASY_LACERATION_REPAIR: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.29 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'Ketamine: dissociative dose 1-2 mg/kg IV. Analgesic dose 0.3-0.5 mg/kg IV.',
         'Ketamine maintains pharyngeal-laryngeal reflexes and spontaneous respiration.',
@@ -508,6 +516,7 @@ export const EASY_LACERATION_REPAIR: InteractiveScenario = {
         { type: 'administer_drug', drug: 'ketamine', dose: 80 },
         { type: 'advance_time', seconds: 120 },
       ],
+      highlight: ['midazolam-1', 'ketamine-100'],
       teachingPoints: [
         'Administer ketamine slowly over 30-60 seconds to reduce incidence of apnea and laryngospasm.',
         'Midazolam 1-2 mg co-administered reduces emergence dysphoria by ~50%.',
@@ -543,6 +552,7 @@ export const EASY_LACERATION_REPAIR: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'chin_lift' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['hr-display', 'fio2-slider'],
       teachingPoints: [
         'Vasovagal syncope: triggered by pain, anxiety, or sight of blood. HR and BP both drop.',
         'Vagal maneuver reversal: leg elevation increases venous return rapidly.',
@@ -663,6 +673,7 @@ export const EASY_FRACTURE_REDUCTION: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.29 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'This is an emergency — fasting guidelines can be relaxed. Risk of aspiration must be weighed against urgency.',
         'In emergencies, have suction ready and consider rapid sequence approach.',
@@ -692,6 +703,7 @@ export const EASY_FRACTURE_REDUCTION: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 80 },
         { type: 'advance_time', seconds: 60 },
       ],
+      highlight: ['fentanyl-50', 'propofol-100'],
       teachingPoints: [
         'Propofol 1-1.5 mg/kg IV provides 5-10 minutes of procedural sedation.',
         'Always give opioid first (fentanyl 50 mcg) to reduce required propofol dose by 20-30%.',
@@ -722,6 +734,7 @@ export const EASY_FRACTURE_REDUCTION: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'chin_lift' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['spo2-display', 'fio2-slider'],
       teachingPoints: [
         'Chin lift: extend the neck and lift the chin upward — opens pharyngeal airway.',
         'Jaw thrust: more powerful maneuver for suspected C-spine injury.',
@@ -757,6 +770,7 @@ export const EASY_FRACTURE_REDUCTION: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 40 },
         { type: 'advance_time', seconds: 60 },
       ],
+      highlight: ['propofol-50'],
       teachingPoints: [
         'Propofol redose: 25-50% of initial dose, titrated to effect.',
         'Monitor closely after each redose — cumulative drug effect builds.',
@@ -843,6 +857,7 @@ export const EASY_ABSCESS_DRAINAGE: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.29 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: ['Well-controlled chronic diseases (DM, HTN) classify as ASA 2. End-organ damage bumps to ASA 3.'],
     },
     {
@@ -870,6 +885,7 @@ export const EASY_ABSCESS_DRAINAGE: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 70 },
         { type: 'advance_time', seconds: 90 },
       ],
+      highlight: ['fentanyl-50', 'propofol-50'],
       teachingPoints: [
         'Reduce propofol dose by 20% for ASA 2 patients, 30-40% for ASA 3.',
         'Inject propofol slowly (over 30s) to reduce pain on injection and blunt BP drop.',
@@ -905,6 +921,7 @@ export const EASY_ABSCESS_DRAINAGE: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'chin_lift' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['bp-display', 'fio2-slider'],
       teachingPoints: [
         'Propofol vasodilation: direct inhibition of vascular smooth muscle Ca2+ channels.',
         'Pre-loading with 250 mL NS before propofol reduces hypotension incidence significantly.',

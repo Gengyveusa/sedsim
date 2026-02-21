@@ -74,6 +74,7 @@ export const HARD_PARADOXICAL_AGITATION: InteractiveScenario = {
         { type: 'administer_drug', drug: 'midazolam', dose: 1 },
         { type: 'advance_time', seconds: 180 },
       ],
+      highlight: ['midazolam-1', 'airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'Paradoxical agitation: disinhibition, not undersedation. More midazolam = more disinhibition.',
         'First step: ensure airway, stop the midazolam, assess severity.',
@@ -135,6 +136,7 @@ export const HARD_PARADOXICAL_AGITATION: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 30 },
         { type: 'advance_time', seconds: 60 },
       ],
+      highlight: ['propofol-20'],
       teachingPoints: [
         'Propofol rescue: 0.5 mg/kg IV for elderly (0.5 × 65 = 32 mg).',
         'Onset: 30-60 seconds. Acts on different GABA-A receptor subtypes — bypasses paradoxical mechanism.',
@@ -170,6 +172,7 @@ export const HARD_PARADOXICAL_AGITATION: InteractiveScenario = {
       simActions: [
         { type: 'administer_drug', drug: 'propofol', dose: 20 },
       ],
+      highlight: ['propofol-20'],
       teachingPoints: [
         'After establishing a paradoxical reaction, avoid ALL further benzodiazepines for the remainder of the case.',
         'Document clearly: "Paradoxical midazolam reaction — avoid benzodiazepines in future."',
@@ -259,6 +262,7 @@ export const HARD_LARYNGOSPASM: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'Post-URTI airway hyperreactivity: consider rescheduling elective procedures for 4-6 weeks.',
         'If proceeding: pre-oxygenate thoroughly, have succinylcholine drawn up at bedside.',
@@ -295,6 +299,7 @@ export const HARD_LARYNGOSPASM: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 120 },
         { type: 'advance_time', seconds: 60 },
       ],
+      highlight: ['fentanyl-50', 'propofol-100'],
       teachingPoints: [
         'Partial laryngospasm: stridor present, some airflow, SpO2 starting to fall.',
         'Complete laryngospasm: silent — no stridor, no airflow, SpO2 falling rapidly.',
@@ -332,6 +337,7 @@ export const HARD_LARYNGOSPASM: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['spo2-display', 'airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'Laryngospasm notch: Larson\'s point — firm digital pressure medial to mastoid, posterior to mandibular ramus.',
         'CPAP via bag-mask: 20-30 cmH2O can physically force the cords open.',
@@ -369,6 +375,7 @@ export const HARD_LARYNGOSPASM: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 60 },
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['propofol-50', 'fio2-slider'],
       teachingPoints: [
         'Sub-paralytic succinylcholine (0.1-0.5 mg/kg IV) relaxes the adductor muscles while preserving respiratory effort.',
         'Full RSI dose (1.5 mg/kg) causes complete apnea — requires bag-mask ventilation and intubation.',
@@ -460,6 +467,7 @@ export const HARD_LAST_TOXICITY: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'LAST early signs: perioral tingling, tinnitus, metallic taste, tongue numbness, light-headedness.',
         'LAST late signs: seizures, dysrhythmias, cardiovascular collapse.',
@@ -497,6 +505,7 @@ export const HARD_LAST_TOXICITY: InteractiveScenario = {
         { type: 'set_fio2', fio2: 1.0 },
         { type: 'apply_intervention', intervention: 'bag_mask' },
       ],
+      highlight: ['midazolam-2', 'fio2-slider'],
       teachingPoints: [
         'LAST seizure control: midazolam 2-4 mg IV, or lorazepam 2-4 mg IV.',
         'Avoid propofol in LAST — its lipid vehicle is thought to interfere with intralipid rescue.',
@@ -533,6 +542,7 @@ export const HARD_LAST_TOXICITY: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'bag_mask' },
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['bp-display', 'fio2-slider'],
       teachingPoints: [
         'Intralipid 20% LAST protocol: 1.5 mL/kg bolus → 0.25 mL/kg/min infusion.',
         'Mechanism: "lipid sink" — partitions bupivacaine away from cardiac sodium channels.',
@@ -569,6 +579,7 @@ export const HARD_LAST_TOXICITY: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'LAST ACLS modifications: reduce epinephrine dose (≤1 mcg/kg), avoid vasopressin, continue Intralipid.',
         'ECMO: early referral for refractory LAST cardiac arrest — has saved lives.',
@@ -662,6 +673,7 @@ export const HARD_BRONCHOSPASM: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'Pre-procedure beta-2 agonist nebulization is standard for any asthmatic patient undergoing airway manipulation.',
         'Topical lidocaine to vocal cords reduces cough reflex and bronchospasm trigger.',
@@ -700,6 +712,7 @@ export const HARD_BRONCHOSPASM: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 60 },
         { type: 'advance_time', seconds: 60 },
       ],
+      highlight: ['fentanyl-50', 'ketamine-25', 'propofol-50'],
       teachingPoints: [
         'Ketamine + propofol ("ketofol"): ketamine provides bronchodilation and analgesia; propofol prevents excess salivation and emergence reactions.',
         'Topical lidocaine at the cords before scope insertion further reduces bronchospasm.',
@@ -735,6 +748,7 @@ export const HARD_BRONCHOSPASM: InteractiveScenario = {
         { type: 'set_fio2', fio2: 1.0 },
         { type: 'apply_intervention', intervention: 'bag_mask' },
       ],
+      highlight: ['spo2-display', 'fio2-slider'],
       teachingPoints: [
         'Remove the airway stimulus (scope) FIRST in any bronchoscopy-triggered bronchospasm.',
         'Then: 100% O2, IV salbutamol or nebulized bronchodilator, IV ketamine for additional bronchodilation.',
@@ -771,6 +785,7 @@ export const HARD_BRONCHOSPASM: InteractiveScenario = {
         { type: 'administer_drug', drug: 'ketamine', dose: 20 },
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['ketamine-25', 'fio2-slider'],
       teachingPoints: [
         'Bronchospasm treatment ladder: beta-2 agonist → MgSO4 2g IV → IV ketamine → IV epinephrine.',
         'Ketamine IV 0.5-1 mg/kg: powerful bronchodilation via catecholamine release and direct smooth muscle effect.',
@@ -868,6 +883,7 @@ export const HARD_HEMORRHAGE: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 70 },
         { type: 'advance_time', seconds: 120 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider', 'midazolam-2', 'fentanyl-50', 'propofol-50'],
       teachingPoints: [
         'Low-dose aspirin: continue for most dental procedures. Stop only for major oral surgery with high bleeding risk.',
         'Aspirin irreversibly inhibits platelet cyclooxygenase — effect lasts 7-10 days (platelet lifespan).',
@@ -903,6 +919,7 @@ export const HARD_HEMORRHAGE: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'increase_fio2' },
         { type: 'set_fio2', fio2: 0.60 },
       ],
+      highlight: ['bp-display', 'fio2-slider'],
       teachingPoints: [
         'Hemorrhagic shock classification: I <15%, II 15-30%, III 30-40%, IV >40% blood volume.',
         'Class II: tachycardia but BP maintained. Start fluid resuscitation — 2L NS or LR.',
@@ -940,6 +957,7 @@ export const HARD_HEMORRHAGE: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 80 },
         { type: 'administer_drug', drug: 'ketamine', dose: 40 },
       ],
+      highlight: ['airway-ett', 'fio2-slider', 'propofol-100', 'ketamine-50'],
       teachingPoints: [
         'Blood in the oropharynx + sedation = aspiration risk. Secure the airway early.',
         'Rapid sequence intubation (RSI): ketamine (hemodynamically stable induction) + succinylcholine.',
@@ -975,6 +993,7 @@ export const HARD_HEMORRHAGE: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'Massive transfusion protocol: balanced 1:1:1 ratio of pRBC:FFP:platelets.',
         'Tranexamic acid (TXA) 1 g IV: given within 3 hours of major hemorrhage reduces mortality.',

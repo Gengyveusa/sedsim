@@ -44,6 +44,9 @@ interface AIState {
   isScenarioRunning: boolean;
   currentQuestion: { stepId: string; question: ScenarioQuestion } | null;
 
+  // Callout highlights
+  activeHighlights: { targetId: string; text: string }[] | null;
+
   // Actions
   initializeAI: () => void;
   startAI: () => void;
@@ -62,6 +65,7 @@ interface AIState {
   setTutorialState: (state: TutorialState | null) => void;
   setScenarioRunning: (running: boolean) => void;
   setCurrentQuestion: (q: { stepId: string; question: ScenarioQuestion } | null) => void;
+  setActiveHighlights: (highlights: { targetId: string; text: string }[] | null) => void;
 }
 
 const useAIStore = create<AIState>((set, get) => ({
@@ -82,6 +86,7 @@ const useAIStore = create<AIState>((set, get) => ({
   tutorialState: null,
   isScenarioRunning: false,
   currentQuestion: null,
+  activeHighlights: null,
 
   initializeAI: () => {
     const orchestrator = new MultiAgentOrchestrator();
@@ -195,6 +200,10 @@ const useAIStore = create<AIState>((set, get) => ({
 
   setCurrentQuestion: (q) => {
     set({ currentQuestion: q });
+  },
+
+  setActiveHighlights: (highlights) => {
+    set({ activeHighlights: highlights });
   },
 }));
 

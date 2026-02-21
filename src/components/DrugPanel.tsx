@@ -56,6 +56,7 @@ function CompactDrugCard({ drug }: { drug: DrugParams }) {
         {(presetDoses[drugKey] || []).map(dose => (
           <button
             key={dose}
+            data-sim-id={`${drugKey}-${dose}`}
             onClick={() => administerBolus(drugKey, dose)}
             className="flex-1 py-0.5 rounded text-xs font-mono hover:brightness-125 transition-all"
             style={{ background: `${color}22`, color, border: `1px solid ${color}44`, fontSize: 11 }}

@@ -75,6 +75,7 @@ export default function InterventionPanel() {
             return (
               <button
                 key={key}
+                data-sim-id={`airway-${key}`}
                 onClick={() => handleDeviceSelect(key)}
                 className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-colors text-left flex items-center justify-between ${
                   isActive
@@ -126,6 +127,7 @@ export default function InterventionPanel() {
         </label>
         <div className="flex gap-2">
           <input
+            data-sim-id="fio2-slider"
             type="number"
             min="21"
             max={Math.round(currentDeviceInfo.maxFio2 * 100)}

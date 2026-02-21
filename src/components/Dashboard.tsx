@@ -4,6 +4,7 @@ import MentorChat from './MentorChat';
 import OxyHbCurve from './OxyHbCurve';
 import FrankStarlingCurve from './FrankStarlingCurve';
 import EchoSim from './EchoSim';
+import ScenarioCallout from './ScenarioCallout';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
 
@@ -48,6 +49,7 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
+    <>
     <div className="fixed right-0 top-0 bottom-12 z-50 flex pointer-events-none">
       {/* Expanded panel */}
       {activeTab && (
@@ -199,5 +201,7 @@ export const Dashboard: React.FC = () => {
         ))}
       </div>
     </div>
+    <ScenarioCallout />
+    </>
   );
 };
