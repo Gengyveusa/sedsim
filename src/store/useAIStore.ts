@@ -32,7 +32,7 @@ interface AIState {
 
   // Dashboard
   isDashboardOpen: boolean;
-  activeAITab: 'eeg' | 'mentor' | 'scenarios';
+  activeAITab: 'eeg' | 'mentor';
 
   // Ghost Dose
   ghostDose: GhostDose | null;
@@ -56,7 +56,7 @@ interface AIState {
   addMentorMessage: (role: 'user' | 'mentor', content: string) => void;
   setMentorThinking: (thinking: boolean) => void;
   toggleDashboard: () => void;
-  setActiveAITab: (tab: 'eeg' | 'mentor' | 'scenarios') => void;
+  setActiveAITab: (tab: 'eeg' | 'mentor') => void;
   destroyAI: () => void;
   setGhostDose: (ghost: GhostDose | null) => void;
   setTutorialState: (state: TutorialState | null) => void;
