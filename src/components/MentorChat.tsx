@@ -30,6 +30,7 @@ const WELCOME_MSG: MentorMessage = {
 };
 
 const DEDUPLICATION_WINDOW_MS = 60000;
+const normalize = (s: string) => s.replace(/\d+/g, '#');
 
 const MentorChat: React.FC<MentorChatProps> = ({
   vitals, moass, eegState, digitalTwin, eventLog, pkStates, isOpen, onToggle
@@ -85,23 +86,24 @@ const MentorChat: React.FC<MentorChatProps> = ({
   const isRunning = useSimStore(s => s.isRunning);
   const learnerLevel = 'intermediate' as const; // TODO: expose from store
 
-  // Auto-generate observations every 15 simulation-seconds when running
+  // Auto-generate observations every 30 simulation-seconds when running (suppressed during active scenarios)
   useEffect(() => {
     if (!isRunning) return;
-    if (elapsedSeconds - lastObservationTimeRef.current < 15) return;
+    if (isScenarioRunning) return;
+    if (elapsedSeconds - lastObservationTimeRef.current < 30) return;
     lastObservationTimeRef.current = elapsedSeconds;
 
     const obs = autoObserve({ vitals, moass, eeg: eegState ?? undefined, pkStates, elapsedSeconds });
     if (obs) {
-      // Deduplicate: skip if same message within deduplication window
+      // Deduplicate: skip if same category of message (normalized, numbers stripped) within deduplication window
       const last = lastAutoObsRef.current;
-      if (obs.content === last.content && (Date.now() - last.time) < DEDUPLICATION_WINDOW_MS) {
+      if (normalize(obs.content) === normalize(last.content) && (Date.now() - last.time) < DEDUPLICATION_WINDOW_MS) {
         return;
       }
       lastAutoObsRef.current = { content: obs.content, time: Date.now() };
       setMessages(prev => [...prev, obs]);
     }
-  }, [elapsedSeconds, isRunning, vitals, moass, eegState, pkStates]);
+  }, [elapsedSeconds, isRunning, isScenarioRunning, vitals, moass, eegState, pkStates]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
