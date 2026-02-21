@@ -1,23 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import EEGPanel from './EEGPanel';
 import MentorChat from './MentorChat';
-import { ScenarioPanel } from './ScenarioPanel';
 import OxyHbCurve from './OxyHbCurve';
 import FrankStarlingCurve from './FrankStarlingCurve';
 import EchoSim from './EchoSim';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
 
-type AITab = 'eeg' | 'mentor' | 'scenarios' | 'oxyhb' | 'frankstarling' | 'echosim';
+type AITab = 'eeg' | 'mentor' | 'oxyhb' | 'frankstarling' | 'echosim';
 
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AITab | null>(null);
   const [mentorOpen, setMentorOpen] = useState(true);
 
-  // Respond to external requests to switch tab (e.g., from ScenarioPanel Play button)
+  // Respond to external requests to switch tab (e.g., from ScenarioEngine)
   const storeActiveAITab = useAIStore(s => s.activeAITab);
   useEffect(() => {
-    if (storeActiveAITab === 'mentor' || storeActiveAITab === 'eeg' || storeActiveAITab === 'scenarios') {
+    if (storeActiveAITab === 'mentor' || storeActiveAITab === 'eeg') {
       setActiveTab(storeActiveAITab as AITab);
     }
   }, [storeActiveAITab]);
@@ -39,10 +38,9 @@ export const Dashboard: React.FC = () => {
   const tabs: { id: AITab; label: string; icon: string }[] = [
     { id: 'eeg', label: 'EEG', icon: '\ud83e\udde0' },
     { id: 'mentor', label: 'Mentor', icon: '\ud83c\udf93' },
-    { id: 'scenarios', label: 'Scenarios', icon: '\ud83c\udfaf' },
     { id: 'oxyhb', label: 'O\u2082-Hb', icon: '\ud83e\ude78' },
         { id: 'frankstarling', label: 'F-S', icon: '\u2764' },
-        { id: 'echosim', label: 'Echo', icon: '\ud83d\udc93' },
+    { id: 'echosim', label: 'Echo', icon: '\ud83d\udc93' },
   ];
 
   const handleTabClick = (id: AITab) => {
@@ -64,7 +62,7 @@ export const Dashboard: React.FC = () => {
               className="text-gray-400 hover:text-white text-sm px-1"
               title="Close"
             >
-              ×
+              \u00d7
             </button>
           </div>
           {/* Panel content */}
@@ -74,8 +72,8 @@ export const Dashboard: React.FC = () => {
                 <EEGPanel eegState={simState.eegState} isRunning={simState.isRunning} />
                 {simState.digitalTwin && (
                   <div className="px-3 py-2 border-t border-gray-700">
-                    <h3 className="text-xs font-bold text-blue-400 mb-2">Digital Twin – Risk Metrics</h3>
-                    <div className="space-y-1 text-xs">
+                    <h3 className="text-xs font-bold text-white mb-2">Digital Twin \u2013 Risk Metrics</h3>
+                    <div className="space-y-1 text-[10px]">
                       <div className="flex justify-between">
                         <span className="text-gray-400">Hypotension Risk</span>
                         <span className={simState.digitalTwin.predictedOutcome.hypotensionRisk > 50 ? 'text-red-400' : simState.digitalTwin.predictedOutcome.hypotensionRisk > 25 ? 'text-yellow-400' : 'text-green-400'}>
@@ -102,23 +100,31 @@ export const Dashboard: React.FC = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">Rhythm</span>
-                        <span className="text-white">{simState.digitalTwin.predictedOutcome.predictedRhythm.replace(/_/g, ' ')}</span>
+                        <span className="text-white">
+                          {simState.digitalTwin.predictedOutcome.predictedRhythm.replace(/_/g, ' ')}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">Est. Time to Emergence</span>
-                        <span className="text-white">{simState.digitalTwin.predictedOutcome.timeToEmergence} min</span>
+                        <span className="text-white">
+                          {simState.digitalTwin.predictedOutcome.timeToEmergence} min
+                        </span>
                       </div>
                       {simState.digitalTwin.comorbidities.length > 0 && (
                         <div className="flex justify-between">
                           <span className="text-gray-400">Comorbidities</span>
-                          <span className="text-white">{simState.digitalTwin.comorbidities.join(', ')}</span>
+                          <span className="text-yellow-400">
+                            {simState.digitalTwin.comorbidities.join(', ')}
+                          </span>
                         </div>
                       )}
                       {simState.digitalTwin.predictedOutcome.aclsGuidance.length > 0 && (
                         <div className="mt-2">
-                          <div className="text-yellow-400 font-bold">⚠ ACLS Guidance</div>
+                          <span className="text-yellow-400 font-semibold">\u26a0 ACLS Guidance</span>
                           {simState.digitalTwin.predictedOutcome.aclsGuidance.map((g: string, i: number) => (
-                            <div key={i} className="text-yellow-200 text-xs">• {g}</div>
+                            <div key={i} className="text-yellow-300 ml-2">
+                              \u2022 {g}
+                            </div>
                           ))}
                         </div>
                       )}
@@ -128,45 +134,48 @@ export const Dashboard: React.FC = () => {
               </>
             )}
             {activeTab === 'mentor' && (
-              <MentorChat vitals={simState.vitals} moass={simState.moass} eegState={simState.eegState} digitalTwin={simState.digitalTwin} eventLog={simState.eventLog} pkStates={simState.pkStates} isOpen={mentorOpen} onToggle={() => setMentorOpen(!mentorOpen)} />
-            )}
-            {activeTab === 'scenarios' && (
-              <div className="p-2">
-                <ScenarioPanel />
-              </div>
+              <MentorChat
+                vitals={simState.vitals}
+                moass={simState.moass}
+                eegState={simState.eegState}
+                digitalTwin={simState.digitalTwin}
+                eventLog={simState.eventLog}
+                pkStates={simState.pkStates}
+                isOpen={mentorOpen}
+                onToggle={() => setMentorOpen(!mentorOpen)}
+              />
             )}
             {activeTab === 'oxyhb' && (
-              <div className="p-2 overflow-y-auto max-h-[600px]">
+              <div className="p-2">
                 <OxyHbCurve
                   vitals={simState.vitals}
                   fio2={simState.fio2}
-                  patient={simState.patient}
                   airwayDevice={simState.airwayDevice}
                 />
               </div>
             )}
-                      {activeTab === 'frankstarling' && (
-            <div className="p-2">
-              <FrankStarlingCurve
-                vitals={simState.vitals}
-                patient={simState.patient}
-                moass={simState.moass}
-                combinedEff={simState.combinedEff}
-                pkStates={simState.pkStates}
-              />
-            </div>
-          )}
-                      {activeTab === 'echosim' && (
-            <div className="p-2">
-              <EchoSim
-                vitals={simState.vitals}
-                patient={simState.patient}
-                moass={simState.moass}
-                combinedEff={simState.combinedEff}
-                pkStates={simState.pkStates}
-              />
-            </div>
-          )}
+            {activeTab === 'frankstarling' && (
+              <div className="p-2">
+                <FrankStarlingCurve
+                  vitals={simState.vitals}
+                  patient={simState.patient}
+                  moass={simState.moass}
+                  combinedEff={simState.combinedEff}
+                  pkStates={simState.pkStates}
+                />
+              </div>
+            )}
+            {activeTab === 'echosim' && (
+              <div className="p-2">
+                <EchoSim
+                  vitals={simState.vitals}
+                  patient={simState.patient}
+                  moass={simState.moass}
+                  combinedEff={simState.combinedEff}
+                  pkStates={simState.pkStates}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
