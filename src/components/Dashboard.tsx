@@ -51,6 +51,7 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
+    <>
     <div className="fixed right-0 top-0 bottom-12 z-50 flex pointer-events-none">
       {/* Expanded panel */}
       {activeTab && (
@@ -191,5 +192,6 @@ export const Dashboard: React.FC = () => {
       </div>
     </div>
     <ScenarioCallout />
+    </>
   );
 };

@@ -28,6 +28,8 @@ const WELCOME_MSG: MentorMessage = {
   confidence: 1.0,
 };
 
+const DEDUPLICATION_WINDOW_MS = 60000;
+
 const MentorChat: React.FC<MentorChatProps> = ({
   vitals, moass, eegState, digitalTwin, eventLog, pkStates, isOpen, onToggle
 }) => {
@@ -82,9 +84,9 @@ const MentorChat: React.FC<MentorChatProps> = ({
 
     const obs = autoObserve({ vitals, moass, eeg: eegState ?? undefined, pkStates, elapsedSeconds });
     if (obs) {
-      // Deduplicate: skip if same message within 60 seconds
+      // Deduplicate: skip if same message within deduplication window
       const last = lastAutoObsRef.current;
-      if (obs.content === last.content && (Date.now() - last.time) < 60000) {
+      if (obs.content === last.content && (Date.now() - last.time) < DEDUPLICATION_WINDOW_MS) {
         return;
       }
       lastAutoObsRef.current = { content: obs.content, time: Date.now() };

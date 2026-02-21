@@ -2,7 +2,7 @@
 // Visual callout overlay for Millie interactive scenarios.
 // Renders a pulsing highlight ring + tooltip arrow pointing to a target data-sim-id element.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import useAIStore from '../store/useAIStore';
 
 interface TargetRect {
@@ -47,10 +47,10 @@ const ScenarioCallout: React.FC = () => {
     };
 
     // Small delay to let layout settle after step fires
-    const timer = setTimeout(resolveAll, 150);
+    const timer = setTimeout(resolveAll, LAYOUT_SETTLE_DELAY_MS);
 
-    // Auto-dismiss after 12 seconds
-    const dismiss = setTimeout(() => setActiveHighlights(null), 12000);
+    // Auto-dismiss after timeout
+    const dismiss = setTimeout(() => setActiveHighlights(null), AUTO_DISMISS_TIMEOUT_MS);
 
     return () => {
       clearTimeout(timer);
@@ -78,6 +78,10 @@ interface CalloutItemProps {
   onDismiss: () => void;
 }
 
+const LAYOUT_SETTLE_DELAY_MS = 150;
+const AUTO_DISMISS_TIMEOUT_MS = 12000;
+const MAX_TOOLTIP_TEXT_LENGTH = 120;
+
 const CalloutItem: React.FC<CalloutItemProps> = ({ highlight, onDismiss }) => {
   const { rect, text } = highlight;
   const [visible, setVisible] = useState(false);
@@ -89,27 +93,27 @@ const CalloutItem: React.FC<CalloutItemProps> = ({ highlight, onDismiss }) => {
   }, []);
 
   // Centre of the target element
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
+  const centerX = rect.left + rect.width / 2;
 
   // Position tooltip above the element by default; clamp to viewport
   const tipWidth = 240;
   const tipHeight = 80;
   const gap = 14;
+  const rectBottom = rect.top + rect.height;
 
   let tipTop = rect.top - tipHeight - gap;
-  let tipLeft = cx - tipWidth / 2;
+  let tipLeft = centerX - tipWidth / 2;
   let arrowBelow = false;
 
   if (tipTop < 8) {
     // Flip below the element
-    tipTop = rect.bottom + gap;
+    tipTop = rectBottom + gap;
     arrowBelow = true;
   }
   tipLeft = Math.max(8, Math.min(tipLeft, window.innerWidth - tipWidth - 8));
 
   // Arrow centre x relative to tooltip
-  const arrowX = Math.max(12, Math.min(cx - tipLeft, tipWidth - 12));
+  const arrowX = Math.max(12, Math.min(centerX - tipLeft, tipWidth - 12));
 
   return (
     <>
@@ -161,7 +165,7 @@ const CalloutItem: React.FC<CalloutItemProps> = ({ highlight, onDismiss }) => {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
             <span style={{ fontSize: 14, flexShrink: 0 }}>👩‍⚕️</span>
             <p style={{ margin: 0, fontSize: 11, color: '#e2e8f0', lineHeight: 1.5, flex: 1 }}>
-              {text.length > 120 ? text.slice(0, 120) + '…' : text}
+              {text.length > MAX_TOOLTIP_TEXT_LENGTH ? text.slice(0, MAX_TOOLTIP_TEXT_LENGTH) + '…' : text}
             </p>
           </div>
           <p style={{ margin: '4px 0 0', fontSize: 9, color: '#64748b', textAlign: 'right' }}>
