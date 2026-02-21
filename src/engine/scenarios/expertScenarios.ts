@@ -106,6 +106,7 @@ export const EXPERT_PRIS: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'Stop propofol IMMEDIATELY. There is no safe dose of propofol once PRIS is established.',
         'Alternative ICU sedation: midazolam infusion, dexmedetomidine, or lorazepam infusion.',
@@ -141,6 +142,7 @@ export const EXPERT_PRIS: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['hr-display', 'fio2-slider'],
       teachingPoints: [
         'PRIS cardiac pattern: new RBBB or Brugada-like ST pattern in V1-V3 is a red flag.',
         'Temporary pacing may be needed for PRIS-related complete heart block.',
@@ -176,6 +178,7 @@ export const EXPERT_PRIS: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'PRIS → switch to: midazolam infusion, dexmedetomidine, or lorazepam infusion.',
         'Dexmedetomidine allows cooperative sedation — patient can be weaned and assessed.',
@@ -269,6 +272,7 @@ export const EXPERT_MULTI_DRUG: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'Frailty + COPD + CKD: reduce ALL drug doses by 50-70%. Use one drug at a time.',
         'Low albumin (2.8): more free drug (unbound fraction higher) — further increases effective dose.',
@@ -306,6 +310,7 @@ export const EXPERT_MULTI_DRUG: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'bag_mask' },
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['rr-display', 'fio2-slider'],
       teachingPoints: [
         'Apnea management: A-B-C first. Airway → Breathing (BVM) → Circulation.',
         'BVM can fully manage apnea while pharmacologic reversal takes effect.',
@@ -341,6 +346,7 @@ export const EXPERT_MULTI_DRUG: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 0.60 },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'Naloxone 0.04 mg IV every 2-3 min: titrate to spontaneous respiration, not full reversal.',
         'Full naloxone reversal causes acute pain crisis, HTN, and pulmonary edema — dangerous in elderly.',
@@ -376,6 +382,7 @@ export const EXPERT_MULTI_DRUG: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 0.44 },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'Flumazenil 0.2 mg IV: first dose. Repeat 0.1 mg every 60 sec to max 1 mg.',
         'Avoid in: benzodiazepine-dependent patients, epilepsy, tricyclic antidepressant overdose.',
@@ -469,6 +476,7 @@ export const EXPERT_AWARENESS: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.29 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'Drug sensitivity varies 10-fold between individuals for the same drug.',
         'Document "requires higher sedation doses" in the chart — guides future anesthesia providers.',
@@ -506,6 +514,7 @@ export const EXPERT_AWARENESS: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 40 },
         { type: 'advance_time', seconds: 60 },
       ],
+      highlight: ['midazolam-1', 'propofol-50'],
       teachingPoints: [
         'Awareness signs: purposeful movement, tachycardia, hypertension, sweating, eye opening, grimacing.',
         'Immediate response: supplemental propofol + midazolam. Verify IV patency — disconnected IV is a common cause.',
@@ -543,6 +552,7 @@ export const EXPERT_AWARENESS: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 60 },
         { type: 'advance_time', seconds: 90 },
       ],
+      highlight: ['fentanyl-50', 'propofol-50'],
       teachingPoints: [
         'IV patency: check at every bolus. Swelling, pain, or coolness at site = infiltration.',
         'Restart IV in new site before proceeding — drug delivery is the first troubleshooting step for awareness.',
@@ -673,6 +683,7 @@ export const EXPERT_MALIGNANT_HYPERTHERMIA: InteractiveScenario = {
         { type: 'administer_drug', drug: 'ketamine', dose: 80 },
         { type: 'advance_time', seconds: 120 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider', 'midazolam-2', 'ketamine-100'],
       teachingPoints: [
         'MH susceptibility: autosomal dominant RYR1 mutations in 70% of cases.',
         'Adopted patients or unknown family history = proceed with caution, have dantrolene available.',
@@ -709,6 +720,7 @@ export const EXPERT_MALIGNANT_HYPERTHERMIA: InteractiveScenario = {
         { type: 'set_fio2', fio2: 1.0 },
         { type: 'apply_intervention', intervention: 'bag_mask' },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'MH clinical criteria (Larach score): temperature rise ≥1.5°C/hr, masseter spasm, EtCO2 >55 despite adequate ventilation.',
         'CALL for help immediately — MH crisis requires a team response.',
@@ -738,6 +750,7 @@ export const EXPERT_MALIGNANT_HYPERTHERMIA: InteractiveScenario = {
         { type: 'set_fio2', fio2: 1.0 },
         { type: 'set_airway_device', device: 'ett' },
       ],
+      highlight: ['airway-ett', 'fio2-slider'],
       teachingPoints: [
         'Dantrolene 2.5 mg/kg IV: inhibits RYR1 receptor → reduces SR calcium release → breaks muscle hypermetabolism.',
         'Dantrolene reconstitution: 20 mg per vial + 60 mL sterile water. For 200 mg: need 10 vials — requires team effort.',
@@ -773,6 +786,7 @@ export const EXPERT_MALIGNANT_HYPERTHERMIA: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'MH comprehensive treatment: Dantrolene + active cooling + sodium bicarbonate 1-2 mEq/kg + treat VF/VT.',
         'Target core temperature <38.5°C. Stop cooling at 38°C — avoid overcorrection.',
@@ -871,6 +885,7 @@ export const EXPERT_CARDIAC_ARREST: InteractiveScenario = {
         { type: 'administer_drug', drug: 'fentanyl', dose: 25 },
         { type: 'advance_time', seconds: 90 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider', 'midazolam-1', 'fentanyl-25'],
       teachingPoints: [
         'HCM sedation principles: maintain preload (IV fluids), maintain afterload (avoid vasodilators), control HR (neither too fast nor too slow).',
         'Safe HCM sedation: midazolam + fentanyl only, or ketamine (maintains sympathetic tone).',
@@ -908,6 +923,7 @@ export const EXPERT_CARDIAC_ARREST: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'bag_mask' },
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['hr-display', 'fio2-slider'],
       teachingPoints: [
         'VFib recognition: chaotic, irregularly irregular ECG with no organized QRS complex.',
         'CPR first: rate 100-120/min, depth ≥2 inches, minimize interruptions.',
@@ -943,6 +959,7 @@ export const EXPERT_CARDIAC_ARREST: InteractiveScenario = {
         { type: 'set_fio2', fio2: 1.0 },
         { type: 'apply_intervention', intervention: 'bag_mask' },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'Defibrillation: 200 J biphasic first. Resume CPR immediately after shock — do not wait to check pulse.',
         'Post-shock rhythm check: 2 minutes of CPR before rhythm check.',
@@ -979,6 +996,7 @@ export const EXPERT_CARDIAC_ARREST: InteractiveScenario = {
         { type: 'set_airway_device', device: 'ett' },
         { type: 'set_fio2', fio2: 1.0 },
       ],
+      highlight: ['airway-ett', 'fio2-slider'],
       teachingPoints: [
         'Post-ROSC: 12-lead ECG to assess for STEMI (PCI indication), secure airway, transfer to ICU.',
         'Targeted temperature management: 32-36°C for 24 hours if comatose post-ROSC.',

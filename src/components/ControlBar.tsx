@@ -14,6 +14,7 @@ export default  function ControlBar() {
     <div className="bg-sim-panel border-b border-gray-700 px-4 py-2 flex items-center gap-4">
       <div className="flex items-center gap-2">
         <button
+          data-sim-id="play-button"
           onClick={toggleRunning}
           className={`px-4 py-1.5 rounded font-medium text-sm ${
             isRunning
@@ -24,6 +25,7 @@ export default  function ControlBar() {
           {isRunning ? 'Pause' : 'Play'}
         </button>
         <button
+          data-sim-id="reset-button"
           onClick={reset}
           className="px-4 py-1.5 rounded font-medium text-sm bg-red-600 hover:bg-red-700 text-white"
         >
@@ -36,6 +38,7 @@ export default  function ControlBar() {
         {SPEED_OPTIONS.map((s) => (
           <button
             key={s}
+            data-sim-id={`speed-${s}x`}
             onClick={() => setSpeed(s)}
             className={`px-2 py-1 rounded text-xs ${
               speedMultiplier === s

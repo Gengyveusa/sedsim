@@ -72,6 +72,7 @@ export const MOD_ELDERLY_COPD: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.32 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'COPD reduces FRC and increases V/Q mismatch — small doses cause disproportionate desaturation.',
         'Elderly + COPD: reduce all sedative doses by 30-50% from the standard.',
@@ -102,6 +103,7 @@ export const MOD_ELDERLY_COPD: InteractiveScenario = {
         { type: 'administer_drug', drug: 'midazolam', dose: 0.5 },
         { type: 'advance_time', seconds: 120 },
       ],
+      highlight: ['fentanyl-25', 'midazolam-0.5'],
       teachingPoints: [
         'Start low, go slow: elderly COPD patients are exquisitely sensitive to opioid respiratory depression.',
         'Midazolam 0.5 mg is adequate for an elderly patient — do not default to 1-2 mg.',
@@ -137,6 +139,7 @@ export const MOD_ELDERLY_COPD: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'chin_lift' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['rr-display', 'fio2-slider'],
       teachingPoints: [
         'EtCO2 is your earliest warning of respiratory depression — acts 2-5 minutes before SpO2 drops.',
         'Target EtCO2: <50 mmHg during sedation. Trending up = time to act.',
@@ -173,6 +176,7 @@ export const MOD_ELDERLY_COPD: InteractiveScenario = {
         { type: 'apply_intervention', intervention: 'jaw_thrust' },
         { type: 'set_fio2', fio2: 0.44 },
       ],
+      highlight: ['spo2-display', 'fio2-slider'],
       teachingPoints: [
         'Escalation ladder: verbal stimulation → chin lift → jaw thrust → nasal airway → BVM.',
         'SpO2 <90% in a COPD patient is a critical threshold requiring immediate action.',
@@ -296,6 +300,7 @@ export const MOD_OBESE_OSA: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'STOPBANG ≥5: have anesthesia backup, difficult airway cart, and LMA ready before starting.',
         'Pre-oxygenate with 100% O2 for 3-5 minutes to build O2 reserve — extends apnea tolerance.',
@@ -326,6 +331,7 @@ export const MOD_OBESE_OSA: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 40 },
         { type: 'advance_time', seconds: 90 },
       ],
+      highlight: ['fentanyl-25', 'propofol-50'],
       teachingPoints: [
         'Dose propofol on lean body weight (LBW), not total body weight for obese patients.',
         'Titrate slowly — obese patients have larger volume of distribution but also slower redistribution.',
@@ -362,6 +368,7 @@ export const MOD_OBESE_OSA: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_airway' },
         { type: 'set_fio2', fio2: 0.44 },
       ],
+      highlight: ['spo2-display', 'fio2-slider'],
       teachingPoints: [
         'Flat capnography = airway obstruction. Immediate jaw thrust + NPA placement.',
         'NPA is highly effective for OSA-pattern soft tissue obstruction.',
@@ -482,6 +489,7 @@ export const MOD_PEDIATRIC_DENTAL: InteractiveScenario = {
         { type: 'administer_drug', drug: 'midazolam', dose: 2 },
         { type: 'advance_time', seconds: 120 },
       ],
+      highlight: ['midazolam-2', 'fio2-slider'],
       teachingPoints: [
         'Pediatric dosing is ALWAYS weight-based. Double-check every calculation.',
         'Maximum single midazolam dose: 0.1 mg/kg or 2.5 mg, whichever is less.',
@@ -550,6 +558,7 @@ export const MOD_PEDIATRIC_DENTAL: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 28 },
         { type: 'advance_time', seconds: 60 },
       ],
+      highlight: ['propofol-20'],
       teachingPoints: [
         'Propofol 1-1.5 mg/kg IV: effective rescue for paradoxical benzodiazepine agitation.',
         'Ketamine 1 mg/kg IV is an alternative rescue for paradoxical agitation.',
@@ -675,6 +684,7 @@ export const MOD_DIABETIC_CARDIOVERSION: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'Cardioversion sedation: target brief, deep, amnestic sedation for 30-60 seconds.',
         'Propofol context-sensitive half-life is very short — ideal for brief procedures.',
@@ -704,6 +714,7 @@ export const MOD_DIABETIC_CARDIOVERSION: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 100 },
         { type: 'advance_time', seconds: 60 },
       ],
+      highlight: ['fentanyl-25', 'propofol-100'],
       teachingPoints: [
         'Give fentanyl 25 mcg before propofol to reduce the pain of cardioversion if patient briefly lightens.',
         'Cardioversion is brief — propofol will have you back to baseline in 5-10 minutes.',
@@ -771,6 +782,7 @@ export const MOD_DIABETIC_CARDIOVERSION: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 0.40 },
       ],
+      highlight: ['hr-display', 'fio2-slider'],
       teachingPoints: [
         'Atropine dose: 0.5 mg IV, repeat every 3-5 minutes to max 3 mg.',
         'Minimum dose 0.5 mg IV — doses <0.5 mg may paradoxically worsen bradycardia (vagal stimulation).',
@@ -865,6 +877,7 @@ export const MOD_RENAL_BIOPSY: InteractiveScenario = {
         { type: 'set_airway_device', device: 'nasal_cannula' },
         { type: 'set_fio2', fio2: 0.32 },
       ],
+      highlight: ['airway-nasal_cannula', 'fio2-slider'],
       teachingPoints: [
         'CKD-safe opioids: fentanyl (first choice), hydromorphone (reduced dose).',
         'Avoid in CKD: morphine, codeine, meperidine (accumulate active/toxic metabolites).',
@@ -895,6 +908,7 @@ export const MOD_RENAL_BIOPSY: InteractiveScenario = {
         { type: 'administer_drug', drug: 'propofol', dose: 50 },
         { type: 'advance_time', seconds: 120 },
       ],
+      highlight: ['fentanyl-25', 'propofol-50'],
       teachingPoints: [
         'Propofol is primarily hepatically glucuronidated — relatively safe in CKD.',
         'Still reduce dose for ASA 3 patients — comorbidities increase sensitivity.',
@@ -961,6 +975,7 @@ export const MOD_RENAL_BIOPSY: InteractiveScenario = {
       simActions: [
         { type: 'set_fio2', fio2: 0.35 },
       ],
+      highlight: ['fio2-slider'],
       teachingPoints: [
         'Flumazenil duration: 45-90 min. Midazolam metabolite duration in CKD: hours. Resedation is common after flumazenil.',
         'For stable prolonged sedation: monitor, O2, verbal stimulation, allow natural metabolism.',

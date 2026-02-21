@@ -144,7 +144,7 @@ export default function EmergencyDrugsPanel() {
   };
 
   return (
-    <div className="bg-red-950/30 border border-red-800/60 rounded-lg overflow-hidden">
+    <div data-sim-id="emergency-drugs" className="bg-red-950/30 border border-red-800/60 rounded-lg overflow-hidden">
       {/* Header */}
       <button
         className="w-full flex items-center justify-between px-3 py-2 hover:bg-red-900/30 transition-colors"

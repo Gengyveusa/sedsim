@@ -1,11 +1,14 @@
 import useSimStore from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
 
-function VitalBox({ label, value, unit, color = 'text-green-400', alarm = false }: {
-  label: string; value: number | string; unit: string; color?: string; alarm?: boolean;
+function VitalBox({ label, value, unit, color = 'text-green-400', alarm = false, simId }: {
+  label: string; value: number | string; unit: string; color?: string; alarm?: boolean; simId?: string;
 }) {
   return (
-    <div className={`bg-sim-bg rounded-lg p-3 text-center ${alarm ? 'ring-2 ring-red-500 animate-pulse' : ''}`}>
+    <div
+      data-sim-id={simId}
+      className={`bg-sim-bg rounded-lg p-3 text-center ${alarm ? 'ring-2 ring-red-500 animate-pulse' : ''}`}
+    >
       <div className="text-xs text-gray-400 uppercase">{label}</div>
       <div className={`text-3xl font-mono font-bold ${alarm ? 'text-red-400' : color}`}>
         {typeof value === 'number' ? value.toFixed(0) : value}
@@ -21,16 +24,16 @@ export default function VitalsPanel() {
   return (
     <div className="bg-sim-panel p-4 border-b border-gray-700">
       <div className="grid grid-cols-7 gap-3">
-        <VitalBox label="HR" value={vitals.hr} unit="bpm" color="text-green-400"
+        <VitalBox label="HR" value={vitals.hr} unit="bpm" color="text-green-400" simId="hr-display"
           alarm={vitals.hr < 50 || vitals.hr > 120} />
-        <VitalBox label="SBP/DBP" value={`${vitals.sbp}/${vitals.dbp}`} unit="mmHg" color="text-red-400"
+        <VitalBox label="SBP/DBP" value={`${vitals.sbp}/${vitals.dbp}`} unit="mmHg" color="text-red-400" simId="bp-display"
           alarm={vitals.sbp < 80} />
-        <VitalBox label="MAP" value={vitals.map} unit="mmHg" color="text-red-300" />
-        <VitalBox label="SpO2" value={vitals.spo2} unit="%" color="text-cyan-400"
+        <VitalBox label="MAP" value={vitals.map} unit="mmHg" color="text-red-300" simId="map-display" />
+        <VitalBox label="SpO2" value={vitals.spo2} unit="%" color="text-cyan-400" simId="spo2-display"
           alarm={vitals.spo2 < 90} />
-        <VitalBox label="RR" value={vitals.rr} unit="br/min" color="text-yellow-400"
+        <VitalBox label="RR" value={vitals.rr} unit="br/min" color="text-yellow-400" simId="rr-display"
           alarm={vitals.rr < 6} />
-        <VitalBox label="EtCO2" value={vitals.etco2} unit="mmHg" color="text-purple-400"
+        <VitalBox label="EtCO2" value={vitals.etco2} unit="mmHg" color="text-purple-400" simId="etco2-display"
           alarm={vitals.etco2 > 55} />
         {/* Drug Ce display */}
         <div className="bg-sim-bg rounded-lg p-3">

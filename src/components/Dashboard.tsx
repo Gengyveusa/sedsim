@@ -5,6 +5,7 @@ import { ScenarioPanel } from './ScenarioPanel';
 import OxyHbCurve from './OxyHbCurve';
 import FrankStarlingCurve from './FrankStarlingCurve';
 import EchoSim from './EchoSim';
+import ScenarioCallout from './ScenarioCallout';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
 
@@ -189,5 +190,6 @@ export const Dashboard: React.FC = () => {
         ))}
       </div>
     </div>
+    <ScenarioCallout />
   );
 };

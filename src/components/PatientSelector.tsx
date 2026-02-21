@@ -10,6 +10,7 @@ export default function PatientSelector() {
       
       <div className="space-y-2">
         <select
+          data-sim-id="patient-select"
           value={findArchetypeKey(patient)}
           onChange={(e) => selectPatient(e.target.value)}
           disabled={isRunning}
