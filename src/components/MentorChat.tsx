@@ -6,6 +6,8 @@ import { Vitals, MOASSLevel, LogEntry } from '../types';
 import { EEGState } from '../engine/eegModel';
 import { DigitalTwin } from '../engine/digitalTwin';
 import useSimStore from '../store/useSimStore';
+import useAIStore from '../store/useAIStore';
+import { scenarioEngine } from '../engine/ScenarioEngine';
 import GhostDosePreview from './GhostDosePreview';
 
 interface MentorChatProps {
@@ -33,9 +35,39 @@ const MentorChat: React.FC<MentorChatProps> = ({
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [showGhost, setShowGhost] = useState(false);
+  const [selectedChoice, setSelectedChoice] = useState<string>('');
+  const [numericAnswer, setNumericAnswer] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastObservationTimeRef = useRef<number>(0);
   const streamingIdxRef = useRef<number | null>(null);
+
+  // Scenario Q&A state from store
+  const currentQuestion = useAIStore(s => s.currentQuestion);
+  const isScenarioRunning = useAIStore(s => s.isScenarioRunning);
+  const mentorMessages = useAIStore(s => s.mentorMessages);
+
+  // Sync mentor messages from store into local messages (for scenario dialogues)
+  const lastSyncedIdxRef = useRef<number>(0);
+  useEffect(() => {
+    if (mentorMessages.length > lastSyncedIdxRef.current) {
+      const newMsgs = mentorMessages.slice(lastSyncedIdxRef.current);
+      lastSyncedIdxRef.current = mentorMessages.length;
+      const converted: MentorMessage[] = newMsgs.map(m => ({
+        role: (m.role === 'user' ? 'user' : 'mentor') as 'user' | 'mentor',
+        content: m.content,
+        timestamp: Date.now(),
+        confidence: m.role === 'mentor' ? 0.95 : undefined,
+      }));
+      setMessages(prev => [...prev, ...converted]);
+    }
+  }, [mentorMessages]);
+
+  // Reset sync index when scenario stops
+  useEffect(() => {
+    if (!isScenarioRunning) {
+      lastSyncedIdxRef.current = mentorMessages.length;
+    }
+  }, [isScenarioRunning, mentorMessages.length]);
 
   const elapsedSeconds = useSimStore(s => s.elapsedSeconds);
   const isRunning = useSimStore(s => s.isRunning);
@@ -146,6 +178,23 @@ const MentorChat: React.FC<MentorChatProps> = ({
 
   const suggestedQuestions = getSuggestedQuestions(vitals, moass, eegState || undefined);
 
+  // Handle scenario answer submission
+  const handleAnswerSubmit = useCallback(() => {
+    if (!currentQuestion) return;
+    const q = currentQuestion.question;
+    let answer: string | number;
+    if (q.type === 'numeric_range') {
+      answer = parseFloat(numericAnswer);
+      if (isNaN(answer as number)) return;
+    } else {
+      answer = selectedChoice;
+      if (!answer) return;
+    }
+    scenarioEngine.answerQuestion(answer);
+    setSelectedChoice('');
+    setNumericAnswer('');
+  }, [currentQuestion, selectedChoice, numericAnswer]);
+
   if (!isOpen) {
     return (
       <button
@@ -200,6 +249,59 @@ const MentorChat: React.FC<MentorChatProps> = ({
         ))}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Scenario Q&A Widget */}
+      {currentQuestion && (
+        <div className="mx-3 mb-2 bg-blue-950/70 border border-blue-700 rounded-lg p-3 space-y-2">
+          <p className="text-xs font-semibold text-blue-300">🎓 Millie's Question</p>
+          <p className="text-xs text-white">{currentQuestion.question.prompt}</p>
+
+          {currentQuestion.question.type === 'single_choice' && currentQuestion.question.options && (
+            <div className="space-y-1">
+              {currentQuestion.question.options.map(opt => (
+                <label key={opt} className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="scenario_choice"
+                    value={opt}
+                    checked={selectedChoice === opt}
+                    onChange={() => setSelectedChoice(opt)}
+                    className="accent-blue-400"
+                  />
+                  <span className={`text-xs ${selectedChoice === opt ? 'text-blue-300' : 'text-gray-300'} group-hover:text-white transition-colors`}>
+                    {opt}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {currentQuestion.question.type === 'numeric_range' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={numericAnswer}
+                onChange={e => setNumericAnswer(e.target.value)}
+                placeholder="Enter value…"
+                className="w-32 bg-gray-800 border border-gray-600 focus:border-blue-500 text-white text-xs rounded px-2 py-1 focus:outline-none"
+              />
+              {currentQuestion.question.idealRange && (
+                <span className="text-gray-500 text-[10px]">
+                  (ideal: {currentQuestion.question.idealRange[0]}–{currentQuestion.question.idealRange[1]})
+                </span>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={handleAnswerSubmit}
+            disabled={currentQuestion.question.type === 'numeric_range' ? !numericAnswer : !selectedChoice}
+            className="w-full text-xs py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded transition-colors font-semibold"
+          >
+            Submit Answer
+          </button>
+        </div>
+      )}
 
       {/* Ghost Dose Toggle */}
       <div className="px-3 py-1 border-t border-gray-800">

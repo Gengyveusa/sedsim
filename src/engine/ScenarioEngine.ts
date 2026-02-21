@@ -85,7 +85,6 @@ export class ScenarioEngine {
   private scenario: InteractiveScenario | null = null;
   private scenarioTimeSeconds = 0;
   private timerId: ReturnType<typeof setInterval> | null = null;
-  private currentStepIndex = -1;
   private firedStepIds = new Set<string>();
   private physiologyDurationCounters: Record<string, number> = {};
   awaitingAnswer: { stepId: string; question: ScenarioQuestion } | null = null;
@@ -94,7 +93,6 @@ export class ScenarioEngine {
   loadScenario(scenario: InteractiveScenario) {
     this.scenario = scenario;
     this.scenarioTimeSeconds = 0;
-    this.currentStepIndex = -1;
     this.firedStepIds.clear();
     this.physiologyDurationCounters = {};
     this.awaitingAnswer = null;

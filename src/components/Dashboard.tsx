@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import EEGPanel from './EEGPanel';
 import MentorChat from './MentorChat';
 import { ScenarioPanel } from './ScenarioPanel';
@@ -6,12 +6,21 @@ import OxyHbCurve from './OxyHbCurve';
 import FrankStarlingCurve from './FrankStarlingCurve';
 import EchoSim from './EchoSim';
 import useSimStore from '../store/useSimStore';
+import useAIStore from '../store/useAIStore';
 
 type AITab = 'eeg' | 'mentor' | 'scenarios' | 'oxyhb' | 'frankstarling' | 'echosim';
 
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AITab | null>(null);
   const [mentorOpen, setMentorOpen] = useState(true);
+
+  // Respond to external requests to switch tab (e.g., from ScenarioPanel Play button)
+  const storeActiveAITab = useAIStore(s => s.activeAITab);
+  useEffect(() => {
+    if (storeActiveAITab === 'mentor' || storeActiveAITab === 'eeg' || storeActiveAITab === 'scenarios') {
+      setActiveTab(storeActiveAITab as AITab);
+    }
+  }, [storeActiveAITab]);
 
   const simState = useSimStore((s) => ({
     vitals: s.vitals,
