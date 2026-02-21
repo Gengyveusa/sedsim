@@ -9,6 +9,7 @@ import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
 import { scenarioEngine } from '../engine/ScenarioEngine';
 import GhostDosePreview from './GhostDosePreview';
+import { ScenarioPanel } from './ScenarioPanel';
 
 interface MentorChatProps {
   vitals: Vitals;
@@ -35,6 +36,7 @@ const MentorChat: React.FC<MentorChatProps> = ({
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [showGhost, setShowGhost] = useState(false);
+  const [showScenarios, setShowScenarios] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<string>('');
   const [numericAnswer, setNumericAnswer] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -68,6 +70,13 @@ const MentorChat: React.FC<MentorChatProps> = ({
       lastSyncedIdxRef.current = mentorMessages.length;
     }
   }, [isScenarioRunning, mentorMessages.length]);
+
+  // Auto-collapse scenarios section when a scenario starts running
+  useEffect(() => {
+    if (isScenarioRunning) {
+      setShowScenarios(false);
+    }
+  }, [isScenarioRunning]);
 
   const elapsedSeconds = useSimStore(s => s.elapsedSeconds);
   const isRunning = useSimStore(s => s.isRunning);
@@ -209,6 +218,22 @@ const MentorChat: React.FC<MentorChatProps> = ({
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {/* Clinical Scenarios collapsible section */}
+      <div className="border-b border-gray-800">
+        <button
+          onClick={() => setShowScenarios(v => !v)}
+          className="w-full text-left text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 px-3 py-2 transition-colors"
+        >
+          <span>{showScenarios ? '▼' : '▶'}</span>
+          <span>🎯 Clinical Scenarios</span>
+        </button>
+        {showScenarios && (
+          <div className="px-3 pb-3 border border-gray-700 rounded-lg mx-3 mb-2">
+            <ScenarioPanel />
+          </div>
+        )}
+      </div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
         {messages.map((msg, idx) => (

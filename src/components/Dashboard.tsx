@@ -150,6 +150,7 @@ export const Dashboard: React.FC = () => {
                 <OxyHbCurve
                   vitals={simState.vitals}
                   fio2={simState.fio2}
+                  patient={simState.patient}
                   airwayDevice={simState.airwayDevice}
                 />
               </div>
