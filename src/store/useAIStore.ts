@@ -4,6 +4,7 @@ import { EEGSnapshot } from '../ai/eegModel';
 import { TwinState } from '../ai/digitalTwin';
 import { Scenario } from '../ai/scenarioGenerator';
 import { GhostDose, TutorialState } from '../types';
+import type { ScenarioQuestion } from '../engine/ScenarioEngine';
 
 interface AIState {
   // Orchestrator
@@ -39,6 +40,10 @@ interface AIState {
   // Tutorial
   tutorialState: TutorialState | null;
 
+  // Scenario engine state
+  isScenarioRunning: boolean;
+  currentQuestion: { stepId: string; question: ScenarioQuestion } | null;
+
   // Actions
   initializeAI: () => void;
   startAI: () => void;
@@ -55,6 +60,8 @@ interface AIState {
   destroyAI: () => void;
   setGhostDose: (ghost: GhostDose | null) => void;
   setTutorialState: (state: TutorialState | null) => void;
+  setScenarioRunning: (running: boolean) => void;
+  setCurrentQuestion: (q: { stepId: string; question: ScenarioQuestion } | null) => void;
 }
 
 const useAIStore = create<AIState>((set, get) => ({
@@ -73,6 +80,8 @@ const useAIStore = create<AIState>((set, get) => ({
   activeAITab: 'eeg',
   ghostDose: null,
   tutorialState: null,
+  isScenarioRunning: false,
+  currentQuestion: null,
 
   initializeAI: () => {
     const orchestrator = new MultiAgentOrchestrator();
@@ -178,6 +187,14 @@ const useAIStore = create<AIState>((set, get) => ({
 
   setTutorialState: (state) => {
     set({ tutorialState: state });
+  },
+
+  setScenarioRunning: (running) => {
+    set({ isScenarioRunning: running });
+  },
+
+  setCurrentQuestion: (q) => {
+    set({ currentQuestion: q });
   },
 }));
 
