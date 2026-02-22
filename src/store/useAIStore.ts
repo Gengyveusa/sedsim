@@ -52,6 +52,9 @@ interface AIState {
   currentScenarioPhase: 'pre_induction' | 'induction' | 'maintenance' | 'complication' | 'recovery' | 'debrief' | null;
   scenarioElapsedSeconds: number;
 
+  // Continue button state (manual step advancement)
+  pendingContinue: { stepId: string; stepLabel: string } | null;
+
   // Actions
   initializeAI: () => void;
   startAI: () => void;
@@ -74,6 +77,7 @@ interface AIState {
   setActiveHighlights: (highlights: { targetId: string; text: string; vitalLabel?: string; vitalValue?: number; severity?: 'normal' | 'warning' | 'danger' }[] | null) => void;
   setCurrentScenarioPhase: (phase: 'pre_induction' | 'induction' | 'maintenance' | 'complication' | 'recovery' | 'debrief' | null) => void;
   setScenarioElapsedSeconds: (seconds: number) => void;
+  setPendingContinue: (pending: { stepId: string; stepLabel: string } | null) => void;
 }
 
 const useAIStore = create<AIState>((set, get) => ({
@@ -98,6 +102,7 @@ const useAIStore = create<AIState>((set, get) => ({
   activeHighlights: null,
   currentScenarioPhase: null,
   scenarioElapsedSeconds: 0,
+  pendingContinue: null,
 
   initializeAI: () => {
     const orchestrator = new MultiAgentOrchestrator();
@@ -227,6 +232,10 @@ const useAIStore = create<AIState>((set, get) => ({
 
   setScenarioElapsedSeconds: (seconds) => {
     set({ scenarioElapsedSeconds: seconds });
+  },
+
+  setPendingContinue: (pending) => {
+    set({ pendingContinue: pending });
   },
 }));
 

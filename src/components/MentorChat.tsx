@@ -52,6 +52,7 @@ const MentorChat: React.FC<MentorChatProps> = ({
   const currentQuestion = useAIStore(s => s.currentQuestion);
   const isScenarioRunning = useAIStore(s => s.isScenarioRunning);
   const mentorMessages = useAIStore(s => s.mentorMessages);
+  const pendingContinue = useAIStore(s => s.pendingContinue);
 
   // Sync mentor messages from store into local messages (for scenario dialogues)
   const lastSyncedIdxRef = useRef<number>(0);
@@ -339,6 +340,25 @@ const MentorChat: React.FC<MentorChatProps> = ({
           >
             Submit Answer
           </button>
+        </div>
+      )}
+
+      {/* Continue Button — shown when a step is awaiting student acknowledgement */}
+      {pendingContinue && !currentQuestion && (
+        <div className="mx-3 mb-2">
+          <button
+            onClick={() => scenarioEngine.continuePendingStep()}
+            className="w-full text-xs py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-semibold flex items-center justify-center gap-2 transition-colors"
+            style={{ animation: 'continue-pulse 1.5s ease-in-out infinite' }}
+          >
+            ▶ Continue
+          </button>
+          <style>{`
+            @keyframes continue-pulse {
+              0%, 100% { box-shadow: 0 0 0 0 rgba(6,182,212,0.4); }
+              50% { box-shadow: 0 0 0 6px rgba(6,182,212,0); }
+            }
+          `}</style>
         </div>
       )}
 
