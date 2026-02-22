@@ -2,7 +2,7 @@ import useSimStore from '../store/useSimStore';
 import { PATIENT_ARCHETYPES } from '../engine/physiology';
 
 export default function PatientSelector() {
-  const { patient, availableArchetypes, selectPatient, isRunning } = useSimStore();
+  const { patient, availableArchetypes, selectPatient, isRunning, selectedArchetypeKey, isPatientLocked } = useSimStore();
 
   return (
     <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-3">
@@ -11,9 +11,9 @@ export default function PatientSelector() {
       <div className="space-y-2">
         <select
           data-sim-id="patient-select"
-          value={findArchetypeKey(patient)}
+          value={selectedArchetypeKey}
           onChange={(e) => selectPatient(e.target.value)}
-          disabled={isRunning}
+          disabled={isRunning || isPatientLocked}
           className="w-full px-2 py-1 bg-gray-800 text-gray-100 rounded border border-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {availableArchetypes.map((key) => {
@@ -83,19 +83,6 @@ export default function PatientSelector() {
       </div>
     </div>
   );
-}
-
-function findArchetypeKey(patient: typeof PATIENT_ARCHETYPES[keyof typeof PATIENT_ARCHETYPES]): string {
-  for (const [key, archetype] of Object.entries(PATIENT_ARCHETYPES)) {
-    if (
-      archetype.age === patient.age &&
-      archetype.weight === patient.weight &&
-      archetype.height === patient.height
-    ) {
-      return key;
-    }
-  }
-  return 'healthy_adult';
 }
 
 const ABBREVIATIONS: Record<string, string> = { hcm: 'HCM', dcm: 'DCM', osa: 'OSA' };

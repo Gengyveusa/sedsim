@@ -6,6 +6,7 @@ import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
 import { generateDebrief } from '../ai/mentor';
 import { AirwayDevice, InterventionType } from '../types';
+import { vitalCoherenceMonitor } from './VitalCoherenceMonitor';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -101,6 +102,8 @@ export class ScenarioEngine {
     const sim = useSimStore.getState();
     sim.reset();
     sim.selectPatient(scenario.patientArchetype);
+    // Lock patient selector during scenario
+    sim.setPatientLocked(true);
     // Set active scenario in AI store (cast to satisfy Scenario interface)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useAIStore.getState().setActiveScenario(scenario as any);
@@ -121,9 +124,10 @@ export class ScenarioEngine {
     // Start the sim clock
     const sim = useSimStore.getState();
     if (!sim.isRunning) sim.toggleRunning();
+    // Start vital coherence monitor; callback clears awaitingAnswer when a critical alert fires
+    vitalCoherenceMonitor.start(() => { this.awaitingAnswer = null; });
     // Start internal clock (1 sim-second per real second)
     this.timerId = setInterval(() => {
-      if (this.awaitingAnswer) return; // pause while waiting for student
       this.scenarioTimeSeconds += 1;
       useAIStore.getState().setScenarioElapsedSeconds(this.scenarioTimeSeconds);
       this.evaluateTriggers();
@@ -172,6 +176,10 @@ export class ScenarioEngine {
     useAIStore.getState().setCurrentScenarioPhase(null);
     useAIStore.getState().setScenarioElapsedSeconds(0);
     this.awaitingAnswer = null;
+    // Unlock patient selector
+    useSimStore.getState().setPatientLocked(false);
+    // Stop vital coherence monitor
+    vitalCoherenceMonitor.stop();
     // Stop the sim
     const sim = useSimStore.getState();
     if (sim.isRunning) sim.toggleRunning();
@@ -187,6 +195,10 @@ export class ScenarioEngine {
 
     for (const step of this.scenario.steps) {
       if (this.firedStepIds.has(step.id)) continue;
+
+      // When awaiting an answer, skip on_step_complete steps (sequential flow) but still
+      // evaluate on_physiology and on_time triggers so patient deterioration is not ignored
+      if (this.awaitingAnswer && step.triggerType === 'on_step_complete') continue;
 
       let shouldFire = false;
 
@@ -233,6 +245,11 @@ export class ScenarioEngine {
       }
 
       if (shouldFire) {
+        // If a physiology or time trigger fires while awaiting an answer, auto-clear the stale question
+        if (this.awaitingAnswer && (step.triggerType === 'on_physiology' || step.triggerType === 'on_time')) {
+          this.awaitingAnswer = null;
+          useAIStore.getState().setCurrentQuestion(null);
+        }
         this.fireStep(step);
         // Only fire one step per tick to avoid flooding
         break;

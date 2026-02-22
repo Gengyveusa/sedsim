@@ -87,10 +87,9 @@ const MentorChat: React.FC<MentorChatProps> = ({
   const isRunning = useSimStore(s => s.isRunning);
   const learnerLevel = 'intermediate' as const; // TODO: expose from store
 
-  // Auto-generate observations every 30 simulation-seconds when running (suppressed during active scenarios)
+  // Auto-generate observations every 30 simulation-seconds when running
   useEffect(() => {
     if (!isRunning) return;
-    if (isScenarioRunning) return;
     if (elapsedSeconds - lastObservationTimeRef.current < 30) return;
     lastObservationTimeRef.current = elapsedSeconds;
 
@@ -104,7 +103,7 @@ const MentorChat: React.FC<MentorChatProps> = ({
       lastAutoObsRef.current = { content: obs.content, time: Date.now() };
       setMessages(prev => [...prev, obs]);
     }
-  }, [elapsedSeconds, isRunning, isScenarioRunning, vitals, moass, eegState, pkStates]);
+  }, [elapsedSeconds, isRunning, vitals, moass, eegState, pkStates]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
