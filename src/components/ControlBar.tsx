@@ -1,13 +1,21 @@
 import useSimStore from '../store/useSimStore';
+import { scenarioEngine } from '../engine/ScenarioEngine';
 const SPEED_OPTIONS = [0.5, 1, 2, 5, 10];
 
 export default  function ControlBar() {
-  const { isRunning, speedMultiplier, elapsedSeconds, toggleRunning, reset, setSpeed } = useSimStore();
+  const { isRunning, speedMultiplier, elapsedSeconds, toggleRunning, reset, setSpeed, isScenarioActive } = useSimStore();
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleReset = () => {
+    if (isScenarioActive) {
+      scenarioEngine.stop();
+    }
+    reset();
   };
 
   return (
@@ -26,7 +34,7 @@ export default  function ControlBar() {
         </button>
         <button
           data-sim-id="reset-button"
-          onClick={reset}
+          onClick={handleReset}
           className="px-4 py-1.5 rounded font-medium text-sm bg-red-600 hover:bg-red-700 text-white"
         >
           Reset

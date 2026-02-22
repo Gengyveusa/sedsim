@@ -2,7 +2,7 @@ import useSimStore from '../store/useSimStore';
 import { PATIENT_ARCHETYPES } from '../engine/physiology';
 
 export default function PatientSelector() {
-  const { patient, availableArchetypes, selectPatient, isRunning, selectedArchetypeKey, isPatientLocked } = useSimStore();
+  const { patient, availableArchetypes, selectPatient, isRunning, selectedArchetypeKey, trueNorth } = useSimStore();
 
   return (
     <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-3">
@@ -13,7 +13,7 @@ export default function PatientSelector() {
           data-sim-id="patient-select"
           value={selectedArchetypeKey}
           onChange={(e) => selectPatient(e.target.value)}
-          disabled={isRunning || isPatientLocked}
+          disabled={isRunning || trueNorth.isLocked}
           className="w-full px-2 py-1 bg-gray-800 text-gray-100 rounded border border-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {availableArchetypes.map((key) => {

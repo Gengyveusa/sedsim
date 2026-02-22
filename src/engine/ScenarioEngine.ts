@@ -102,8 +102,9 @@ export class ScenarioEngine {
     const sim = useSimStore.getState();
     sim.reset();
     sim.selectPatient(scenario.patientArchetype);
-    // Lock patient selector during scenario
-    sim.setPatientLocked(true);
+    // Lock patient via trueNorth and set scenario state
+    sim.setTrueNorthLocked(true);
+    sim.setScenarioDrugProtocols(scenario.drugProtocols);
     // Set active scenario in AI store (cast to satisfy Scenario interface)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useAIStore.getState().setActiveScenario(scenario as any);
@@ -119,6 +120,7 @@ export class ScenarioEngine {
     if (!this.scenario || this.started) return;
     this.started = true;
     useAIStore.getState().setScenarioRunning(true);
+    useSimStore.getState().setScenarioActive(true);
     // Show preop vignette via mentor messages
     this.speakAsMillie(this.buildPreopPresentation());
     // Start the sim clock
@@ -153,15 +155,34 @@ export class ScenarioEngine {
       feedback = question.feedback[feedbackKey] || (isOptimal ? 'Correct!' : 'Not quite. Review the teaching points.');
     }
     this.speakAsMillie([feedback]);
-    // Apply sim actions for the step
+    // Find the step
     const step = this.scenario?.steps.find(s => s.id === stepId);
-    if (step?.simActions) step.simActions.forEach(a => this.applySimAction(a));
+    // Part 4: Auto-administer bolus for numeric_range dosing questions
+    if (question.type === 'numeric_range' && step?.simActions) {
+      const drugAction = step.simActions.find(a => a.type === 'administer_drug');
+      if (drugAction && drugAction.type === 'administer_drug') {
+        const dose = Number(answer);
+        if (dose > 0) {
+          useSimStore.getState().administerBolus(drugAction.drug, dose);
+          // Skip re-applying the administer_drug action below to avoid double-dosing
+          const remainingActions = step.simActions.filter(a => a.type !== 'administer_drug');
+          remainingActions.forEach(a => this.applySimAction(a));
+        } else {
+          step.simActions.forEach(a => this.applySimAction(a));
+        }
+      } else {
+        step.simActions.forEach(a => this.applySimAction(a));
+      }
+    } else if (step?.simActions) {
+      step.simActions.forEach(a => this.applySimAction(a));
+    }
     if (step?.teachingPoints?.length) {
       this.speakAsMillie(['📚 **Teaching Points:**\n' + step.teachingPoints.map(tp => `• ${tp}`).join('\n')]);
     }
     this.awaitingAnswer = null;
     useAIStore.getState().setCurrentQuestion(null);
     useAIStore.getState().setActiveHighlights(null);
+    useAIStore.getState().setUnlockedDrug(null);
     // Mark step as fired
     this.firedStepIds.add(stepId);
   }
@@ -175,9 +196,12 @@ export class ScenarioEngine {
     useAIStore.getState().setActiveHighlights(null);
     useAIStore.getState().setCurrentScenarioPhase(null);
     useAIStore.getState().setScenarioElapsedSeconds(0);
+    useAIStore.getState().setUnlockedDrug(null);
     this.awaitingAnswer = null;
-    // Unlock patient selector
-    useSimStore.getState().setPatientLocked(false);
+    // Unlock patient and clear scenario state
+    useSimStore.getState().setTrueNorthLocked(false);
+    useSimStore.getState().setScenarioActive(false);
+    useSimStore.getState().setScenarioDrugProtocols(null);
     // Stop vital coherence monitor
     vitalCoherenceMonitor.stop();
     // Stop the sim
@@ -304,6 +328,13 @@ export class ScenarioEngine {
       this.speakAsMillie(step.millieDialogue);
       this.awaitingAnswer = { stepId: step.id, question: step.question };
       useAIStore.getState().setCurrentQuestion({ stepId: step.id, question: step.question });
+      // Part 3: If this is a numeric_range dosing question, unlock the relevant drug
+      if (step.question.type === 'numeric_range' && step.simActions) {
+        const drugAction = step.simActions.find(a => a.type === 'administer_drug');
+        if (drugAction && drugAction.type === 'administer_drug') {
+          useAIStore.getState().setUnlockedDrug(drugAction.drug);
+        }
+      }
       // Note: firedStepIds gets the id added in answerQuestion()
       // But we mark it now so we don't re-fire before the answer arrives
       this.firedStepIds.add(step.id);

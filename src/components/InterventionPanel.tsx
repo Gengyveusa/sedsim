@@ -34,6 +34,7 @@ export default function InterventionPanel() {
   const {
     interventions, fio2, airwayDevice, o2FlowRate,
     applyIntervention, removeIntervention, setFiO2, setAirwayDevice, setO2FlowRate,
+    isScenarioActive,
   } = useSimStore();
 
   const currentDeviceInfo = AIRWAY_DEVICES.find(d => d.key === airwayDevice) ?? AIRWAY_DEVICES[0];
@@ -65,6 +66,11 @@ export default function InterventionPanel() {
   return (
     <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-3">
       <h3 className="text-sm font-bold text-gray-300 mb-3 tracking-wider uppercase">Airway &amp; O₂</h3>
+      {isScenarioActive && (
+        <div className="mb-2 px-2 py-1 rounded text-xs text-cyan-300 bg-cyan-900/40 border border-cyan-700/50">
+          Scenario Mode — airway controlled by Millie
+        </div>
+      )}
 
       {/* Airway Device Ladder */}
       <div className="mb-3">
@@ -77,7 +83,8 @@ export default function InterventionPanel() {
                 key={key}
                 data-sim-id={`airway-${key}`}
                 onClick={() => handleDeviceSelect(key)}
-                className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-colors text-left flex items-center justify-between ${
+                disabled={isScenarioActive}
+                className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-colors text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed ${
                   isActive
                     ? 'bg-cyan-700/70 text-cyan-100 border border-cyan-500'
                     : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-200'
@@ -107,12 +114,13 @@ export default function InterventionPanel() {
             max={6}
             step={1}
             value={o2FlowRate}
+            disabled={isScenarioActive}
             onChange={e => {
               const rate = Number(e.target.value);
               setO2FlowRate(rate);
               setFio2Input(Math.min(44, Math.round((0.21 + 0.04 * rate) * 100)).toFixed(0));
             }}
-            className="w-full accent-cyan-500"
+            className="w-full accent-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <div className="flex justify-between text-xs text-gray-600 mt-0.5">
             <span>1 L</span><span>6 L</span>
@@ -132,10 +140,11 @@ export default function InterventionPanel() {
             min="21"
             max={Math.round(currentDeviceInfo.maxFio2 * 100)}
             value={fio2Input}
+            disabled={isScenarioActive}
             onChange={e => setFio2Input(e.target.value)}
             onBlur={handleFio2Change}
             onKeyDown={e => e.key === 'Enter' && handleFio2Change()}
-            className="flex-1 px-2 py-1 bg-gray-800 text-gray-100 rounded border border-gray-600 text-sm"
+            className="flex-1 px-2 py-1 bg-gray-800 text-gray-100 rounded border border-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <div className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm font-mono border border-blue-600/50">
             {Math.round(fio2 * 100)}%
@@ -153,7 +162,8 @@ export default function InterventionPanel() {
               <button
                 key={value}
                 onClick={() => handleToggle(value)}
-                className={`w-full px-3 py-1.5 rounded text-xs font-medium transition-colors text-left flex items-center justify-between ${
+                disabled={isScenarioActive}
+                className={`w-full px-3 py-1.5 rounded text-xs font-medium transition-colors text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed ${
                   isActive
                     ? 'bg-green-700/60 text-green-100 border border-green-500'
                     : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700 hover:text-gray-200'

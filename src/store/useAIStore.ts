@@ -43,6 +43,7 @@ interface AIState {
   // Scenario engine state
   isScenarioRunning: boolean;
   currentQuestion: { stepId: string; question: ScenarioQuestion } | null;
+  unlockedDrug: string | null;
 
   // Callout highlights
   activeHighlights: { targetId: string; text: string; vitalLabel?: string; vitalValue?: number; severity?: 'normal' | 'warning' | 'danger' }[] | null;
@@ -69,6 +70,7 @@ interface AIState {
   setTutorialState: (state: TutorialState | null) => void;
   setScenarioRunning: (running: boolean) => void;
   setCurrentQuestion: (q: { stepId: string; question: ScenarioQuestion } | null) => void;
+  setUnlockedDrug: (drug: string | null) => void;
   setActiveHighlights: (highlights: { targetId: string; text: string; vitalLabel?: string; vitalValue?: number; severity?: 'normal' | 'warning' | 'danger' }[] | null) => void;
   setCurrentScenarioPhase: (phase: 'pre_induction' | 'induction' | 'maintenance' | 'complication' | 'recovery' | 'debrief' | null) => void;
   setScenarioElapsedSeconds: (seconds: number) => void;
@@ -92,6 +94,7 @@ const useAIStore = create<AIState>((set, get) => ({
   tutorialState: null,
   isScenarioRunning: false,
   currentQuestion: null,
+  unlockedDrug: null,
   activeHighlights: null,
   currentScenarioPhase: null,
   scenarioElapsedSeconds: 0,
@@ -208,6 +211,10 @@ const useAIStore = create<AIState>((set, get) => ({
 
   setCurrentQuestion: (q) => {
     set({ currentQuestion: q });
+  },
+
+  setUnlockedDrug: (drug) => {
+    set({ unlockedDrug: drug });
   },
 
   setActiveHighlights: (highlights) => {
