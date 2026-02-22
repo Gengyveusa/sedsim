@@ -24,6 +24,7 @@ function formatTime(secs: number): string {
 const ScenarioStepper: React.FC = () => {
   const currentPhase = useAIStore(s => s.currentScenarioPhase);
   const elapsed = useAIStore(s => s.scenarioElapsedSeconds);
+  const pendingContinue = useAIStore(s => s.pendingContinue);
 
   const currentIdx = currentPhase ? PHASES.findIndex(p => p.id === currentPhase) : -1;
 
@@ -83,8 +84,11 @@ const ScenarioStepper: React.FC = () => {
                   {isCompleted && (
                     <span style={{ fontSize: 9, color: 'white', lineHeight: 1 }}>✓</span>
                   )}
-                  {isActive && (
+                  {isActive && !pendingContinue && (
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22d3ee', display: 'block' }} />
+                  )}
+                  {isActive && pendingContinue && (
+                    <span style={{ fontSize: 7, color: '#22d3ee', lineHeight: 1, fontWeight: 700 }}>⏸</span>
                   )}
                   {isUpcoming && (
                     <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#374151', display: 'block' }} />

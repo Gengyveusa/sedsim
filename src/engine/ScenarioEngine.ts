@@ -89,6 +89,7 @@ export class ScenarioEngine {
   private firedStepIds = new Set<string>();
   private physiologyDurationCounters: Record<string, number> = {};
   awaitingAnswer: { stepId: string; question: ScenarioQuestion } | null = null;
+  awaitingContinue: { stepId: string } | null = null;
   private started = false;
 
   loadScenario(scenario: InteractiveScenario) {
@@ -97,6 +98,7 @@ export class ScenarioEngine {
     this.firedStepIds.clear();
     this.physiologyDurationCounters = {};
     this.awaitingAnswer = null;
+    this.awaitingContinue = null;
     this.started = false;
     // Reset sim and select patient archetype
     const sim = useSimStore.getState();
@@ -126,8 +128,14 @@ export class ScenarioEngine {
     // Start the sim clock
     const sim = useSimStore.getState();
     if (!sim.isRunning) sim.toggleRunning();
-    // Start vital coherence monitor; callback clears awaitingAnswer when a critical alert fires
-    vitalCoherenceMonitor.start(() => { this.awaitingAnswer = null; });
+    // Start vital coherence monitor; callback clears awaitingAnswer and awaitingContinue when a critical alert fires
+    vitalCoherenceMonitor.start(() => {
+      this.awaitingAnswer = null;
+      if (this.awaitingContinue) {
+        this.awaitingContinue = null;
+        useAIStore.getState().setPendingContinue(null);
+      }
+    });
     // Start internal clock (1 sim-second per real second)
     this.timerId = setInterval(() => {
       this.scenarioTimeSeconds += 1;
@@ -187,6 +195,14 @@ export class ScenarioEngine {
     this.firedStepIds.add(stepId);
   }
 
+  continuePendingStep() {
+    if (!this.awaitingContinue) return;
+    const stepId = this.awaitingContinue.stepId;
+    this.firedStepIds.add(stepId);
+    this.awaitingContinue = null;
+    useAIStore.getState().setPendingContinue(null);
+  }
+
   stop() {
     if (this.timerId) clearInterval(this.timerId);
     this.timerId = null;
@@ -198,6 +214,8 @@ export class ScenarioEngine {
     useAIStore.getState().setScenarioElapsedSeconds(0);
     useAIStore.getState().setUnlockedDrug(null);
     this.awaitingAnswer = null;
+    this.awaitingContinue = null;
+    useAIStore.getState().setPendingContinue(null);
     // Unlock patient and clear scenario state
     useSimStore.getState().setTrueNorthLocked(false);
     useSimStore.getState().setScenarioActive(false);
@@ -223,6 +241,10 @@ export class ScenarioEngine {
       // When awaiting an answer, skip on_step_complete steps (sequential flow) but still
       // evaluate on_physiology and on_time triggers so patient deterioration is not ignored
       if (this.awaitingAnswer && step.triggerType === 'on_step_complete') continue;
+
+      // When awaiting continue, block on_time and on_step_complete steps;
+      // on_physiology steps still fire (patient safety takes priority)
+      if (this.awaitingContinue && (step.triggerType === 'on_time' || step.triggerType === 'on_step_complete')) continue;
 
       let shouldFire = false;
 
@@ -269,6 +291,11 @@ export class ScenarioEngine {
       }
 
       if (shouldFire) {
+        // If a physiology trigger fires while awaiting continue, auto-clear the pending continue
+        if (this.awaitingContinue && step.triggerType === 'on_physiology') {
+          this.awaitingContinue = null;
+          useAIStore.getState().setPendingContinue(null);
+        }
         // If a physiology or time trigger fires while awaiting an answer, auto-clear the stale question
         if (this.awaitingAnswer && (step.triggerType === 'on_physiology' || step.triggerType === 'on_time')) {
           this.awaitingAnswer = null;
@@ -322,7 +349,14 @@ export class ScenarioEngine {
       if (step.teachingPoints?.length) {
         this.speakAsMillie(['📚 **Teaching Points:**\n' + step.teachingPoints.map(tp => `• ${tp}`).join('\n')]);
       }
-      this.firedStepIds.add(step.id);
+      // on_time and on_step_complete steps require the student to click Continue before advancing.
+      // on_start (preop vignette) and on_physiology (urgent clinical events) auto-complete.
+      if (step.triggerType === 'on_time' || step.triggerType === 'on_step_complete') {
+        this.awaitingContinue = { stepId: step.id };
+        useAIStore.getState().setPendingContinue({ stepId: step.id, stepLabel: step.id });
+      } else {
+        this.firedStepIds.add(step.id);
+      }
     } else {
       // Present question — pause until answered
       this.speakAsMillie(step.millieDialogue);
