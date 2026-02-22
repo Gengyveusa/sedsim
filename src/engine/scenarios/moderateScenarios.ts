@@ -110,6 +110,23 @@ export const MOD_ELDERLY_COPD: InteractiveScenario = {
       ],
     },
     {
+      id: 'step_copd_maintenance',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'step_fentanyl_dose',
+      millieDialogue: [
+        'Sedation is established. The procedure is underway.',
+        'In COPD patients, monitor EtCO2 vigilantly — their hypoxic drive means CO2 accumulates faster.',
+      ],
+      simActions: [
+        { type: 'advance_time', seconds: 120 },
+      ],
+      teachingPoints: [
+        'COPD patients rely more on hypoxic drive — excessive supplemental O2 can blunt this response.',
+        'Rising EtCO2 is your earliest warning of hypoventilation in this patient.',
+      ],
+    },
+    {
       id: 'step_etco2_rising',
       phase: 'complication',
       triggerType: 'on_physiology',
@@ -335,6 +352,23 @@ export const MOD_OBESE_OSA: InteractiveScenario = {
       teachingPoints: [
         'Dose propofol on lean body weight (LBW), not total body weight for obese patients.',
         'Titrate slowly — obese patients have larger volume of distribution but also slower redistribution.',
+      ],
+    },
+    {
+      id: 'step_osa_maintenance',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'step_drug_dose',
+      millieDialogue: [
+        'Sedation established. The procedure is proceeding.',
+        'Obese OSA patients have reduced functional residual capacity — desaturation can be rapid. Stay vigilant.',
+      ],
+      simActions: [
+        { type: 'advance_time', seconds: 120 },
+      ],
+      teachingPoints: [
+        'Pre-oxygenate obese patients with HOB at 30° to maximise apnoeic oxygenation time.',
+        'Use a nasal cannula under the mask for continuous O2 delivery during sedation.',
       ],
     },
     {
@@ -718,6 +752,23 @@ export const MOD_DIABETIC_CARDIOVERSION: InteractiveScenario = {
       teachingPoints: [
         'Give fentanyl 25 mcg before propofol to reduce the pain of cardioversion if patient briefly lightens.',
         'Cardioversion is brief — propofol will have you back to baseline in 5-10 minutes.',
+      ],
+    },
+    {
+      id: 'step_cardioversion_maintenance',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'step_propofol_dose',
+      millieDialogue: [
+        'The cardioversion shock is about to be delivered. The patient is adequately sedated.',
+        'Monitor HR and rhythm carefully on the post-shock ECG.',
+      ],
+      simActions: [
+        { type: 'advance_time', seconds: 60 },
+      ],
+      teachingPoints: [
+        'Synchronised cardioversion is delivered on the R-wave to avoid inducing VF.',
+        'Ensure all personnel are clear before shock delivery.',
       ],
     },
     {

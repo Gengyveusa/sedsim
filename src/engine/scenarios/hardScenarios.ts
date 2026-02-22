@@ -306,6 +306,23 @@ export const HARD_LARYNGOSPASM: InteractiveScenario = {
       ],
     },
     {
+      id: 'step_laryngospasm_maintenance',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'step_induction',
+      millieDialogue: [
+        'Sedation established. The endoscopist is advancing the scope.',
+        'Be alert — the glottis is highly sensitive at this level of sedation. Any stimulation can trigger spasm.',
+      ],
+      simActions: [
+        { type: 'advance_time', seconds: 120 },
+      ],
+      teachingPoints: [
+        'Laryngospasm risk peaks during light planes of anaesthesia — too light OR too deep relative to stimulation.',
+        'Have succinylcholine drawn up (0.1 mg/kg IV for partial spasm; 1 mg/kg for complete spasm).',
+      ],
+    },
+    {
       id: 'step_spasm_intervention',
       phase: 'complication',
       triggerType: 'on_physiology',
@@ -716,6 +733,23 @@ export const HARD_BRONCHOSPASM: InteractiveScenario = {
       teachingPoints: [
         'Ketamine + propofol ("ketofol"): ketamine provides bronchodilation and analgesia; propofol prevents excess salivation and emergence reactions.',
         'Topical lidocaine at the cords before scope insertion further reduces bronchospasm.',
+      ],
+    },
+    {
+      id: 'step_bronchospasm_maintenance',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'step_ketamine_use',
+      millieDialogue: [
+        'Sedation is in. The bronchoscopist is advancing the scope past the cords.',
+        'In reactive airways disease, mechanical stimulation of the carina is the most common trigger for bronchospasm.',
+      ],
+      simActions: [
+        { type: 'advance_time', seconds: 120 },
+      ],
+      teachingPoints: [
+        'Ketamine is a bronchodilator — first-line induction agent for asthma/bronchospasm-prone patients.',
+        'Pre-treatment with nebulised salbutamol or IV lidocaine reduces intubation-triggered bronchospasm.',
       ],
     },
     {
