@@ -132,6 +132,12 @@ function CompactDrugCard({ drug, scenarioLocked, isUnlocked, scenarioHintRange }
   );
 }
 
+// Check whether a drug key matches a protocol name
+function drugMatchesProtocol(drugKey: string, protocolName: string): boolean {
+  const normalizedProtocol = protocolName.toLowerCase();
+  return drugKey === normalizedProtocol || drugKey.startsWith(normalizedProtocol);
+}
+
 export default function DrugPanel() {
   const { isScenarioActive, scenarioDrugProtocols } = useSimStore();
   const { unlockedDrug } = useAIStore();
@@ -154,7 +160,7 @@ export default function DrugPanel() {
         const drugKey = drug.name.toLowerCase();
         // When scenario active with protocols, only show protocol drugs (others deeply grayed)
         const inProtocol = !isScenarioActive || !scenarioDrugProtocols ||
-          scenarioDrugProtocols.some(p => p.name.toLowerCase() === drugKey || drugKey.startsWith(p.name.toLowerCase()));
+          scenarioDrugProtocols.some(p => drugMatchesProtocol(drugKey, p.name));
         if (!inProtocol) {
           // Show deeply grayed out non-protocol drugs
           return (
@@ -166,15 +172,14 @@ export default function DrugPanel() {
             </div>
           );
         }
-        const scenarioProtocol = scenarioDrugProtocols?.find(
-          p => p.name.toLowerCase() === drugKey || drugKey.startsWith(p.name.toLowerCase())
-        );
+        const scenarioProtocol = scenarioDrugProtocols?.find(p => drugMatchesProtocol(drugKey, p.name));
+        const isUnlocked = !!unlockedDrug && drugMatchesProtocol(drugKey, unlockedDrug);
         return (
           <CompactDrugCard
             key={drug.name}
             drug={drug}
             scenarioLocked={isScenarioActive}
-            isUnlocked={!!unlockedDrug && (unlockedDrug.toLowerCase() === drugKey || drugKey.startsWith(unlockedDrug.toLowerCase()))}
+            isUnlocked={isUnlocked}
             scenarioHintRange={scenarioProtocol?.typicalBolusRange}
           />
         );

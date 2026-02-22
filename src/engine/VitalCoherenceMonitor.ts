@@ -12,6 +12,17 @@ interface AlertCooldown {
   lastLevel: string; // e.g. 'critical' | 'warning' to avoid re-firing same level
 }
 
+// Minimal interface to type-safely access scenario steps without circular imports
+interface ScenarioStepWithTrigger {
+  triggerCondition?: {
+    parameter: string;
+    threshold: number;
+  };
+}
+interface ActiveScenarioSteps {
+  steps: ScenarioStepWithTrigger[];
+}
+
 // Returns true if the scenario already covers this parameter/threshold
 // and the current value does NOT exceed the scenario's worst threshold.
 // When the value goes beyond what the scenario covers, allow the monitor to fire.
@@ -24,18 +35,16 @@ function isCoveredByScenario(
   if (!aiState.isScenarioRunning) return false;
 
   const simState = useSimStore.getState();
-  const scenario = simState.scenarioDrugProtocols; // quick check: if no protocols, no scenario steps either
-  if (!scenario) return false;
+  const drugProtocols = simState.scenarioDrugProtocols; // quick check: if no protocols, scenario not loaded
+  if (!drugProtocols) return false;
 
   // Access the active scenario via AI store
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const activeScenario = (aiState.activeScenario as any);
+  const activeScenario = aiState.activeScenario as unknown as ActiveScenarioSteps | null;
   if (!activeScenario?.steps) return false;
 
   // Collect all scenario thresholds for this parameter
   const thresholds: number[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const step of (activeScenario.steps as any[])) {
+  for (const step of activeScenario.steps) {
     const tc = step.triggerCondition;
     if (tc && tc.parameter === paramKey) {
       thresholds.push(tc.threshold);
