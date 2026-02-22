@@ -3,6 +3,7 @@
 
 import React from 'react';
 import useAIStore from '../store/useAIStore';
+import { scenarioEngine } from '../engine/ScenarioEngine';
 
 type Phase = 'pre_induction' | 'induction' | 'maintenance' | 'complication' | 'recovery' | 'debrief';
 
@@ -25,6 +26,7 @@ const ScenarioStepper: React.FC = () => {
   const currentPhase = useAIStore(s => s.currentScenarioPhase);
   const elapsed = useAIStore(s => s.scenarioElapsedSeconds);
   const pendingContinue = useAIStore(s => s.pendingContinue);
+  const [hoveredPhase, setHoveredPhase] = React.useState<Phase | null>(null);
 
   const currentIdx = currentPhase ? PHASES.findIndex(p => p.id === currentPhase) : -1;
 
@@ -62,6 +64,10 @@ const ScenarioStepper: React.FC = () => {
               <div className="flex flex-col items-center" style={{ minWidth: 0 }}>
                 <div
                   className="relative flex items-center justify-center transition-all duration-500"
+                  title={isCompleted ? `Click to replay from ${phase.label}` : undefined}
+                  onClick={isCompleted ? () => scenarioEngine.jumpToPhase(phase.id) : undefined}
+                  onMouseEnter={isCompleted ? () => setHoveredPhase(phase.id) : undefined}
+                  onMouseLeave={isCompleted ? () => setHoveredPhase(null) : undefined}
                   style={{
                     width: isActive ? 18 : 14,
                     height: isActive ? 18 : 14,
@@ -79,6 +85,9 @@ const ScenarioStepper: React.FC = () => {
                     animation: isActive ? 'stepper-pulse 1.4s ease-in-out infinite' : undefined,
                     boxShadow: isActive ? '0 0 0 3px rgba(34,211,238,0.25)' : undefined,
                     flexShrink: 0,
+                    cursor: isCompleted ? 'pointer' : 'default',
+                    filter: isCompleted && hoveredPhase === phase.id ? 'brightness(1.3)' : undefined,
+                    transform: isCompleted && hoveredPhase === phase.id ? 'scale(1.2)' : undefined,
                   }}
                 >
                   {isCompleted && (
