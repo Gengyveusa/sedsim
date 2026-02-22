@@ -26,6 +26,8 @@ interface SimState {
   // Patient
   patient: Patient;
   archetypeKey: string;
+  selectedArchetypeKey: string;
+  isPatientLocked: boolean;
   availableArchetypes: string[];
 
   // Drug PK states
@@ -71,6 +73,7 @@ interface SimState {
   toggleRunning: () => void;
   setSpeed: (speed: number) => void;
   selectPatient: (archetypeKey: string) => void;
+  setPatientLocked: (locked: boolean) => void;
   applyIntervention: (intervention: InterventionType) => void;
   removeIntervention: (intervention: InterventionType) => void;
   setFiO2: (fio2: number) => void;
@@ -97,6 +100,8 @@ const useSimStore = create<SimState>((set, get) => ({
 
   patient: PATIENT_ARCHETYPES.healthy_adult,
   archetypeKey: 'healthy_adult',
+  selectedArchetypeKey: 'healthy_adult',
+  isPatientLocked: false,
   availableArchetypes: Object.keys(PATIENT_ARCHETYPES),
 
   pkStates: {
@@ -375,6 +380,7 @@ const useSimStore = create<SimState>((set, get) => ({
     set(state => ({
       patient,
       archetypeKey,
+      selectedArchetypeKey: archetypeKey,
       digitalTwin: createDigitalTwin(patient),
       eventLog: [...state.eventLog, logEntry],
     }));
@@ -510,6 +516,10 @@ const useSimStore = create<SimState>((set, get) => ({
   setIVAccess: (location, gauge) => {
     const state = get();
     set({ ivFluids: { ...state.ivFluids, location, gauge } });
+  },
+
+  setPatientLocked: (locked) => {
+    set({ isPatientLocked: locked });
   },
 
   logEvent: (message, type = 'intervention', severity = 'info') => {
