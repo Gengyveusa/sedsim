@@ -125,6 +125,7 @@ export class ScenarioEngine {
     this.timerId = setInterval(() => {
       if (this.awaitingAnswer) return; // pause while waiting for student
       this.scenarioTimeSeconds += 1;
+      useAIStore.getState().setScenarioElapsedSeconds(this.scenarioTimeSeconds);
       this.evaluateTriggers();
     }, 1000);
   }
@@ -168,6 +169,8 @@ export class ScenarioEngine {
     useAIStore.getState().setScenarioRunning(false);
     useAIStore.getState().setCurrentQuestion(null);
     useAIStore.getState().setActiveHighlights(null);
+    useAIStore.getState().setCurrentScenarioPhase(null);
+    useAIStore.getState().setScenarioElapsedSeconds(0);
     this.awaitingAnswer = null;
     // Stop the sim
     const sim = useSimStore.getState();
@@ -240,11 +243,36 @@ export class ScenarioEngine {
   private fireStep(step: InteractiveScenarioStep) {
     // Clear previous highlights and set new ones if this step has highlights
     const text = step.millieDialogue.join(' ');
+
+    // When triggered by physiology, read the current vital value for the highlight
+    let vitalLabel: string | undefined;
+    let vitalValue: number | undefined;
+    let severity: 'normal' | 'warning' | 'danger' | undefined;
+    if (step.triggerType === 'on_physiology' && step.triggerCondition) {
+      const sim = useSimStore.getState();
+      const tc = step.triggerCondition;
+      vitalValue = this.getPhysioParam(tc.parameter, sim.vitals, sim.moass);
+      const labelMap: Record<string, string> = {
+        spo2: 'SpO2', hr: 'HR', rr: 'RR', sbp: 'SBP', moass: 'MOASS', etco2: 'EtCO₂',
+      };
+      vitalLabel = labelMap[tc.parameter] ?? tc.parameter.toUpperCase();
+      // Determine severity relative to threshold
+      const metByHowMuch = tc.operator === '<' || tc.operator === '<='
+        ? tc.threshold - vitalValue
+        : vitalValue - tc.threshold;
+      // Severity thresholds are approximate and parameter-agnostic for simplicity;
+      // e.g., SpO2 5 points below threshold is already clinically dangerous.
+      severity = metByHowMuch > 10 ? 'danger' : metByHowMuch > 3 ? 'warning' : 'normal';
+    }
+
     useAIStore.getState().setActiveHighlights(
       step.highlight && step.highlight.length > 0
-        ? step.highlight.map(h => ({ targetId: h, text }))
+        ? step.highlight.map(h => ({ targetId: h, text, vitalLabel, vitalValue, severity }))
         : null
     );
+
+    // Update current phase
+    useAIStore.getState().setCurrentScenarioPhase(step.phase);
 
     // If no question, fire immediately (including sim actions + teaching points)
     if (!step.question) {

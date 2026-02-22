@@ -207,6 +207,26 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
   const edemaOpacity = cs.pulmonaryEdema === 'flash' ? 0.8 : cs.pulmonaryEdema === 'moderate' ? 0.5 : cs.pulmonaryEdema === 'mild' ? 0.3 : 0;
   const contractColor = cs.contractility > 1400 ? '#22c55e' : cs.contractility > 900 ? '#f59e0b' : '#ef4444';
 
+  // CHF / cardiomyopathy archetype detection.
+  // drugSensitivity values correspond to PATIENT_ARCHETYPES in physiology.ts:
+  //   hcm_young: 1.6, hcm_old: 1.8 — Hypertrophic Cardiomyopathy
+  //   dcm_young: 1.55, dcm_old: 1.9 — Dilated Cardiomyopathy
+  //   hepatic/chf-like: 1.5 with asa >= 3 — general CHF-like presentation
+  const ds = patient.drugSensitivity ?? 1.0;
+  const isHCM = (ds === 1.6 || ds === 1.8) && patient.asa >= 3 && !patient.osa;
+  const isDCM = (ds === 1.55 || ds === 1.9) && patient.asa >= 3;
+  // General CHF-like: high drug sensitivity + high ASA without fitting HCM/DCM pattern
+  const isGeneralCHF = !isHCM && !isDCM && ds >= 1.5 && patient.asa >= 3;
+  const isCHFArchetype = isHCM || isDCM || isGeneralCHF;
+
+  // Dynamic CHF annotation flags
+  const showReducedEF = (isDCM || isGeneralCHF) && cs.ef < 0.45;
+  const showHypertrophic = isHCM;
+  const showPulmCongestion = isCHFArchetype && cs.pcwp > 18;
+  const showVolumeOverload = isCHFArchetype && cs.preload > 0.75;
+  const showHighSVR = isCHFArchetype && cs.svr > 1600;
+  const showLungSpO2Flash = cs.spo2 < 92;
+
   // Hover handler
   const onHover = (key: string, e: React.MouseEvent<SVGElement>) => {
     const svg = (e.currentTarget as SVGElement).closest('svg');
@@ -239,6 +259,8 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
             100% { transform: translate(0,0) scale(1); }
           }
           @keyframes pea-pulse { 0%,100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.02); opacity: 0.8; } }
+          @keyframes chf-badge-fade { 0%,100% { opacity: 0.85; } 50% { opacity: 1; } }
+          @keyframes spo2-flash { 0%,100% { opacity: 1; } 40% { opacity: 0.25; } }
         `}</style>
       </defs>
 
@@ -288,8 +310,21 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
           </>
         )}
       </g>
-      <text x={cx - 90} y={cy - 70} fill="#94a3b8" fontSize="12" fontWeight="bold" textAnchor="middle">R LUNG</text>
-      <text x={cx + 90} y={cy - 70} fill="#94a3b8" fontSize="12" fontWeight="bold" textAnchor="middle">L LUNG</text>
+      <text x={cx - 90} y={cy - 70} fill={showLungSpO2Flash ? '#ef4444' : '#94a3b8'} fontSize="12" fontWeight="bold" textAnchor="middle"
+        style={showLungSpO2Flash ? { animation: 'spo2-flash 0.6s ease-in-out infinite' } : {}}>R LUNG</text>
+      <text x={cx + 90} y={cy - 70} fill={showLungSpO2Flash ? '#ef4444' : '#94a3b8'} fontSize="12" fontWeight="bold" textAnchor="middle"
+        style={showLungSpO2Flash ? { animation: 'spo2-flash 0.6s ease-in-out infinite' } : {}}>L LUNG</text>
+
+      {/* CHF: Pulmonary Congestion badge on lungs (PCWP > 18) */}
+      {showPulmCongestion && (
+        <g data-sim-id="avatar-pulmonary-congestion" style={{ animation: 'chf-badge-fade 2s ease-in-out infinite' }}>
+          <rect x={cx - 155} y={cy + 55} width={130} height={18} rx={5}
+            fill="rgba(29,78,216,0.85)" stroke="#3b82f6" strokeWidth={1} />
+          <text x={cx - 90} y={cy + 68} fill="#93c5fd" fontSize="10" fontWeight="bold" textAnchor="middle">
+            Pulmonary Congestion
+          </text>
+        </g>
+      )}
 
       {/* ===== 4-CHAMBER HEART ===== */}
       <g style={
@@ -350,6 +385,26 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
         <text x={cx - 80} y={cy - 22} fill="#60a5fa" fontSize="13" fontWeight="bold">{cs.paSys.toFixed(0)}/{cs.paDia.toFixed(0)}</text>
       </g>
 
+      {/* CHF: Heart annotation badge (Reduced EF for DCM/CHF, Hypertrophic for HCM) */}
+      {showReducedEF && (
+        <g data-sim-id="avatar-reduced-ef" style={{ animation: 'chf-badge-fade 2s ease-in-out infinite' }}>
+          <rect x={cx - 55} y={cy - 18} width={110} height={18} rx={5}
+            fill="rgba(127,29,29,0.88)" stroke="#ef4444" strokeWidth={1} />
+          <text x={cx} y={cy - 5} fill="#fca5a5" fontSize="10" fontWeight="bold" textAnchor="middle">
+            Reduced EF ({(cs.ef * 100).toFixed(0)}%)
+          </text>
+        </g>
+      )}
+      {showHypertrophic && (
+        <g data-sim-id="avatar-hypertrophic" style={{ animation: 'chf-badge-fade 2s ease-in-out infinite' }}>
+          <rect x={cx - 55} y={cy - 18} width={110} height={18} rx={5}
+            fill="rgba(120,53,15,0.88)" stroke="#f59e0b" strokeWidth={1} />
+          <text x={cx} y={cy - 5} fill="#fde68a" fontSize="10" fontWeight="bold" textAnchor="middle">
+            Hypertrophic CM
+          </text>
+        </g>
+      )}
+
       {/* ===== PRELOAD / AFTERLOAD BARS ===== */}
       <g onMouseEnter={(e) => onHover('preload', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <text x={cx - 142} y={cy + 72} fill="#94a3b8" fontSize="12" textAnchor="middle" fontWeight="bold">PRELOAD</text>
@@ -357,6 +412,16 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
         <rect x={cx - 180} y={cy + 78} width={75 * cs.preload} height={9} rx={4}
           fill={cs.preload > 0.8 ? '#ef4444' : cs.preload < 0.4 ? '#f59e0b' : '#22c55e'} />
       </g>
+      {/* CHF: Volume Overload badge near preload */}
+      {showVolumeOverload && (
+        <g data-sim-id="avatar-volume-overload" style={{ animation: 'chf-badge-fade 2.5s ease-in-out infinite' }}>
+          <rect x={cx - 180} y={cy + 90} width={100} height={15} rx={4}
+            fill="rgba(113,63,18,0.85)" stroke="#f59e0b" strokeWidth={1} />
+          <text x={cx - 130} y={cy + 101} fill="#fde68a" fontSize="9" fontWeight="bold" textAnchor="middle">
+            Volume Overload
+          </text>
+        </g>
+      )}
       <g onMouseEnter={(e) => onHover('afterload', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <text x={cx + 142} y={cy + 72} fill="#94a3b8" fontSize="12" textAnchor="middle" fontWeight="bold">AFTERLOAD</text>
         <rect x={cx + 105} y={cy + 78} width={75} height={9} rx={4} fill="#1e293b" stroke="#475569" strokeWidth={0.5} />
@@ -431,6 +496,16 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
         <text x={cx - 120} y={cy + 175} fill="#94a3b8" fontSize="12">SVR</text>
         <text x={cx - 120} y={cy + 192} fill={cs.svr > 1800 ? '#ef4444' : cs.svr < 800 ? '#3b82f6' : '#22c55e'} fontSize="15" fontWeight="bold">{cs.svr.toFixed(0)}</text>
       </g>
+      {/* CHF: High SVR badge */}
+      {showHighSVR && (
+        <g data-sim-id="avatar-high-svr" style={{ animation: 'chf-badge-fade 2s ease-in-out infinite' }}>
+          <rect x={cx - 120} y={cy + 194} width={68} height={14} rx={4}
+            fill="rgba(127,29,29,0.85)" stroke="#ef4444" strokeWidth={1} />
+          <text x={cx - 86} y={cy + 204} fill="#fca5a5" fontSize="9" fontWeight="bold" textAnchor="middle">
+            High SVR
+          </text>
+        </g>
+      )}
       <g onMouseEnter={(e) => onHover('pcwp', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <text x={cx - 22} y={cy + 175} fill="#94a3b8" fontSize="12">PCWP</text>
         <text x={cx - 22} y={cy + 192} fill={cs.pcwp > 20 ? '#ef4444' : cs.pcwp > 16 ? '#f59e0b' : '#22c55e'} fontSize="15" fontWeight="bold">{cs.pcwp.toFixed(0)}</text>

@@ -45,7 +45,11 @@ interface AIState {
   currentQuestion: { stepId: string; question: ScenarioQuestion } | null;
 
   // Callout highlights
-  activeHighlights: { targetId: string; text: string }[] | null;
+  activeHighlights: { targetId: string; text: string; vitalLabel?: string; vitalValue?: number; severity?: 'normal' | 'warning' | 'danger' }[] | null;
+
+  // Scenario phase tracking
+  currentScenarioPhase: 'pre_induction' | 'induction' | 'maintenance' | 'complication' | 'recovery' | 'debrief' | null;
+  scenarioElapsedSeconds: number;
 
   // Actions
   initializeAI: () => void;
@@ -65,7 +69,9 @@ interface AIState {
   setTutorialState: (state: TutorialState | null) => void;
   setScenarioRunning: (running: boolean) => void;
   setCurrentQuestion: (q: { stepId: string; question: ScenarioQuestion } | null) => void;
-  setActiveHighlights: (highlights: { targetId: string; text: string }[] | null) => void;
+  setActiveHighlights: (highlights: { targetId: string; text: string; vitalLabel?: string; vitalValue?: number; severity?: 'normal' | 'warning' | 'danger' }[] | null) => void;
+  setCurrentScenarioPhase: (phase: 'pre_induction' | 'induction' | 'maintenance' | 'complication' | 'recovery' | 'debrief' | null) => void;
+  setScenarioElapsedSeconds: (seconds: number) => void;
 }
 
 const useAIStore = create<AIState>((set, get) => ({
@@ -87,6 +93,8 @@ const useAIStore = create<AIState>((set, get) => ({
   isScenarioRunning: false,
   currentQuestion: null,
   activeHighlights: null,
+  currentScenarioPhase: null,
+  scenarioElapsedSeconds: 0,
 
   initializeAI: () => {
     const orchestrator = new MultiAgentOrchestrator();
@@ -204,6 +212,14 @@ const useAIStore = create<AIState>((set, get) => ({
 
   setActiveHighlights: (highlights) => {
     set({ activeHighlights: highlights });
+  },
+
+  setCurrentScenarioPhase: (phase) => {
+    set({ currentScenarioPhase: phase });
+  },
+
+  setScenarioElapsedSeconds: (seconds) => {
+    set({ scenarioElapsedSeconds: seconds });
   },
 }));
 

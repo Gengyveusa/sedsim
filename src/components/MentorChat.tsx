@@ -10,6 +10,7 @@ import useAIStore from '../store/useAIStore';
 import { scenarioEngine } from '../engine/ScenarioEngine';
 import GhostDosePreview from './GhostDosePreview';
 import { ScenarioPanel } from './ScenarioPanel';
+import ScenarioStepper from './ScenarioStepper';
 
 interface MentorChatProps {
   vitals: Vitals;
@@ -244,6 +245,9 @@ const MentorChat: React.FC<MentorChatProps> = ({
           </div>
         )}
       </div>
+
+      {/* Scenario Progress Stepper (shown while scenario is running) */}
+      {isScenarioRunning && <ScenarioStepper />}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
