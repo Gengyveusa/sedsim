@@ -343,20 +343,20 @@ const MentorChat: React.FC<MentorChatProps> = ({
         </div>
       )}
 
-      {/* Continue Button — shown when a step is awaiting student acknowledgement */}
+      {/* Continue Button — shown when a step is awaiting student acknowledgement (after answering or for non-question steps) */}
       {pendingContinue && !currentQuestion && (
         <div className="mx-3 mb-2">
           <button
             onClick={() => scenarioEngine.continuePendingStep()}
-            className="w-full text-xs py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-semibold flex items-center justify-center gap-2 transition-colors"
+            className="w-full text-sm py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-colors"
             style={{ animation: 'continue-pulse 1.5s ease-in-out infinite' }}
           >
-            ▶ Continue
+            ▶ Next Step
           </button>
           <style>{`
             @keyframes continue-pulse {
               0%, 100% { box-shadow: 0 0 0 0 rgba(6,182,212,0.4); }
-              50% { box-shadow: 0 0 0 6px rgba(6,182,212,0); }
+              50% { box-shadow: 0 0 0 8px rgba(6,182,212,0); }
             }
           `}</style>
         </div>
