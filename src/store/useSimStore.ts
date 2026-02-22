@@ -7,6 +7,43 @@ import { calculateVitals, checkAlarms, BASELINE_VITALS, PATIENT_ARCHETYPES } fro
 import { generateEEG, EEGState } from '../engine/eegModel';
 import { DigitalTwin, createDigitalTwin, updateTwin } from '../engine/digitalTwin';
 
+export interface DrugProtocol {
+  name: string;
+  route: string;
+  typicalBolusRange: [number, number];
+  maxTotalDose: number;
+  unit: string;
+}
+
+export interface TrueNorth {
+  archetypeKey: string;
+  patient: Patient;
+  baselineVitals: Vitals;
+  label: string;
+  isLocked: boolean;
+}
+
+function buildTrueNorthLabel(archetypeKey: string, patient: Patient): string {
+  const name = archetypeKey
+    .split('_')
+    .map((w: string) => {
+      const abbrevs: Record<string, string> = { hcm: 'HCM', dcm: 'DCM', osa: 'OSA' };
+      return abbrevs[w] || (w.charAt(0).toUpperCase() + w.slice(1));
+    })
+    .join(' ');
+  return `${name} (${patient.age}y, ${patient.weight}kg, ASA ${patient.asa})`;
+}
+
+function buildTrueNorth(archetypeKey: string, patient: Patient, isLocked = false): TrueNorth {
+  return {
+    archetypeKey,
+    patient,
+    baselineVitals: BASELINE_VITALS,
+    label: buildTrueNorthLabel(archetypeKey, patient),
+    isLocked,
+  };
+}
+
 export interface IVFluidState {
   activeFluid: string | null;
   rate: number; // mL/hr
@@ -27,7 +64,9 @@ interface SimState {
   patient: Patient;
   archetypeKey: string;
   selectedArchetypeKey: string;
-  isPatientLocked: boolean;
+  trueNorth: TrueNorth;
+  isScenarioActive: boolean;
+  scenarioDrugProtocols: DrugProtocol[] | null;
   availableArchetypes: string[];
 
   // Drug PK states
@@ -73,7 +112,10 @@ interface SimState {
   toggleRunning: () => void;
   setSpeed: (speed: number) => void;
   selectPatient: (archetypeKey: string) => void;
-  setPatientLocked: (locked: boolean) => void;
+  setTrueNorth: (trueNorth: TrueNorth) => void;
+  setTrueNorthLocked: (locked: boolean) => void;
+  setScenarioActive: (active: boolean) => void;
+  setScenarioDrugProtocols: (protocols: DrugProtocol[] | null) => void;
   applyIntervention: (intervention: InterventionType) => void;
   removeIntervention: (intervention: InterventionType) => void;
   setFiO2: (fio2: number) => void;
@@ -101,7 +143,9 @@ const useSimStore = create<SimState>((set, get) => ({
   patient: PATIENT_ARCHETYPES.healthy_adult,
   archetypeKey: 'healthy_adult',
   selectedArchetypeKey: 'healthy_adult',
-  isPatientLocked: false,
+  trueNorth: buildTrueNorth('healthy_adult', PATIENT_ARCHETYPES.healthy_adult),
+  isScenarioActive: false,
+  scenarioDrugProtocols: null,
   availableArchetypes: Object.keys(PATIENT_ARCHETYPES),
 
   pkStates: {
@@ -381,9 +425,26 @@ const useSimStore = create<SimState>((set, get) => ({
       patient,
       archetypeKey,
       selectedArchetypeKey: archetypeKey,
+      trueNorth: buildTrueNorth(archetypeKey, patient, state.trueNorth.isLocked),
       digitalTwin: createDigitalTwin(patient),
       eventLog: [...state.eventLog, logEntry],
     }));
+  },
+
+  setTrueNorth: (trueNorth) => {
+    set({ trueNorth });
+  },
+
+  setTrueNorthLocked: (locked) => {
+    set(state => ({ trueNorth: { ...state.trueNorth, isLocked: locked } }));
+  },
+
+  setScenarioActive: (active) => {
+    set({ isScenarioActive: active });
+  },
+
+  setScenarioDrugProtocols: (protocols) => {
+    set({ scenarioDrugProtocols: protocols });
   },
 
   applyIntervention: (intervention) => {
@@ -518,10 +579,6 @@ const useSimStore = create<SimState>((set, get) => ({
     set({ ivFluids: { ...state.ivFluids, location, gauge } });
   },
 
-  setPatientLocked: (locked) => {
-    set({ isPatientLocked: locked });
-  },
-
   logEvent: (message, type = 'intervention', severity = 'info') => {
     const state = get();
     set({
@@ -530,10 +587,13 @@ const useSimStore = create<SimState>((set, get) => ({
   },
 
   reset: () => {
-    const patient = get().patient;
+    const state = get();
+    const patient = state.patient;
     set({
       elapsedSeconds: 0,
       isRunning: false,
+      isScenarioActive: false,
+      scenarioDrugProtocols: null,
       pkStates: {
         propofol: createInitialPKState(),
         midazolam: createInitialPKState(),

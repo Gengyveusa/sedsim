@@ -2,7 +2,8 @@ import useSimStore from '../store/useSimStore';
 import { moassLabel } from '../engine/pdModel';
 
 export default function PatientBanner() {
-  const { patient, elapsedSeconds, moass, isRunning } = useSimStore();
+  const { trueNorth, elapsedSeconds, moass, isRunning } = useSimStore();
+  const { patient } = trueNorth;
 
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
@@ -27,6 +28,9 @@ export default function PatientBanner() {
           <span>{patient.weight}kg / {patient.height}cm</span>
           <span className="mx-2">|</span>
           <span>ASA {patient.asa}</span>
+          {trueNorth.isLocked && (
+            <span className="ml-2 text-xs text-cyan-400 font-semibold">🔒 {trueNorth.label}</span>
+          )}
         </div>
       </div>
 

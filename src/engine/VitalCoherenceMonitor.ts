@@ -12,6 +12,54 @@ interface AlertCooldown {
   lastLevel: string; // e.g. 'critical' | 'warning' to avoid re-firing same level
 }
 
+// Returns true if the scenario already covers this parameter/threshold
+// and the current value does NOT exceed the scenario's worst threshold.
+// When the value goes beyond what the scenario covers, allow the monitor to fire.
+function isCoveredByScenario(
+  paramKey: 'spo2' | 'hr' | 'rr' | 'sbp' | 'moass' | 'etco2',
+  value: number,
+  operator: '<' | '>'
+): boolean {
+  const aiState = useAIStore.getState();
+  if (!aiState.isScenarioRunning) return false;
+
+  const simState = useSimStore.getState();
+  const scenario = simState.scenarioDrugProtocols; // quick check: if no protocols, no scenario steps either
+  if (!scenario) return false;
+
+  // Access the active scenario via AI store
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeScenario = (aiState.activeScenario as any);
+  if (!activeScenario?.steps) return false;
+
+  // Collect all scenario thresholds for this parameter
+  const thresholds: number[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const step of (activeScenario.steps as any[])) {
+    const tc = step.triggerCondition;
+    if (tc && tc.parameter === paramKey) {
+      thresholds.push(tc.threshold);
+    }
+  }
+
+  if (thresholds.length === 0) return false;
+
+  // For '<' operator (low alerts), find the minimum scenario threshold
+  // If value > min scenario threshold, scenario covers it; only fire if value is even lower
+  if (operator === '<') {
+    const minThreshold = Math.min(...thresholds);
+    // Value is covered (scenario handles it) if it's above the monitor's concern
+    // Only fire if the value goes BELOW the most extreme scenario threshold
+    return value >= minThreshold;
+  }
+  // For '>' operator (high alerts), find the maximum scenario threshold
+  if (operator === '>') {
+    const maxThreshold = Math.max(...thresholds);
+    return value <= maxThreshold;
+  }
+  return false;
+}
+
 export class VitalCoherenceMonitor {
   private timerId: ReturnType<typeof setInterval> | null = null;
   private cooldowns: Record<string, AlertCooldown> = {};
@@ -84,7 +132,7 @@ export class VitalCoherenceMonitor {
     const { vitals, moass } = useSimStore.getState();
 
     // SpO2 checks
-    if (vitals.spo2 < 85) {
+    if (vitals.spo2 < 85 && !isCoveredByScenario('spo2', vitals.spo2, '<')) {
       if (this.canAlert('spo2', 'critical')) {
         this.recordAlert('spo2', 'critical');
         this.alert(
@@ -92,7 +140,7 @@ export class VitalCoherenceMonitor {
           'critical', 'spo2'
         );
       }
-    } else if (vitals.spo2 < 90) {
+    } else if (vitals.spo2 < 90 && !isCoveredByScenario('spo2', vitals.spo2, '<')) {
       if (this.canAlert('spo2', 'warning')) {
         this.recordAlert('spo2', 'warning');
         this.alert(
@@ -103,7 +151,7 @@ export class VitalCoherenceMonitor {
     }
 
     // HR checks
-    if (vitals.hr < 40) {
+    if (vitals.hr < 40 && !isCoveredByScenario('hr', vitals.hr, '<')) {
       if (this.canAlert('hr_low', 'critical')) {
         this.recordAlert('hr_low', 'critical');
         this.alert(
@@ -113,7 +161,7 @@ export class VitalCoherenceMonitor {
       }
     }
 
-    if (vitals.hr > 150) {
+    if (vitals.hr > 150 && !isCoveredByScenario('hr', vitals.hr, '>')) {
       if (this.canAlert('hr_high', 'critical')) {
         this.recordAlert('hr_high', 'critical');
         this.alert(
@@ -124,7 +172,7 @@ export class VitalCoherenceMonitor {
     }
 
     // SBP check
-    if (vitals.sbp < 70) {
+    if (vitals.sbp < 70 && !isCoveredByScenario('sbp', vitals.sbp, '<')) {
       if (this.canAlert('sbp', 'critical')) {
         this.recordAlert('sbp', 'critical');
         this.alert(
@@ -135,7 +183,7 @@ export class VitalCoherenceMonitor {
     }
 
     // RR checks
-    if (vitals.rr === 0) {
+    if (vitals.rr === 0 && !isCoveredByScenario('rr', vitals.rr, '<')) {
       if (this.canAlert('rr', 'critical')) {
         this.recordAlert('rr', 'critical');
         this.alert(
@@ -143,7 +191,7 @@ export class VitalCoherenceMonitor {
           'critical', 'rr'
         );
       }
-    } else if (vitals.rr < 4) {
+    } else if (vitals.rr < 4 && !isCoveredByScenario('rr', vitals.rr, '<')) {
       if (this.canAlert('rr', 'critical')) {
         this.recordAlert('rr', 'critical');
         this.alert(
@@ -154,7 +202,7 @@ export class VitalCoherenceMonitor {
     }
 
     // EtCO2 checks
-    if (vitals.etco2 > 80) {
+    if (vitals.etco2 > 80 && !isCoveredByScenario('etco2', vitals.etco2, '>')) {
       if (this.canAlert('etco2', 'critical')) {
         this.recordAlert('etco2', 'critical');
         this.alert(
@@ -162,7 +210,7 @@ export class VitalCoherenceMonitor {
           'critical', 'etco2'
         );
       }
-    } else if (vitals.etco2 > 60) {
+    } else if (vitals.etco2 > 60 && !isCoveredByScenario('etco2', vitals.etco2, '>')) {
       if (this.canAlert('etco2', 'warning')) {
         this.recordAlert('etco2', 'warning');
         this.alert(
@@ -173,7 +221,7 @@ export class VitalCoherenceMonitor {
     }
 
     // MOASS check
-    if (moass === 0) {
+    if (moass === 0 && !isCoveredByScenario('moass', moass, '<')) {
       if (this.canAlert('moass', 'critical')) {
         this.recordAlert('moass', 'critical');
         this.alert(

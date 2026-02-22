@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import useSimStore from '../store/useSimStore';
+import useAIStore from '../store/useAIStore';
   import { DRUG_LIST, LA_DRUG_KEYS } from '../engine/drugs';
 import { DrugParams } from '../types';
 
@@ -11,7 +12,12 @@ const DRUG_COLORS: Record<string, string> = {
   ketamine: '#22c55e',
 };
 
-function CompactDrugCard({ drug }: { drug: DrugParams }) {
+function CompactDrugCard({ drug, scenarioLocked, isUnlocked, scenarioHintRange }: {
+  drug: DrugParams;
+  scenarioLocked: boolean;
+  isUnlocked: boolean;
+  scenarioHintRange?: [number, number];
+}) {
   const { administerBolus, startInfusion, stopInfusion, infusions, pkStates } = useSimStore();
   const [showCustom, setShowCustom] = useState(false);
   const [customDose, setCustomDose] = useState('');
@@ -21,6 +27,9 @@ function CompactDrugCard({ drug }: { drug: DrugParams }) {
   const ce = pkStates[drugKey]?.ce || 0;
   const color = DRUG_COLORS[drugKey] || '#888';
 
+  // Buttons are disabled when scenario is locked AND this drug is not the unlocked one
+  const buttonsDisabled = scenarioLocked && !isUnlocked;
+
   const presetDoses: Record<string, number[]> = {
     propofol: [20, 50, 100, 200],
     midazolam: [0.5, 1, 2, 5],
@@ -29,7 +38,10 @@ function CompactDrugCard({ drug }: { drug: DrugParams }) {
   };
 
   return (
-    <div className="mb-1" style={{ borderLeft: `3px solid ${color}`, background: 'rgba(255,255,255,0.02)' }}>
+    <div
+      className={`mb-1 ${buttonsDisabled ? 'opacity-50' : ''}`}
+      style={{ borderLeft: `3px solid ${color}`, background: 'rgba(255,255,255,0.02)' }}
+    >
       {/* Header: Drug name + Ce + expand toggle */}
       <div className="flex items-center px-2 py-1">
         <span className="font-bold text-xs" style={{ color, minWidth: 70 }}>{drug.name}</span>
@@ -42,9 +54,13 @@ function CompactDrugCard({ drug }: { drug: DrugParams }) {
           </span>
         )}
         <div className="flex-1" />
+        {scenarioHintRange && (
+          <span className="text-xs text-cyan-400 mr-1">{scenarioHintRange[0]}-{scenarioHintRange[1]}{drug.unit}</span>
+        )}
         <button
           onClick={() => setShowCustom(!showCustom)}
-          className="text-gray-500 hover:text-white text-xs px-1"
+          disabled={buttonsDisabled}
+          className="text-gray-500 hover:text-white text-xs px-1 disabled:cursor-not-allowed"
           title="Custom dose / Infusion"
         >
           {showCustom ? '\u25B2' : '\u2699'}
@@ -58,7 +74,8 @@ function CompactDrugCard({ drug }: { drug: DrugParams }) {
             key={dose}
             data-sim-id={`${drugKey}-${dose}`}
             onClick={() => administerBolus(drugKey, dose)}
-            className="flex-1 py-0.5 rounded text-xs font-mono hover:brightness-125 transition-all"
+            disabled={buttonsDisabled}
+            className="flex-1 py-0.5 rounded text-xs font-mono hover:brightness-125 transition-all disabled:cursor-not-allowed disabled:hover:brightness-100"
             style={{ background: `${color}22`, color, border: `1px solid ${color}44`, fontSize: 11 }}
           >
             {dose}
@@ -67,7 +84,7 @@ function CompactDrugCard({ drug }: { drug: DrugParams }) {
       </div>
 
       {/* Expandable: Custom dose + Infusion controls */}
-      {showCustom && (
+      {showCustom && !buttonsDisabled && (
         <div className="px-2 pb-1.5 space-y-1" style={{ background: 'rgba(0,0,0,0.2)' }}>
           {/* Custom bolus */}
           <div className="flex gap-1 items-center">
@@ -116,14 +133,52 @@ function CompactDrugCard({ drug }: { drug: DrugParams }) {
 }
 
 export default function DrugPanel() {
+  const { isScenarioActive, scenarioDrugProtocols } = useSimStore();
+  const { unlockedDrug } = useAIStore();
+
+  const filteredDrugs = DRUG_LIST.filter(d =>
+    !LA_DRUG_KEYS.some(k => d.name.toLowerCase() === k || d.name.toLowerCase().startsWith(k.split('_')[0]))
+  );
+
   return (
     <div>
       <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">
         Drugs
       </div>
-                        {DRUG_LIST.filter(d => !LA_DRUG_KEYS.some(k => d.name.toLowerCase() === k || d.name.toLowerCase().startsWith(k.split('_')[0]))).map(drug => (
-        <CompactDrugCard key={drug.name} drug={drug} />
-      ))}
+      {isScenarioActive && (
+        <div className="mb-1 px-2 py-1 rounded text-xs text-cyan-300 bg-cyan-900/40 border border-cyan-700/50">
+          Scenario Mode — drugs controlled by Millie
+        </div>
+      )}
+      {filteredDrugs.map(drug => {
+        const drugKey = drug.name.toLowerCase();
+        // When scenario active with protocols, only show protocol drugs (others deeply grayed)
+        const inProtocol = !isScenarioActive || !scenarioDrugProtocols ||
+          scenarioDrugProtocols.some(p => p.name.toLowerCase() === drugKey || drugKey.startsWith(p.name.toLowerCase()));
+        if (!inProtocol) {
+          // Show deeply grayed out non-protocol drugs
+          return (
+            <div key={drug.name} className="mb-1 opacity-20 pointer-events-none"
+              style={{ borderLeft: `3px solid #444`, background: 'rgba(255,255,255,0.01)' }}>
+              <div className="flex items-center px-2 py-1">
+                <span className="font-bold text-xs text-gray-600" style={{ minWidth: 70 }}>{drug.name}</span>
+              </div>
+            </div>
+          );
+        }
+        const scenarioProtocol = scenarioDrugProtocols?.find(
+          p => p.name.toLowerCase() === drugKey || drugKey.startsWith(p.name.toLowerCase())
+        );
+        return (
+          <CompactDrugCard
+            key={drug.name}
+            drug={drug}
+            scenarioLocked={isScenarioActive}
+            isUnlocked={!!unlockedDrug && (unlockedDrug.toLowerCase() === drugKey || drugKey.startsWith(unlockedDrug.toLowerCase()))}
+            scenarioHintRange={scenarioProtocol?.typicalBolusRange}
+          />
+        );
+      })}
     </div>
   );
 }
