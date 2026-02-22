@@ -127,6 +127,23 @@ export const EASY_COLONOSCOPY: InteractiveScenario = {
       ],
     },
     {
+      id: 'step_maintenance_monitoring',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'step_fentanyl',
+      millieDialogue: [
+        'Good. The colonoscopy is now underway. Monitor the patient closely.',
+        'Watch SpO2, EtCO2, and respiratory rate — these are your early warning indicators.',
+      ],
+      simActions: [
+        { type: 'advance_time', seconds: 120 },
+      ],
+      teachingPoints: [
+        'During maintenance, continuously monitor SpO2, EtCO2, HR, and BP.',
+        'Capnography (EtCO2) changes are the earliest sign of hypoventilation — earlier than SpO2 drops.',
+      ],
+    },
+    {
       id: 'step_desat_event',
       phase: 'complication',
       triggerType: 'on_physiology',
@@ -523,6 +540,23 @@ export const EASY_LACERATION_REPAIR: InteractiveScenario = {
       ],
     },
     {
+      id: 'step_ketamine_maintenance',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'step_ketamine_dose',
+      millieDialogue: [
+        'Good. Ketamine sedation is established. The laceration repair is underway.',
+        'Maintain a quiet environment and minimise stimulation to reduce emergence phenomena.',
+      ],
+      simActions: [
+        { type: 'advance_time', seconds: 120 },
+      ],
+      teachingPoints: [
+        'Ketamine maintains airway reflexes and respiratory drive, making it ideal for brief procedural sedation.',
+        'Monitor for hypersalivation — have suction available.',
+      ],
+    },
+    {
       id: 'step_vasovagal',
       phase: 'complication',
       triggerType: 'on_physiology',
@@ -710,6 +744,23 @@ export const EASY_FRACTURE_REDUCTION: InteractiveScenario = {
       ],
     },
     {
+      id: 'step_fracture_maintenance',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'step_induction_drug',
+      millieDialogue: [
+        'Sedation achieved. The orthopaedic team is performing the reduction.',
+        'Keep the patient still and monitor closely — propofol sedation can be easily deepened or lightened.',
+      ],
+      simActions: [
+        { type: 'advance_time', seconds: 120 },
+      ],
+      teachingPoints: [
+        'Propofol allows rapid titration — its short context-sensitive half-life means quick offset.',
+        'Watch for apnea in the first 60-90 seconds after bolus; have BVM immediately accessible.',
+      ],
+    },
+    {
       id: 'step_desat',
       phase: 'complication',
       triggerType: 'on_physiology',
@@ -889,6 +940,23 @@ export const EASY_ABSCESS_DRAINAGE: InteractiveScenario = {
       teachingPoints: [
         'Reduce propofol dose by 20% for ASA 2 patients, 30-40% for ASA 3.',
         'Inject propofol slowly (over 30s) to reduce pain on injection and blunt BP drop.',
+      ],
+    },
+    {
+      id: 'step_abscess_maintenance',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'step_propofol_induction',
+      millieDialogue: [
+        'Sedation is underway. The surgeon is incising and draining the abscess.',
+        'Watch BP closely — propofol can cause vasodilation and hypotension especially in older patients.',
+      ],
+      simActions: [
+        { type: 'advance_time', seconds: 120 },
+      ],
+      teachingPoints: [
+        'Propofol reduces systemic vascular resistance — have a vasopressor (phenylephrine or ephedrine) drawn up.',
+        'Ensure IV access is functioning well before induction; hypotension requires rapid fluid bolus or vasopressor.',
       ],
     },
     {

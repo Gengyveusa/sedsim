@@ -82,6 +82,9 @@ export interface InteractiveScenario {
 
 // ─── ScenarioEngine ─────────────────────────────────────────────────────────
 
+/** Seconds before an on_time trigger to fast-forward to, so it fires on the next tick. */
+const TRIGGER_PRE_FIRE_BUFFER_SECONDS = 1;
+
 export class ScenarioEngine {
   private scenario: InteractiveScenario | null = null;
   private scenarioTimeSeconds = 0;
@@ -371,7 +374,36 @@ export class ScenarioEngine {
         }
         this.fireStep(step);
         // Only fire one step per tick to avoid flooding
-        break;
+        return;
+      }
+    }
+
+    // After the for-loop: detect stall and auto-advance to next timed step.
+    // Only act when the engine is not waiting on the student and is not already
+    // paused for a vital-coherence alert.
+    if (!this.awaitingAnswer && !this.awaitingContinue) {
+      const unfiredSteps = this.scenario.steps.filter(s => !this.firedStepIds.has(s.id));
+      const hasActionableStep = unfiredSteps.some(s => {
+        if (s.triggerType === 'on_step_complete' && s.afterStepId && this.firedStepIds.has(s.afterStepId)) return true;
+        if (s.triggerType === 'on_start' && this.scenarioTimeSeconds <= 2) return true;
+        return false;
+      });
+
+      if (!hasActionableStep) {
+        // Find the nearest on_time step that has not yet fired
+        const nextTimedStep = unfiredSteps
+          .filter(s => s.triggerType === 'on_time' && s.triggerTimeSeconds !== undefined)
+          .sort((a, b) => (a.triggerTimeSeconds ?? 0) - (b.triggerTimeSeconds ?? 0))[0];
+
+        if (
+          nextTimedStep &&
+          nextTimedStep.triggerTimeSeconds !== undefined &&
+          this.scenarioTimeSeconds < nextTimedStep.triggerTimeSeconds
+        ) {
+          // Fast-forward to just before the trigger so it fires on the very next tick
+          this.scenarioTimeSeconds = nextTimedStep.triggerTimeSeconds - TRIGGER_PRE_FIRE_BUFFER_SECONDS;
+          useAIStore.getState().setScenarioElapsedSeconds(this.scenarioTimeSeconds);
+        }
       }
     }
   }
