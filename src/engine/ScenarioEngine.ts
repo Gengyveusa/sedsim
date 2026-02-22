@@ -207,8 +207,35 @@ export class ScenarioEngine {
       const stepPhaseIdx = PHASE_ORDER.indexOf(step.phase);
       if (stepPhaseIdx >= targetIdx) {
         this.firedStepIds.delete(step.id);
+        // Clear physiology duration counters so stale counters don't cause immediate re-fires
+        delete this.physiologyDurationCounters[step.id];
       }
     }
+    // Reset scenarioTimeSeconds so on_time triggers don't immediately re-fire on next tick
+    const targetSteps = this.scenario.steps.filter(s => s.phase === phase);
+    const targetTimes = targetSteps
+      .filter(s => s.triggerTimeSeconds !== undefined)
+      .map(s => s.triggerTimeSeconds!);
+    const earliestTime = targetTimes.length > 0 ? Math.min(...targetTimes) : undefined;
+    let newTime: number;
+    if (phase === 'pre_induction') {
+      newTime = 0;
+    } else if (earliestTime !== undefined) {
+      newTime = Math.max(0, earliestTime - 1);
+    } else {
+      // Fallback: use the latest triggerTimeSeconds from phases before the target
+      const priorSteps = this.scenario.steps.filter(s => {
+        const idx = PHASE_ORDER.indexOf(s.phase);
+        return idx < targetIdx;
+      });
+      const priorTimes = priorSteps
+        .filter(s => s.triggerTimeSeconds !== undefined)
+        .map(s => s.triggerTimeSeconds!);
+      const latestPriorTime = priorTimes.length > 0 ? Math.max(...priorTimes) : undefined;
+      newTime = latestPriorTime !== undefined ? latestPriorTime : 0;
+    }
+    this.scenarioTimeSeconds = newTime;
+    useAIStore.getState().setScenarioElapsedSeconds(newTime);
     // Reset awaiting state
     this.awaitingAnswer = null;
     this.awaitingContinue = null;
