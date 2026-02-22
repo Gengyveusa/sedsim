@@ -191,8 +191,9 @@ export class ScenarioEngine {
     useAIStore.getState().setCurrentQuestion(null);
     useAIStore.getState().setActiveHighlights(null);
     useAIStore.getState().setUnlockedDrug(null);
-    // Mark step as fired
-    this.firedStepIds.add(stepId);
+    // Gate next step behind the Continue / Next Step button
+    this.awaitingContinue = { stepId };
+    useAIStore.getState().setPendingContinue({ stepId, stepLabel: stepId });
   }
 
   continuePendingStep() {
@@ -241,10 +242,14 @@ export class ScenarioEngine {
       // When awaiting an answer, skip on_step_complete steps (sequential flow) but still
       // evaluate on_physiology and on_time triggers so patient deterioration is not ignored
       if (this.awaitingAnswer && step.triggerType === 'on_step_complete') continue;
+      // Also skip the specific step currently being answered (prevents re-fire for non-sequential triggers)
+      if (this.awaitingAnswer?.stepId === step.id) continue;
 
       // When awaiting continue, block on_time and on_step_complete steps;
       // on_physiology steps still fire (patient safety takes priority)
       if (this.awaitingContinue && (step.triggerType === 'on_time' || step.triggerType === 'on_step_complete')) continue;
+      // Also skip the specific step awaiting continue so it cannot re-fire
+      if (this.awaitingContinue?.stepId === step.id) continue;
 
       let shouldFire = false;
 
@@ -369,9 +374,9 @@ export class ScenarioEngine {
           useAIStore.getState().setUnlockedDrug(drugAction.drug);
         }
       }
-      // Note: firedStepIds gets the id added in answerQuestion()
-      // But we mark it now so we don't re-fire before the answer arrives
-      this.firedStepIds.add(step.id);
+      // Note: firedStepIds gets the id added in continuePendingStep() after the student
+      // clicks the Continue / Next Step button. awaitingAnswer + evaluateTriggers guards
+      // prevent this step from re-firing while the answer is pending.
     }
   }
 
