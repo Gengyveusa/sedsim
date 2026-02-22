@@ -196,6 +196,42 @@ export class ScenarioEngine {
     useAIStore.getState().setPendingContinue({ stepId, stepLabel: stepId });
   }
 
+  jumpToPhase(phase: InteractiveScenarioStep['phase']) {
+    if (!this.scenario) return;
+    const PHASE_ORDER: InteractiveScenarioStep['phase'][] = [
+      'pre_induction', 'induction', 'maintenance', 'complication', 'recovery', 'debrief',
+    ];
+    const targetIdx = PHASE_ORDER.indexOf(phase);
+    // Clear firedStepIds for target phase and all later phases
+    for (const step of this.scenario.steps) {
+      const stepPhaseIdx = PHASE_ORDER.indexOf(step.phase);
+      if (stepPhaseIdx >= targetIdx) {
+        this.firedStepIds.delete(step.id);
+      }
+    }
+    // Reset awaiting state
+    this.awaitingAnswer = null;
+    this.awaitingContinue = null;
+    useAIStore.getState().setPendingContinue(null);
+    useAIStore.getState().setCurrentQuestion(null);
+    useAIStore.getState().setCurrentScenarioPhase(phase);
+    // Announce the jump
+    const phaseLabels: Record<InteractiveScenarioStep['phase'], string> = {
+      pre_induction: 'Pre-Induction',
+      induction: 'Induction',
+      maintenance: 'Maintenance',
+      complication: 'Complication',
+      recovery: 'Recovery',
+      debrief: 'Debrief',
+    };
+    this.speakAsMillie([`↩️ Returning to **${phaseLabels[phase]}**...`]);
+    // Fire the first step of the target phase
+    const firstStep = this.scenario.steps.find(s => s.phase === phase);
+    if (firstStep) {
+      this.fireStep(firstStep);
+    }
+  }
+
   continuePendingStep() {
     if (!this.awaitingContinue) return;
     const stepId = this.awaitingContinue.stepId;
@@ -245,9 +281,9 @@ export class ScenarioEngine {
       // Also skip the specific step currently being answered (prevents re-fire for non-sequential triggers)
       if (this.awaitingAnswer?.stepId === step.id) continue;
 
-      // When awaiting continue, block on_time and on_step_complete steps;
-      // on_physiology steps still fire (patient safety takes priority)
-      if (this.awaitingContinue && (step.triggerType === 'on_time' || step.triggerType === 'on_step_complete')) continue;
+      // When awaiting continue, block all trigger types except on_physiology
+      // (patient safety events must still fire immediately)
+      if (this.awaitingContinue && step.triggerType !== 'on_physiology') continue;
       // Also skip the specific step awaiting continue so it cannot re-fire
       if (this.awaitingContinue?.stepId === step.id) continue;
 
@@ -354,14 +390,9 @@ export class ScenarioEngine {
       if (step.teachingPoints?.length) {
         this.speakAsMillie(['📚 **Teaching Points:**\n' + step.teachingPoints.map(tp => `• ${tp}`).join('\n')]);
       }
-      // on_time and on_step_complete steps require the student to click Continue before advancing.
-      // on_start (preop vignette) and on_physiology (urgent clinical events) auto-complete.
-      if (step.triggerType === 'on_time' || step.triggerType === 'on_step_complete') {
-        this.awaitingContinue = { stepId: step.id };
-        useAIStore.getState().setPendingContinue({ stepId: step.id, stepLabel: step.id });
-      } else {
-        this.firedStepIds.add(step.id);
-      }
+      // ALL non-question steps require the student to click Next Step before advancing.
+      this.awaitingContinue = { stepId: step.id };
+      useAIStore.getState().setPendingContinue({ stepId: step.id, stepLabel: step.id });
     } else {
       // Present question — pause until answered
       this.speakAsMillie(step.millieDialogue);
