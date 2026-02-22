@@ -290,7 +290,8 @@ const useSimStore = create<SimState>((set, get) => ({
       newVitals.hr,
       newVitals.spo2,
       dt,
-      newRhythm
+      newRhythm,
+      newVitals.sbp
     );
 
     // Accumulate IV fluid infused (rate is mL/hr, dt is 1 second -> mL/3600)

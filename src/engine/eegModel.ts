@@ -47,24 +47,25 @@ const generateRawSample = (
 ): number => {
   // Age adjustment: elderly show more sensitivity
   const ageSensitivity = age > 65 ? 1.2 : age < 18 ? 0.85 : 1.0;
-  const effectivePropCe = propCe * ageSensitivity;
+  // Combined propofol-equivalent Ce for waveform shape (fentanyl excluded — no cortical slowing)
+  const combinedSedationCe = (propCe + midazCe * 8 + dexCe * 1.5) * ageSensitivity;
 
   // Awake state: dominant alpha (8-13 Hz) + beta (13-30 Hz)
-  const alphaAmp = Math.max(0, 30 * (1 - effectivePropCe * 0.3));
-  const alphaFreq = 10 - effectivePropCe * 1.5; // Alpha slows with sedation
-  const betaAmp = Math.max(0, 15 * (1 - effectivePropCe * 0.5));
+  const alphaAmp = Math.max(0, 30 * (1 - combinedSedationCe * 0.3));
+  const alphaFreq = 10 - combinedSedationCe * 1.5; // Alpha slows with sedation
+  const betaAmp = Math.max(0, 15 * (1 - combinedSedationCe * 0.5));
   const betaFreq = 20 + Math.random() * 5;
 
   // Sedation: theta (4-8 Hz) and delta (0.5-4 Hz) emergence
-  const thetaAmp = effectivePropCe > 1 ? Math.min(40, (effectivePropCe - 1) * 25) : 0;
-  const thetaFreq = 6 - effectivePropCe * 0.5;
-  const deltaAmp = effectivePropCe > 2 ? Math.min(60, (effectivePropCe - 2) * 30) : 0;
-  const deltaFreq = 2 - effectivePropCe * 0.2;
+  const thetaAmp = combinedSedationCe > 1 ? Math.min(40, (combinedSedationCe - 1) * 25) : 0;
+  const thetaFreq = 6 - combinedSedationCe * 0.5;
+  const deltaAmp = combinedSedationCe > 2 ? Math.min(60, (combinedSedationCe - 2) * 30) : 0;
+  const deltaFreq = 2 - combinedSedationCe * 0.2;
 
   // Burst suppression pattern (Ce > 4)
-  const burstProb = effectivePropCe > 4 ? Math.min(0.8, (effectivePropCe - 4) * 0.3) : 0;
+  const burstProb = combinedSedationCe > 4 ? Math.min(0.8, (combinedSedationCe - 4) * 0.3) : 0;
   const isBurst = Math.random() > burstProb;
-  const burstMultiplier = effectivePropCe > 4 ? (isBurst ? 2.0 : 0.05) : 1.0;
+  const burstMultiplier = combinedSedationCe > 4 ? (isBurst ? 2.0 : 0.05) : 1.0;
 
   // Ketamine effect: increases high-frequency gamma
   const gammaAmp = ketCe > 0.5 ? Math.min(20, ketCe * 15) : 0;
@@ -89,8 +90,8 @@ const generateRawSample = (
     (betaAmp + midazBetaBoost) * Math.sin(2 * Math.PI * 18 * t + phase) * 0.3;
 
   // Add noise and apply burst suppression
-  const noise = gaussianNoise(0, 3 + effectivePropCe * 2);
-  const emg = effectivePropCe < 1.5 ? emgArtifact(0.3) : 0; // EMG decreases with sedation
+  const noise = gaussianNoise(0, 3 + combinedSedationCe * 2);
+  const emg = combinedSedationCe < 1.5 ? emgArtifact(0.3) : 0; // EMG decreases with sedation
 
   return (signal + noise + emg) * burstMultiplier;
 };
@@ -104,7 +105,8 @@ const computeBISIndex = (
   fentCe: number
 ): number => {
   // Sigmoid Emax model for BIS
-  const totalEffect = propCe * 1.0 + midazCe * 15 + dexCe * 1.5 + fentCe * 200;
+  // Fentanyl is an opioid (not hypnotic) — minimal direct BIS effect (weight ~3, not 200)
+  const totalEffect = propCe * 1.0 + midazCe * 10 + dexCe * 1.5 + fentCe * 3;
   const ec50 = 3.5; // BIS EC50 for propofol-equivalent
   const gamma = 2.5;
   const emax = 100;
@@ -128,16 +130,16 @@ const getSedationState = (bisIndex: number): EEGState['sedationState'] => {
   return 'isoelectric';
 };
 
-// Compute suppression ratio
-const computeSuppressionRatio = (propCe: number): number => {
-  if (propCe < 4) return 0;
-  return Math.min(100, Math.round((propCe - 4) * 25));
+// Compute suppression ratio using propofol-equivalent combined Ce
+const computeSuppressionRatio = (combinedSedationCe: number): number => {
+  if (combinedSedationCe < 4) return 0;
+  return Math.min(100, Math.round((combinedSedationCe - 4) * 25));
 };
 
-// Compute spectral edge frequency
-const computeSEF = (propCe: number, dexCe: number): number => {
+// Compute spectral edge frequency using propofol-equivalent combined Ce
+const computeSEF = (combinedSedationCe: number, dexCe: number): number => {
   const baseSEF = 25; // Awake SEF95
-  const reduction = propCe * 3 + dexCe * 2;
+  const reduction = combinedSedationCe * 3 + dexCe * 2;
   return Math.max(2, Math.round((baseSEF - reduction) * 10) / 10);
 };
 
@@ -174,8 +176,11 @@ export const generateEEG = (
 ): EEGState => {
   const bisIndex = computeBISIndex(propCe, dexCe, ketCe, midazCe, fentCe);
   const sedationState = getSedationState(bisIndex);
-  const suppressionRatio = computeSuppressionRatio(propCe);
-  const sef = computeSEF(propCe, dexCe);
+  // Propofol-equivalent combined Ce with age sensitivity (matches waveform generation)
+  const ageSensitivity = age > 65 ? 1.2 : age < 18 ? 0.85 : 1.0;
+  const combinedSedationCe = (propCe + midazCe * 8 + dexCe * 1.5) * ageSensitivity;
+  const suppressionRatio = computeSuppressionRatio(combinedSedationCe);
+  const sef = computeSEF(combinedSedationCe, dexCe);
   const dsa = computeDSA(propCe, dexCe, ketCe);
 
   const channels: Record<string, EEGChannel> = {};
@@ -197,7 +202,7 @@ export const generateEEG = (
     const raw = [...prevRaw, ...newSamples].slice(-BUFFER_SIZE);
 
     // Compute dominant frequency (simplified peak detection)
-    const dominantFreq = propCe < 1 ? 10 : propCe < 3 ? 6 - propCe : 2;
+    const dominantFreq = combinedSedationCe < 1 ? 10 : combinedSedationCe < 3 ? 6 - combinedSedationCe : 2;
 
     channels[name] = {
       raw,

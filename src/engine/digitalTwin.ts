@@ -68,7 +68,8 @@ export const updateTwin = (
   _vitalsHr: number,
   vitalsSpo2: number,
   _dt: number,
-  currentRhythm: CardiacRhythm = 'normal_sinus'
+  currentRhythm: CardiacRhythm = 'normal_sinus',
+  vitalsSbp: number = 120
 ): DigitalTwin => {
   // Extract effect-site concentrations from PK states
   const newCe: Record<string, number> = {};
@@ -90,16 +91,25 @@ export const updateTwin = (
     ? (totalSedationPressure * 12) / twin.physiologyModifiers.hepaticClearance
     : 0;
 
-  const hypotensionRisk = Math.min(100, Math.max(0,
-    (propCe - 2) * 15 + (dexCe - 0.5) * 20 + (fentCe - 0.002) * 5000
-  ) * (2 - twin.physiologyModifiers.cardiacOutput));
+  // Ce-based hypotension risk: meaningful thresholds matching clinical ranges
+  const ceHypotensionRisk = Math.max(0,
+    (propCe > 2.0 ? (propCe - 2.0) * 15 : 0) +
+    (dexCe > 0.5 ? (dexCe - 0.5) * 20 : 0) +
+    (fentCe > 1.0 ? (fentCe - 1.0) * 15 : 0)
+  ) * (2 - twin.physiologyModifiers.cardiacOutput);
+  // Vital-based hypotension: actual SBP < 90 is definitive hypotension
+  const vitalHypotensionRisk = vitalsSbp < 90 ? (90 - vitalsSbp) * 3 : 0;
+  const hypotensionRisk = Math.min(100, ceHypotensionRisk * 0.6 + vitalHypotensionRisk * 0.4);
 
-  const desaturationRisk = Math.min(100, Math.max(0,
+  // Ce-based desaturation risk: meaningful threshold at fentCe > 0.8 ng/mL
+  const ceDesatRisk = Math.max(0,
     (1 - twin.physiologyModifiers.respiratoryDrive) * 40 +
     (propCe > 3 ? (propCe - 3) * 20 : 0) +
-    (fentCe > 0.003 ? (fentCe - 0.003) * 8000 : 0) +
-    (vitalsSpo2 < 94 ? (94 - vitalsSpo2) * 5 : 0)
-  ));
+    (fentCe > 0.8 ? (fentCe - 0.8) * 20 : 0)
+  );
+  // Vital-based desaturation: actual SpO2 is ground truth
+  const vitalDesatRisk = vitalsSpo2 < 94 ? (94 - vitalsSpo2) * 5 : 0;
+  const desaturationRisk = Math.min(100, Math.max(0, ceDesatRisk * 0.6 + vitalDesatRisk * 0.4));
 
   const awarenessRisk = Math.min(100, Math.max(0,
     totalSedationPressure < 1.5 ? (1.5 - totalSedationPressure) * 40 : 0
