@@ -67,6 +67,13 @@ export const PATIENT_ARCHETYPES: Record<string, Patient> = {
     age: 72, weight: 74, height: 168, sex: 'M', asa: 4,
     mallampati: 2, osa: false, drugSensitivity: 1.9,
   },
+  // Congestive Heart Failure (NYHA Class III)
+  chf_nyha3: {
+    age: 68, weight: 82, height: 172, sex: 'M', asa: 4,
+    mallampati: 2, osa: false, drugSensitivity: 1.7,
+    hepaticImpairment: true, renalImpairment: false,
+    copd: false,
+  },
 };
 
 function noise(base: number, amplitude: number): number {
@@ -75,6 +82,15 @@ function noise(base: number, amplitude: number): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+/** Detect whether a patient matches the CHF (NYHA III) archetype based on its unique combination of fields. */
+function isCHFPatient(patient: Patient): boolean {
+  return patient.hepaticImpairment === true &&
+    patient.drugSensitivity === 1.7 &&
+    patient.asa === 4 &&
+    patient.renalImpairment === false &&
+    patient.copd === false;
 }
 
 function sigmoidEffect(ce: number, ce50: number, gamma: number): number {
@@ -224,9 +240,11 @@ function computeHemodynamics(
   let map = (sbp + 2 * dbp) / 3;
 
   // Baroreceptor reflex: hypotension -> compensatory tachycardia
+  // CHF patients have blunted baroreflex (50% reduction in gain)
   const mapBaseline = baseline.map;
   const mapDrop = mapBaseline - map;
-  const baroreflexDrive = mapDrop > 0 ? mapDrop * 0.5 : 0;
+  const baroreflexGain = isCHFPatient(patient) ? 0.25 : 0.5;
+  const baroreflexDrive = mapDrop > 0 ? mapDrop * baroreflexGain : 0;
 
   // Hypoxia response (SpO2 < 90 -> tachycardia)
   const hypoxiaDrive = currentSpO2 < 90 ? (90 - currentSpO2) * 1.5 : 0;
@@ -322,6 +340,9 @@ export function calculateVitals(
   const isDCM = (patient.drugSensitivity === 1.55 || patient.drugSensitivity === 1.9) &&
     patient.asa >= 3 && !patient.osa && !patient.hepaticImpairment;
 
+  // CHF (NYHA III) detection: hepaticImpairment + high drugSensitivity + asa 4 + specific weight/age
+  const isCHF = isCHFPatient(patient);
+
   if (isHCM) {
     baseline.hr += 5;
     baseline.sbp -= 5;
@@ -333,6 +354,21 @@ export function calculateVitals(
     baseline.sbp -= 15;
     baseline.dbp -= 5;
     baseline.map = (baseline.sbp + 2 * baseline.dbp) / 3;
+  }
+
+  if (isCHF) {
+    // Compensatory tachycardia from reduced cardiac output
+    baseline.hr += 12;
+    // Reduced cardiac output -> lower perfusion pressure
+    baseline.sbp -= 20;
+    baseline.dbp -= 10;
+    baseline.map = (baseline.sbp + 2 * baseline.dbp) / 3;
+    // Pulmonary congestion: impaired gas exchange -> lower baseline SpO2
+    baseline.spo2 = 94;
+    // Pulmonary congestion: increased respiratory drive
+    baseline.rr += 4;
+    // Elevated baseline EtCO2 from impaired gas exchange
+    baseline.etco2 = 42;
   }
 
   // SpO2 depends on respiratory status

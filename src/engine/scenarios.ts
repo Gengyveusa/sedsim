@@ -227,6 +227,118 @@ export const SCENARIOS: Record<string, ClinicalScenario> = {
       'Ketamine may be preferred over propofol',
       'Have phenylephrine available for blood pressure support'
     ]
+  },
+
+  chf_sedation_challenge: {
+    id: 'chf_sedation_challenge',
+    title: 'Sedation in Congestive Heart Failure',
+    patientArchetype: 'chf_nyha3',
+    description: 'A challenging case requiring careful sedation management in a patient with NYHA Class III congestive heart failure. Reduced cardiac output, pulmonary congestion, and hepatic hypoperfusion demand significant dose reduction and vigilant monitoring.',
+    learningObjectives: [
+      'Understand how reduced cardiac output alters pharmacokinetics of propofol and fentanyl',
+      'Apply appropriate dose reductions for high-extraction drugs in CHF',
+      'Recognize and manage sedation-induced hypotension in CHF patients',
+      'Interpret the significance of baseline SpO2 of 94% and its proximity to the desaturation cliff',
+      'Identify signs of pulmonary congestion worsening during procedural sedation',
+      'Understand atrial fibrillation risk and rhythm monitoring in CHF sedation'
+    ],
+    duration: 720,
+    steps: [
+      {
+        time: 0,
+        action: 'observe',
+        narration: 'Initial Assessment: 68-year-old male, ASA 4, NYHA Class III CHF. Baseline HR 87 (compensatory tachycardia), BP 100/70, SpO2 94% on room air. Note reduced cardiac reserve.',
+        voiceText: 'This sixty-eight year old male has NYHA Class III heart failure. Notice his compensatory tachycardia at eighty-seven beats per minute, his blood pressure is already reduced at one hundred over seventy, and his resting SpO2 is only ninety-four percent on room air. He is on the steep portion of the oxygen-hemoglobin dissociation curve. Any further respiratory depression will cause rapid desaturation.',
+        highlight: ['patient-info', 'vitals']
+      },
+      {
+        time: 15,
+        action: 'intervention',
+        intervention: 'fio2',
+        narration: 'Pre-oxygenation: Increase FiO2 to 40% before any sedation. This builds oxygen reserve given the low baseline SpO2.',
+        voiceText: 'Our first step before any drugs is pre-oxygenation. Increase FiO2 to forty percent via nasal cannula. This patient starts at ninety-four percent. We want to push him to at least ninety-eight percent before we give anything that could impair ventilation. We are buying time on that oxygen-hemoglobin curve.',
+        highlight: ['interventions-panel']
+      },
+      {
+        time: 45,
+        action: 'bolus',
+        drug: 'midazolam',
+        dose: 0.5,
+        narration: 'Reduced-dose Midazolam: Only 0.5mg (standard is 1-2mg). CHF with hepatic hypoperfusion prolongs benzodiazepine metabolism. Half-life of midazolam doubles with reduced hepatic blood flow.',
+        voiceText: 'We are giving only half a milligram of midazolam, one quarter of a standard dose. In heart failure, hepatic blood flow is reduced proportionally to cardiac output reduction. Midazolam is extensively hepatically metabolized, so its half-life can double or triple in CHF. Small doses accumulate to large effects.',
+        highlight: ['midazolam-panel']
+      },
+      {
+        time: 120,
+        action: 'observe',
+        narration: 'Extended Wait: Allow 90 seconds before assessing effect. Reduced cardiac output slows drug distribution — peak effect-site concentration takes longer.',
+        voiceText: 'We wait ninety seconds, not the usual sixty. Reduced cardiac output means slower distribution. The drug takes longer to reach the effect site. Watch the pharmacokinetic curves — the effect-site concentration is rising more slowly than you would see in a healthy patient. Do not be tempted to redose prematurely.',
+        highlight: ['trend-graph']
+      },
+      {
+        time: 150,
+        action: 'bolus',
+        drug: 'fentanyl',
+        dose: 25,
+        narration: 'Reduced-dose Fentanyl: 25mcg (half the standard 50mcg). Fentanyl is a high-extraction drug — hepatic clearance depends on blood flow. CHF reduces this clearance, increasing plasma levels.',
+        voiceText: 'Twenty-five micrograms of fentanyl, half the usual starting dose. Fentanyl has very high hepatic extraction — its clearance is blood-flow dependent. With cardiac output reduced thirty to fifty percent, fentanyl clearance falls proportionally. We will see higher plasma concentrations per dose compared to a healthy patient.',
+        highlight: ['fentanyl-panel']
+      },
+      {
+        time: 210,
+        action: 'bolus',
+        drug: 'propofol',
+        dose: 10,
+        narration: 'Micro-dose Propofol: Only 10mg (standard initial dose 20-40mg). Propofol causes vasodilation — in CHF, the already-reduced cardiac output cannot compensate for afterload reduction.',
+        voiceText: 'Ten milligrams of propofol — this is a micro-dose. Propofol is a potent vasodilator. In a healthy patient, the baroreflex compensates for the drop in afterload. But in CHF, the baroreflex is blunted, and the failing heart cannot increase output to maintain pressure. Even small doses of propofol can precipitate significant hypotension.',
+        highlight: ['propofol-panel']
+      },
+      {
+        time: 270,
+        action: 'observe',
+        narration: 'Monitor for Hypotension: Watch BP closely after propofol. Target MAP > 65 mmHg. If BP drops, CHF patients cannot compensate with tachycardia as readily due to blunted baroreflex.',
+        voiceText: 'Watch the blood pressure carefully now. If mean arterial pressure falls below sixty-five, we have a problem. Unlike healthy patients, our CHF patient cannot rely on a strong baroreflex to compensate. Their sympathetic tone is already maximally activated — there is little reserve left. Have a vasopressor ready.',
+        highlight: ['vitals', 'trend-graph']
+      },
+      {
+        time: 330,
+        action: 'observe',
+        narration: 'Hypotension Management: If SBP < 90 mmHg, consider small fluid bolus (250mL crystalloid) and reduce or hold further sedation. Phenylephrine is preferred over ephedrine in CHF to avoid tachycardia.',
+        voiceText: 'If we see hypotension, our options are limited. A small crystalloid bolus of two-fifty milliliters can improve preload. Phenylephrine is our preferred vasopressor here, not ephedrine — we do not want to increase heart rate in this patient. The tachycardia already indicates significant sympathetic drive. Adding more with ephedrine risks precipitating atrial fibrillation.',
+        highlight: ['vitals', 'interventions-panel']
+      },
+      {
+        time: 420,
+        action: 'observe',
+        narration: 'Respiratory Vigilance: SpO2 monitoring is critical. Pulmonary congestion means even mild hypoventilation causes desaturation. Target SpO2 > 95%. Monitor EtCO2 for early warning of respiratory depression.',
+        voiceText: 'This patient\'s pulmonary congestion means his oxygen reserve is minimal. Watch EtCO2 continuously — it will rise before SpO2 falls. If EtCO2 climbs above fifty, that tells us hypoventilation is occurring. We may need to provide jaw thrust or verbal stimulation. Avoid deepening sedation further unless absolutely necessary.',
+        highlight: ['vitals', 'trend-graph']
+      },
+      {
+        time: 540,
+        action: 'observe',
+        narration: 'Rhythm Monitoring: CHF patients have elevated risk of atrial fibrillation. Hypoxia, sympathetic stimulation, or electrolyte disturbance can trigger AF. Monitor cardiac rhythm throughout.',
+        voiceText: 'Keep a close eye on the cardiac rhythm. CHF patients with dilated, hypertrophied, or fibrotic atria are susceptible to atrial fibrillation. Hypoxia, hypercarbia, or sympathetic stimulation from pain or light sedation can trigger AF. If the rhythm becomes irregular, verify it is not AF and assess hemodynamic impact.',
+        highlight: ['vitals', 'monitor-panel']
+      },
+      {
+        time: 660,
+        action: 'observe',
+        narration: 'Emergence and Debrief: Allow extended recovery. Drug effects linger longer in CHF due to reduced clearance. Ensure SpO2 returns to baseline (≥94%) before discharge from monitoring.',
+        voiceText: 'As we emerge from sedation, remember that drug effects will linger longer than expected. Fentanyl and midazolam accumulate with repeated dosing in CHF. Do not rush discharge. Ensure SpO2 has returned to at least the patient\'s baseline of ninety-four percent, that mental status is appropriate, and that hemodynamics are stable before releasing them from monitoring.',
+        highlight: ['vitals', 'event-log']
+      }
+    ],
+    clinicalPearls: [
+      'Reduce all sedative and opioid doses by 50% in NYHA III-IV CHF; titrate slowly with extended intervals',
+      'Fentanyl and propofol are high-hepatic-extraction drugs; CHF reduces hepatic blood flow, dramatically increasing plasma levels per dose',
+      'Baseline SpO2 of 94% indicates the patient is near the steep portion of the O2-Hb dissociation curve — desaturation is rapid with any hypoventilation',
+      'The CHF baroreflex is blunted: propofol-induced vasodilation is poorly compensated, making hypotension more severe and prolonged',
+      'Atrial fibrillation risk is elevated in CHF; avoid triggers including hypoxia, hypercarbia, pain, and tachycardia',
+      'Pre-oxygenation to SpO2 ≥98% is mandatory before any sedation in CHF patients',
+      'Phenylephrine is preferred over ephedrine for sedation-related hypotension in CHF to avoid worsening tachycardia',
+      'EtCO2 monitoring provides earlier warning of hypoventilation than pulse oximetry — mandatory in this population'
+    ]
   }
 };
 
