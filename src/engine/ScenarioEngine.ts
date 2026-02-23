@@ -405,6 +405,13 @@ export class ScenarioEngine {
           useAIStore.getState().setScenarioElapsedSeconds(this.scenarioTimeSeconds);
         }
       }
+
+            // Auto-debrief: when every scenario step has been completed,
+      // automatically stop the engine and display the debrief summary.
+      if (unfiredSteps.length === 0) {
+        this.stop();
+        return;
+      }
     }
   }
 
