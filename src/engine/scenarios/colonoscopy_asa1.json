@@ -24,7 +24,7 @@
       "id": "state_asa_class",
       "phaseId": "pre",
       "type": "question",
-      "prompt": "Welcome! Review the patient: 45-year-old healthy male, first screening colonoscopy. No cardiopulmonary disease, no OSA, no prior anaesthesia issues. No medications, NKDA. Airway: Mallampati I. What ASA class would you assign?",
+      "prompt": "Welcome! Review the patient: 45-year-old healthy male, first screening colonoscopy. No cardiopulmonary disease, no OSA, no prior anesthesia issues. No medications, NKDA. Airway: Mallampati I. What ASA class would you assign?",
       "options": [
         { "id": "asa1", "label": "ASA I",  "isCorrect": true  },
         { "id": "asa2", "label": "ASA II", "isCorrect": false },
@@ -159,14 +159,14 @@
         { "id": "resp_naloxone",  "label": "Administer naloxone immediately",                "isCorrect": false }
       ],
       "explanations": [
-        "Correct! Address airway and oxygenation first — simple manoeuvres resolve most early desaturations.",
+        "Correct! Address airway and oxygenation first — simple maneuvers resolve most early desaturations.",
         "Dangerous — this will worsen respiratory depression.",
         "Risky — early intervention prevents deeper desaturation.",
         "Not first-line unless there is strong suspicion of pure opioid overdose."
       ],
       "simActions": [
         { "type": "apply_stimulus", "payload": { "stimulusType": "jaw_thrust" } },
-        { "type": "change_oxygen",  "payload": { "device": "simple_mask", "fio2": 0.40 } }
+        { "type": "change_oxygen",  "payload": { "device": "nasal_cannula", "fio2": 0.40 } }
       ],
       "exitConditions": [
         { "id": "ec_continue", "type": "on_continue" }
@@ -179,7 +179,7 @@
         "checklistItems": [
           {
             "id": "ci_desat_correct",
-            "description": "Chose airway manoeuvre + O2 for early desaturation",
+            "description": "Chose airway maneuver + O2 for early desaturation",
             "weight": 20,
             "evaluationHint": "Patient selected resp_airway option"
           }

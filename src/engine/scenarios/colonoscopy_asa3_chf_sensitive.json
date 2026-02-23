@@ -1,14 +1,14 @@
 {
   "id": "colonoscopy_asa3_chf_sensitive",
   "title": "Colonoscopy - ASA III CHF, Sensitive",
-  "description": "High-complexity colonoscopy sedation for an ASA III patient with CHF, reduced ejection fraction, and elevated PK/PD sensitivity. Emphasises cautious dose titration, haemodynamic monitoring, and early complication management.",
+  "description": "High-complexity colonoscopy sedation for an ASA III patient with CHF, reduced ejection fraction, and elevated PK/PD sensitivity. Emphasizes cautious dose titration, hemodynamic monitoring, and early complication management.",
   "tags": ["colonoscopy", "ASA III", "CHF", "high sensitivity", "moderate sedation", "hard"],
   "patient": { "archetypeId": "chf_patient" },
   "learningObjectives": [
     "Recognise how CHF alters drug distribution and sensitivity",
     "Apply conservative dosing strategies for ASA III patients",
     "Detect and manage hypotension in a patient with reduced cardiac reserve",
-    "Differentiate haemodynamic compromise from simple respiratory depression",
+    "Differentiate hemodynamic compromise from simple respiratory depression",
     "Document key interventions for medicolegal and quality-improvement purposes"
   ],
   "estimatedDurationSec": 600,
@@ -73,7 +73,7 @@
       "explanations": [
         "Correct! Reduced cardiac output decreases Vd for lipophilic drugs, producing higher peak concentrations from a given IV dose.",
         "Incorrect — renal clearance is typically reduced or unchanged; hepatic clearance is reduced due to low cardiac output.",
-        "Incorrect — protein binding is often reduced in CHF (hypoalbuminaemia), which can actually increase free drug, but the dominant PK effect is reduced Vd.",
+        "Incorrect — protein binding is often reduced in CHF (hypoalbuminemia), which can actually increase free drug, but the dominant PK effect is reduced Vd.",
         "Incorrect — this scenario concerns IV drugs; GI absorption is irrelevant here."
       ],
       "exitConditions": [
@@ -108,7 +108,7 @@
       "explanations": [
         "Correct! Start low (0.5 mg) in ASA III/CHF patients — their PK sensitivity means even low doses can overshoot.",
         "1 mg is appropriate for healthy adults but may produce over-sedation and hypotension in this CHF patient.",
-        "2 mg is excessive and risks haemodynamic collapse in a patient with borderline BP.",
+        "2 mg is excessive and risks hemodynamic collapse in a patient with borderline BP.",
         "0.25 mg is subtherapeutic in most adults; 0.5 mg is the better conservative starting point."
       ],
       "simActions": [
@@ -147,7 +147,7 @@
         "Correct! 25 mcg is the conservative and appropriate starting dose for an opioid-naïve CHF patient.",
         "50 mcg risks significant respiratory depression and vasodilation in a borderline-BP patient.",
         "100 mcg is dangerously high for an opioid-naïve ASA III patient with reduced cardiac reserve.",
-        "Opioids are not contraindicated in CHF — adequate analgesia prevents sympathetic surges that worsen haemodynamics."
+        "Opioids are not contraindicated in CHF — adequate analgesia prevents sympathetic surges that worsen hemodynamics."
       ],
       "simActions": [
         { "type": "give_drug", "payload": { "drug": "fentanyl", "doseMg": 0.025, "route": "iv_bolus" } }
@@ -174,7 +174,7 @@
       "id": "state_maintenance_info",
       "phaseId": "maintenance",
       "type": "info",
-      "prompt": "Sedation achieved. The colonoscopy is underway. Continue close haemodynamic monitoring.\n\n📚 Teaching Point: In patients with CHF, even mild hypotension (MAP < 60 mmHg) can precipitate cardiogenic shock. Trending BP is as important as SpO2 monitoring.",
+      "prompt": "Sedation achieved. The colonoscopy is underway. Continue close hemodynamic monitoring.\n\n📚 Teaching Point: In patients with CHF, even mild hypotension (MAP < 60 mmHg) can precipitate cardiogenic shock. Trending BP is as important as SpO2 monitoring.",
       "exitConditions": [
         { "id": "ec_continue", "type": "on_continue" }
       ],
@@ -197,11 +197,11 @@
       "explanations": [
         "Fluid bolus is correct, but reducing FiO2 when SpO2 is 93% is wrong — supplemental O2 should be increased.",
         "Correct! Fluid challenge addresses sedation-induced vasodilation. Increasing FiO2 addresses the concurrent mild hypoxaemia.",
-        "Epinephrine is for anaphylaxis or cardiac arrest — this is haemodynamic sedation-related hypotension.",
-        "Naloxone may reverse analgesia and trigger sympathetic surge; it is not indicated when haemodynamic compromise is from vasodilation."
+        "Epinephrine is for anaphylaxis or cardiac arrest — this is hemodynamic sedation-related hypotension.",
+        "Naloxone may reverse analgesia and trigger sympathetic surge; it is not indicated when hemodynamic compromise is from vasodilation."
       ],
       "simActions": [
-        { "type": "change_oxygen", "payload": { "device": "simple_mask", "fio2": 0.40 } }
+        { "type": "change_oxygen", "payload": { "device": "nasal_cannula", "fio2": 0.40 } }
       ],
       "exitConditions": [
         { "id": "ec_continue", "type": "on_continue" }
@@ -233,10 +233,10 @@
         { "id": "rec_moass", "label": "MOASS ≥ 3 only — BP is less important in recovery",       "isCorrect": false }
       ],
       "explanations": [
-        "Correct! Haemodynamic stability (sustained MAP ≥ 70 mmHg) is the critical discharge criterion for a CHF patient.",
+        "Correct! Hemodynamic stability (sustained MAP ≥ 70 mmHg) is the critical discharge criterion for a CHF patient.",
         "Temperature is a valid discharge criterion but not the primary concern here — BP stability is.",
         "Urine output monitoring is appropriate for prolonged procedures, not brief endoscopy recovery.",
-        "MOASS ≥ 3 is necessary but not sufficient — haemodynamic stability is equally critical for this ASA III patient."
+        "MOASS ≥ 3 is necessary but not sufficient — hemodynamic stability is equally critical for this ASA III patient."
       ],
       "exitConditions": [
         { "id": "ec_continue", "type": "on_continue" }
