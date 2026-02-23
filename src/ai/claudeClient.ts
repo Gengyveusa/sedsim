@@ -176,7 +176,7 @@ export function offlineFallback(
   // Append live context observations
   const extras: string[] = [];
   if (ctx.vitals.spo2 < 92) extras.push(`⚠ Current SpO2 ${ctx.vitals.spo2}% — IMMEDIATE ACTION REQUIRED.`);
-  api.anthropic.comif (ctx.vitals.sbp < 85) extras.push(`⚠ BP ${ctx.vitals.sbp}/${ctx.vitals.dbp} — significant hypotension.`);
+  if (ctx.vitals.sbp < 85) extras.push(`⚠ BP ${ctx.vitals.sbp}/${ctx.vitals.dbp} — significant hypotension.`);
   if (ctx.vitals.hr < 45) extras.push(`⚠ HR ${ctx.vitals.hr} — symptomatic bradycardia threshold.`);
   if (ctx.eeg && ctx.eeg.bisIndex < 20) extras.push(`⚠ BIS ${ctx.eeg.bisIndex} — burst suppression detected.`);
 
