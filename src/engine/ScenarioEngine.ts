@@ -7,6 +7,7 @@ import useAIStore from '../store/useAIStore';
 import { generateDebrief } from '../ai/mentor';
 import { AirwayDevice, InterventionType } from '../types';
 import { vitalCoherenceMonitor } from './VitalCoherenceMonitor';
+import type { SedSimScenario, ScenarioScore, ChecklistItemResult } from './SedSimCase.types';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -78,12 +79,205 @@ export interface InteractiveScenario {
     discussionQuestions: string[];
     keyTakeaways: string[];
   };
+  /** Original JSON scenario source (present only for JSON-driven scenarios). */
+  jsonSource?: SedSimScenario;
 }
 
 // ─── ScenarioEngine ─────────────────────────────────────────────────────────
 
 /** Seconds before an on_time trigger to fast-forward to, so it fires on the next tick. */
 const TRIGGER_PRE_FIRE_BUFFER_SECONDS = 1;
+
+// ─── JSON → InteractiveScenario adapter ─────────────────────────────────────
+
+/** Maps JSON PhaseId ("pre") to the engine's phase union ("pre_induction"). */
+function mapPhaseId(phaseId: string): InteractiveScenarioStep['phase'] {
+  const map: Record<string, InteractiveScenarioStep['phase']> = {
+    pre: 'pre_induction',
+    induction: 'induction',
+    maintenance: 'maintenance',
+    complication: 'complication',
+    recovery: 'recovery',
+    debrief: 'debrief',
+  };
+  return map[phaseId] ?? 'pre_induction';
+}
+
+/**
+ * Convert a SedSimScenario (JSON format) into the existing InteractiveScenario
+ * format that ScenarioEngine already knows how to run.
+ */
+export function jsonScenarioToInteractive(json: SedSimScenario): InteractiveScenario {
+  // Build a reverse-transition map: toStateId → fromStateId[]
+  const predecessorMap = new Map<string, string[]>();
+  for (const state of json.states) {
+    for (const t of state.transitions) {
+      const existing = predecessorMap.get(t.toStateId) ?? [];
+      predecessorMap.set(t.toStateId, [...existing, state.id]);
+    }
+  }
+
+  const steps: InteractiveScenarioStep[] = json.states.map((state, idx) => {
+    const isFirst = idx === 0;
+    const predecessors = predecessorMap.get(state.id) ?? [];
+
+    // Determine trigger type
+    let triggerType: InteractiveScenarioStep['triggerType'];
+    let afterStepId: string | undefined;
+    let triggerTimeSeconds: number | undefined;
+    let triggerCondition: InteractiveScenarioStep['triggerCondition'];
+
+    if (isFirst) {
+      triggerType = 'on_start';
+    } else {
+      const ec = state.exitConditions[0];
+      if (ec?.type === 'on_time' && ec.minTimeSec !== undefined) {
+        triggerType = 'on_time';
+        triggerTimeSeconds = ec.minTimeSec;
+      } else if (ec?.type === 'on_physiology' && ec.physiologyPredicate) {
+        triggerType = 'on_physiology';
+        const pred = ec.physiologyPredicate;
+        if (pred.spo2LessThan !== undefined) {
+          triggerCondition = {
+            parameter: 'spo2',
+            operator: '<',
+            threshold: pred.spo2LessThan,
+            durationSeconds: pred.spo2DurationSec,
+          };
+        } else if (pred.mapLessThan !== undefined) {
+          triggerCondition = {
+            parameter: 'sbp',
+            operator: '<',
+            threshold: pred.mapLessThan,
+          };
+        }
+      } else {
+        triggerType = 'on_step_complete';
+        afterStepId = predecessors[0];
+      }
+    }
+
+    // Build question from options array if this is a "question" state
+    let question: ScenarioQuestion | undefined;
+    if (state.type === 'question' && state.options && state.options.length > 0) {
+      const correctOption = state.options.find(o => o.isCorrect);
+      const feedback: Record<string, string> = {};
+      state.options.forEach((o, i) => {
+        feedback[o.label] = state.explanations?.[i] ?? '';
+      });
+      question = {
+        type: 'single_choice',
+        prompt: state.prompt ?? '',
+        options: state.options.map(o => o.label),
+        correctAnswer: correctOption?.label ?? '',
+        feedback,
+      };
+    }
+
+    // Map simActions
+    const simActions: SimAction[] = [];
+    for (const sa of state.simActions ?? []) {
+      if (sa.type === 'give_drug') {
+        const payload = sa.payload as { drug: string; doseMg: number };
+        simActions.push({ type: 'administer_drug', drug: payload.drug, dose: payload.doseMg });
+      } else if (sa.type === 'change_oxygen') {
+        const payload = sa.payload as { device?: string; fio2?: number };
+        if (payload.device) {
+          simActions.push({ type: 'set_airway_device', device: payload.device });
+        }
+        if (payload.fio2 !== undefined) {
+          simActions.push({ type: 'set_fio2', fio2: payload.fio2 });
+        }
+      } else if (sa.type === 'apply_stimulus') {
+        const payload = sa.payload as { stimulusType: string };
+        simActions.push({ type: 'apply_intervention', intervention: payload.stimulusType });
+      }
+    }
+
+    const millieDialogue: string[] = [];
+    if (state.prompt) millieDialogue.push(state.prompt);
+
+    return {
+      id: state.id,
+      phase: mapPhaseId(state.phaseId),
+      triggerType,
+      triggerTimeSeconds,
+      afterStepId,
+      triggerCondition,
+      millieDialogue,
+      question,
+      simActions: simActions.length > 0 ? simActions : undefined,
+    };
+  });
+
+  // Build a display label for the "procedure" field from tags or title
+  const procedure = json.tags.includes('colonoscopy') ? 'Colonoscopy' : json.title;
+
+  // Determine difficulty from tags
+  const difficultyMap: Record<string, InteractiveScenario['difficulty']> = {
+    easy: 'easy', moderate: 'moderate', hard: 'hard', expert: 'expert',
+  };
+  let difficulty: InteractiveScenario['difficulty'] = 'moderate';
+  for (const tag of json.tags) {
+    if (tag in difficultyMap) { difficulty = difficultyMap[tag]; break; }
+  }
+
+  return {
+    id: json.id,
+    title: json.title,
+    difficulty,
+    patientArchetype: json.patient.archetypeId,
+    procedure,
+    description: json.description,
+    learningObjectives: json.learningObjectives,
+    clinicalPearls: [],
+    preopVignette: {
+      indication: procedure,
+      setting: 'Endoscopy suite',
+      history: [],
+      exam: [],
+      baselineMonitors: ['NIBP', 'SpO2', 'ECG', 'Capnography'],
+      targetSedationGoal: 'MOASS 2-3',
+    },
+    drugProtocols: [],
+    steps,
+    debrief: {
+      discussionQuestions: [],
+      keyTakeaways: json.learningObjectives,
+    },
+  };
+}
+
+// ─── Scoring helpers ─────────────────────────────────────────────────────────
+
+function evaluateJsonScore(
+  json: SedSimScenario,
+  answers: Map<string, string>
+): ScenarioScore {
+  const allItems: ChecklistItemResult[] = [];
+  let totalMax = 0;
+
+  for (const state of json.states) {
+    if (!state.scoring) continue;
+    const selectedLabel = answers.get(state.id);
+    const selectedOption = state.options?.find(o => o.label === selectedLabel);
+    const passed = selectedOption?.isCorrect === true;
+
+    for (const item of state.scoring.checklistItems) {
+      const earned = passed ? item.weight : 0;
+      allItems.push({ id: item.id, description: item.description, weight: item.weight, earned, passed });
+    }
+    totalMax += state.scoring.maxScore;
+  }
+
+  const totalScore = allItems.reduce((acc, i) => acc + i.earned, 0);
+  return {
+    totalScore,
+    maxScore: totalMax,
+    percentScore: totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0,
+    items: allItems,
+  };
+}
 
 export class ScenarioEngine {
   private scenario: InteractiveScenario | null = null;
@@ -94,8 +288,13 @@ export class ScenarioEngine {
   awaitingAnswer: { stepId: string; question: ScenarioQuestion } | null = null;
   awaitingContinue: { stepId: string } | null = null;
   private started = false;
+  // JSON scenario support
+  private jsonScenario: SedSimScenario | null = null;
+  private jsonAnswers = new Map<string, string>(); // stateId → selected option label
 
   loadScenario(scenario: InteractiveScenario) {
+    this.jsonScenario = scenario.jsonSource ?? null;
+    this.jsonAnswers.clear();
     this.scenario = scenario;
     this.scenarioTimeSeconds = 0;
     this.firedStepIds.clear();
@@ -119,6 +318,13 @@ export class ScenarioEngine {
     );
     useAIStore.getState().setScenarioRunning(false);
     useAIStore.getState().setCurrentQuestion(null);
+  }
+
+  /** Load a JSON-driven SedSimScenario (converts to InteractiveScenario internally). */
+  loadJsonScenario(json: SedSimScenario) {
+    const interactive = jsonScenarioToInteractive(json);
+    interactive.jsonSource = json;
+    this.loadScenario(interactive);
   }
 
   start() {
@@ -150,6 +356,10 @@ export class ScenarioEngine {
   answerQuestion(answer: string | number) {
     if (!this.awaitingAnswer) return;
     const { stepId, question } = this.awaitingAnswer;
+    // Record answer for JSON scoring
+    if (this.jsonScenario) {
+      this.jsonAnswers.set(stepId, String(answer));
+    }
     const isOptimal = this.isOptimalAnswer(question, answer);
     const feedbackKey = String(answer);
     let feedback: string;
@@ -294,6 +504,9 @@ export class ScenarioEngine {
     if (sim.isRunning) sim.toggleRunning();
     // Run debrief
     if (this.scenario) this.runDebrief();
+    // Clear JSON state after debrief (debrief reads it)
+    this.jsonScenario = null;
+    this.jsonAnswers.clear();
   }
 
   private evaluateTriggers() {
@@ -544,10 +757,31 @@ export class ScenarioEngine {
     if (score.improvements.length) {
       debriefLines.push(`🔧 **Areas for Improvement:**\n${score.improvements.map(i => `• ${i}`).join('\n')}`);
     }
-    debriefLines.push(
-      `💬 **Discussion Questions:**\n${discussionQuestions.map(q => `• ${q}`).join('\n')}`,
-      `🔑 **Key Takeaways:**\n${keyTakeaways.map(t => `• ${t}`).join('\n')}`,
-    );
+    if (discussionQuestions.length) {
+      debriefLines.push(
+        `💬 **Discussion Questions:**\n${discussionQuestions.map(q => `• ${q}`).join('\n')}`
+      );
+    }
+    if (keyTakeaways.length) {
+      debriefLines.push(
+        `🔑 **Key Takeaways:**\n${keyTakeaways.map(t => `• ${t}`).join('\n')}`
+      );
+    }
+
+    // JSON scenario scoring summary
+    if (this.jsonScenario) {
+      const jsonScore = evaluateJsonScore(this.jsonScenario, this.jsonAnswers);
+      debriefLines.push(
+        `\n📊 **Performance Summary — ${this.jsonScenario.title}**\n` +
+          `**Total Score: ${jsonScore.totalScore} / ${jsonScore.maxScore} (${jsonScore.percentScore}%)**`
+      );
+      const itemLines = jsonScore.items.map(item =>
+        `${item.passed ? '✅' : '❌'} ${item.description} — ${item.earned}/${item.weight} pts`
+      );
+      if (itemLines.length > 0) {
+        debriefLines.push(`**Checklist:**\n${itemLines.join('\n')}`);
+      }
+    }
 
     this.speakAsMillie(debriefLines);
   }

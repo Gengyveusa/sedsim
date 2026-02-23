@@ -1,0 +1,234 @@
+{
+  "id": "colonoscopy_asa1",
+  "title": "Routine Colonoscopy - ASA I",
+  "description": "Straightforward colonoscopy sedation for a healthy adult ASA I patient. Focus on stepwise titration to MOASS 2-3 with midazolam and fentanyl.",
+  "tags": ["colonoscopy", "ASA I", "moderate sedation", "easy"],
+  "patient": { "archetypeId": "healthy_adult" },
+  "learningObjectives": [
+    "Perform focused pre-sedation assessment and assign ASA class",
+    "Safely titrate midazolam and fentanyl to MOASS 2-3",
+    "Recognise early respiratory depression and intervene appropriately",
+    "Monitor vitals and capnography throughout the procedure"
+  ],
+  "estimatedDurationSec": 480,
+  "phases": [
+    { "id": "pre",          "label": "Pre-Procedure",  "order": 1 },
+    { "id": "induction",    "label": "Induction",       "order": 2 },
+    { "id": "maintenance",  "label": "Maintenance",     "order": 3 },
+    { "id": "complication", "label": "Complication",    "order": 4 },
+    { "id": "recovery",     "label": "Recovery",        "order": 5 },
+    { "id": "debrief",      "label": "Debrief",         "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_asa_class",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "Welcome! Review the patient: 45-year-old healthy male, first screening colonoscopy. No cardiopulmonary disease, no OSA, no prior anaesthesia issues. No medications, NKDA. Airway: Mallampati I. What ASA class would you assign?",
+      "options": [
+        { "id": "asa1", "label": "ASA I",  "isCorrect": true  },
+        { "id": "asa2", "label": "ASA II", "isCorrect": false },
+        { "id": "asa3", "label": "ASA III","isCorrect": false },
+        { "id": "asa4", "label": "ASA IV", "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! A healthy adult without systemic disease is ASA I.",
+        "ASA II requires mild systemic disease — this patient has none.",
+        "ASA III is reserved for severe systemic disease.",
+        "ASA IV indicates a constant threat to life."
+      ],
+      "simActions": [
+        { "type": "change_oxygen", "payload": { "device": "nasal_cannula", "fio2": 0.29 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_asa_class", "toStateId": "state_midazolam_dose", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_asa_correct",
+            "description": "Correctly assigns ASA I class",
+            "weight": 10,
+            "evaluationHint": "Patient selected ASA I"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_midazolam_dose",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "Good. Now let's begin titrating sedation. What initial midazolam dose (mg) would you choose for this healthy adult?",
+      "options": [
+        { "id": "mdz_0.5", "label": "0.5 mg", "isCorrect": true  },
+        { "id": "mdz_1",   "label": "1 mg",   "isCorrect": true  },
+        { "id": "mdz_2",   "label": "2 mg",   "isCorrect": false },
+        { "id": "mdz_0.1", "label": "0.1 mg", "isCorrect": false }
+      ],
+      "explanations": [
+        "Good choice. 0.5 mg provides anxiolysis with low overshoot risk.",
+        "Acceptable. 1 mg is within the standard range for a healthy adult.",
+        "Too high for an initial dose — risks over-sedation.",
+        "Below 0.5 mg provides minimal anxiolysis."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "midazolam", "doseMg": 1.0, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_midazolam_dose", "toStateId": "state_fentanyl_dose", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_mdz_range",
+            "description": "Midazolam initial dose in 0.5–1 mg range",
+            "weight": 10,
+            "evaluationHint": "Patient selected 0.5 mg or 1 mg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_fentanyl_dose",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "The patient is more relaxed. The colonoscopy will cause discomfort. What fentanyl dose (mcg) would you administer for analgesia?",
+      "options": [
+        { "id": "fen_25",  "label": "25 mcg",  "isCorrect": true  },
+        { "id": "fen_50",  "label": "50 mcg",  "isCorrect": true  },
+        { "id": "fen_100", "label": "100 mcg", "isCorrect": false },
+        { "id": "fen_10",  "label": "10 mcg",  "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! 25 mcg provides analgesia with minimal respiratory depression.",
+        "Correct! 50 mcg is within the acceptable range for a healthy adult.",
+        "Too high — significant respiratory depression risk when combined with midazolam.",
+        "10 mcg is unlikely to provide adequate analgesia for colonoscopy."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "fentanyl", "doseMg": 0.05, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_fentanyl_dose", "toStateId": "state_maintenance_info", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_fen_range",
+            "description": "Fentanyl dose in 25–50 mcg range",
+            "weight": 10,
+            "evaluationHint": "Patient selected 25 mcg or 50 mcg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_maintenance_info",
+      "phaseId": "maintenance",
+      "type": "info",
+      "prompt": "Good. The colonoscopy is now underway. Monitor the patient closely. Watch SpO2, EtCO2, and respiratory rate — these are your early warning indicators.\n\n📚 Teaching Point: Capnography (EtCO2) changes are the earliest sign of hypoventilation, earlier than SpO2 drops.",
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_maintenance_info", "toStateId": "state_desat_response", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": null
+    },
+    {
+      "id": "state_desat_response",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "SpO2 has dropped to 91%. EtCO2 is rising. The patient is breathing shallowly. What is your first-line response?",
+      "options": [
+        { "id": "resp_airway",    "label": "Increase O2 and perform chin lift/jaw thrust",  "isCorrect": true  },
+        { "id": "resp_midazolam", "label": "Administer more midazolam",                      "isCorrect": false },
+        { "id": "resp_observe",   "label": "Observe and reassess in 2 minutes",              "isCorrect": false },
+        { "id": "resp_naloxone",  "label": "Administer naloxone immediately",                "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Address airway and oxygenation first — simple manoeuvres resolve most early desaturations.",
+        "Dangerous — this will worsen respiratory depression.",
+        "Risky — early intervention prevents deeper desaturation.",
+        "Not first-line unless there is strong suspicion of pure opioid overdose."
+      ],
+      "simActions": [
+        { "type": "apply_stimulus", "payload": { "stimulusType": "jaw_thrust" } },
+        { "type": "change_oxygen",  "payload": { "device": "simple_mask", "fio2": 0.40 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_desat_response", "toStateId": "state_recovery_discharge", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_desat_correct",
+            "description": "Chose airway manoeuvre + O2 for early desaturation",
+            "weight": 20,
+            "evaluationHint": "Patient selected resp_airway option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_recovery_discharge",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "The colonoscopy is complete. The patient is waking up. What is the minimum MOASS level for safe discharge from the procedure room to PACU?",
+      "options": [
+        { "id": "moass1", "label": "MOASS 1", "isCorrect": false },
+        { "id": "moass2", "label": "MOASS 2", "isCorrect": false },
+        { "id": "moass3", "label": "MOASS 3", "isCorrect": true  },
+        { "id": "moass4", "label": "MOASS 4", "isCorrect": false }
+      ],
+      "explanations": [
+        "Too sedated — not safe for routine discharge.",
+        "Close, but most guidelines require MOASS 3 before PACU transfer.",
+        "Correct! MOASS 3 (responds to voice) is the standard minimum for PACU transfer.",
+        "MOASS 4 is acceptable but waiting for it may unnecessarily delay transfer."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_recovery_discharge", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_discharge_moass",
+            "description": "Correctly identifies MOASS 3 as minimum discharge threshold",
+            "weight": 10,
+            "evaluationHint": "Patient selected MOASS 3"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}
