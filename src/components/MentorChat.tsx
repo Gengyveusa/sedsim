@@ -11,7 +11,6 @@ import { scenarioEngine } from '../engine/ScenarioEngine';
 import GhostDosePreview from './GhostDosePreview';
 import { ScenarioPanel } from './ScenarioPanel';
 import ScenarioStepper from './ScenarioStepper';
-import { MILLIE_NAME, MILLIE_ICON } from '../ai/milliePrompt';
 
 interface MentorChatProps {
   vitals: Vitals;
