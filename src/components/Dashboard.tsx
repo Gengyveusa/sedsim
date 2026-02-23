@@ -5,10 +5,11 @@ import OxyHbCurve from './OxyHbCurve';
 import FrankStarlingCurve from './FrankStarlingCurve';
 import EchoSim from './EchoSim';
 import ScenarioCallout from './ScenarioCallout';
+import { LearningPanelContent } from './LearningPanel';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
 
-type AITab = 'eeg' | 'mentor' | 'oxyhb' | 'frankstarling' | 'echosim';
+type AITab = 'eeg' | 'mentor' | 'oxyhb' | 'frankstarling' | 'echosim' | 'learn';
 
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AITab | null>(null);
@@ -42,6 +43,7 @@ export const Dashboard: React.FC = () => {
     { id: 'oxyhb', label: 'O\u2082-Hb', icon: '\ud83e\ude78' },
         { id: 'frankstarling', label: 'F-S', icon: '\u2764' },
     { id: 'echosim', label: 'Echo', icon: '\ud83d\udc93' },
+    { id: 'learn', label: 'Learn', icon: '\ud83d\udcda' },
   ];
 
   const handleTabClick = (id: AITab) => {
@@ -178,6 +180,9 @@ export const Dashboard: React.FC = () => {
                   pkStates={simState.pkStates}
                 />
               </div>
+            )}
+            {activeTab === 'learn' && (
+              <LearningPanelContent />
             )}
           </div>
         </div>

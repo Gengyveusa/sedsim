@@ -14,7 +14,6 @@ import EventLog from './components/EventLog';
 import TutorialOverlay from './components/TutorialOverlay';
 import SedationGauge from './components/SedationGauge';
 import { Dashboard } from './components/Dashboard';
-import LearningPanel from './components/LearningPanel';
 
 export default function App() {
   const { isRunning, speedMultiplier, tick, trendData } = useSimStore();
@@ -155,9 +154,6 @@ export default function App() {
             <div className="w-72 border-l border-gray-700 overflow-y-auto">
               <EventLog />
             </div>
-
-            {/* Learning Panel */}
-            <LearningPanel />
           </div>
         </div>
 
