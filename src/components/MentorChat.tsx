@@ -11,6 +11,7 @@ import { scenarioEngine } from '../engine/ScenarioEngine';
 import GhostDosePreview from './GhostDosePreview';
 import { ScenarioPanel } from './ScenarioPanel';
 import ScenarioStepper from './ScenarioStepper';
+import { MILLIE_NAME, MILLIE_ICON } from '../ai/milliePrompt';
 
 interface MentorChatProps {
   vitals: Vitals;
@@ -25,7 +26,7 @@ interface MentorChatProps {
 
 const WELCOME_MSG: MentorMessage = {
   role: 'mentor',
-  content: 'Welcome to SedSim AI Mentor — your virtual attending anesthesiologist. Start the simulation, administer drugs, and I\'ll provide real-time clinical guidance. Ask me anything below, or use the Ghost Dose panel to preview drug effects before committing.',
+  content: 'Hi! I'm Millie, your AI sedation mentor — your virtual attending anesthesiologist. Start the simulation, administer drugs, and I\'ll provide real-time clinical guidance. Ask me anything below, or use the Ghost Dose panel to preview drug effects before committing.',
   timestamp: Date.now(),
   confidence: 1.0,
 };
@@ -223,7 +224,7 @@ const MentorChat: React.FC<MentorChatProps> = ({
         className="fixed right-4 bottom-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg z-50 transition-all"
         title="Open AI Mentor"
       >
-        <span className="text-lg">AI</span>
+        <span className="text-lg">Millie</span>
       </button>
     );
   }
@@ -398,7 +399,7 @@ const MentorChat: React.FC<MentorChatProps> = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask the mentor..."
+            placeholder="Ask Millie..."
             className="flex-1 bg-gray-800 text-white text-xs rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
             disabled={isThinking}
           />
