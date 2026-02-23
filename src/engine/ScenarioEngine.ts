@@ -91,6 +91,7 @@ export class ScenarioEngine {
   private timerId: ReturnType<typeof setInterval> | null = null;
   private firedStepIds = new Set<string>();
   private physiologyDurationCounters: Record<string, number> = {};
+    private physioStepEligibleSince: Record<string, number> = {};
   awaitingAnswer: { stepId: string; question: ScenarioQuestion } | null = null;
   awaitingContinue: { stepId: string } | null = null;
   private started = false;
@@ -100,6 +101,7 @@ export class ScenarioEngine {
     this.scenarioTimeSeconds = 0;
     this.firedStepIds.clear();
     this.physiologyDurationCounters = {};
+        this.physioStepEligibleSince = {};
     this.awaitingAnswer = null;
     this.awaitingContinue = null;
     this.started = false;
@@ -405,6 +407,27 @@ export class ScenarioEngine {
           useAIStore.getState().setScenarioElapsedSeconds(this.scenarioTimeSeconds);
         }
       }
+
+              // Physiology timeout: auto-fire on_physiology steps that have been
+        // eligible (all prior steps fired) for over 60 scenario-seconds.
+        // This prevents stalls when sim vitals never reach the trigger threshold.
+        const PHYSIO_TIMEOUT_SECONDS = 60;
+        const physioSteps = unfiredSteps.filter(s => s.triggerType === 'on_physiology');
+        for (const ps of physioSteps) {
+          // Track when this step first became eligible
+          if (!(ps.id in this.physioStepEligibleSince)) {
+            this.physioStepEligibleSince[ps.id] = this.scenarioTimeSeconds;
+          }
+          const elapsed = this.scenarioTimeSeconds - this.physioStepEligibleSince[ps.id];
+          if (elapsed >= PHYSIO_TIMEOUT_SECONDS) {
+            // Auto-fire with a note that the condition was simulated
+            this.speakAsMillie([
+              '\u26A0\uFE0F The expected physiological change has been simulated to advance the scenario.'
+            ]);
+            this.fireStep(ps);
+            return;
+          }
+        }
 
             // Auto-debrief: when every scenario step has been completed,
       // automatically stop the engine and display the debrief summary.
