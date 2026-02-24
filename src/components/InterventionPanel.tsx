@@ -64,7 +64,7 @@ export default function InterventionPanel() {
   };
 
   return (
-    <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-3">
+    <div data-region="airway" className="bg-gray-900/50 border border-gray-700 rounded-lg p-3">
       <h3 className="text-sm font-bold text-gray-300 mb-3 tracking-wider uppercase">Airway &amp; O₂</h3>
       {isScenarioActive && (
         <div className="mb-2 px-2 py-1 rounded text-xs text-cyan-300 bg-cyan-900/40 border border-cyan-700/50">

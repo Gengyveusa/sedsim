@@ -2,6 +2,7 @@
 // AI Mentor Sidebar Chat Component — Claude API with streaming + offline fallback
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MentorMessage, generateMentorResponse, getSuggestedQuestions, autoObserve } from '../ai/mentor';
+import { MILLIE_NAME, MILLIE_ICON } from '../ai/milliePrompt';
 import { Vitals, MOASSLevel, LogEntry } from '../types';
 import { EEGState } from '../engine/eegModel';
 import { DigitalTwin } from '../engine/digitalTwin';
@@ -221,9 +222,9 @@ const MentorChat: React.FC<MentorChatProps> = ({
       <button
         onClick={onToggle}
         className="fixed right-4 bottom-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg z-50 transition-all"
-        title="Open AI Mentor"
+        title={`Open ${MILLIE_NAME}`}
       >
-        <span className="text-lg">Millie</span>
+        <span className="text-lg" aria-label={MILLIE_NAME}>{MILLIE_ICON}</span>
       </button>
     );
   }

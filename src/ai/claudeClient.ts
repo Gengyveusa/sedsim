@@ -11,6 +11,7 @@
 
 import { Vitals, MOASSLevel } from '../types';
 import { EEGState } from '../engine/eegModel';
+import { buildMillieSystemPrompt } from './milliePrompt';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -126,54 +127,6 @@ export const KNOWLEDGE_BASE: Record<string, { text: string; citations: string[] 
 // Simple response cache (query -> response text)
 // ---------------------------------------------------------------------------
 const responseCache = new Map<string, string>();
-
-// ---------------------------------------------------------------------------
-// Build system prompt
-// ---------------------------------------------------------------------------
-
-function buildSystemPrompt(ctx: ClaudeContext): string {
-  const level = ctx.learnerLevel ?? 'intermediate';
-  return `You are an expert AI mentor embedded in SedSim, a real-time IV procedural sedation simulator. You are acting as a virtual attending anesthesiologist / sedation specialist who teaches ${level}-level clinicians.
-
-## Pharmacology knowledge base
-- 3-compartment Marsh/Schnider PK models for all IV drugs (propofol, midazolam, fentanyl, ketamine, dexmedetomidine)
-- MOASS (Modified Observer's Assessment of Alertness/Sedation) scale 0-5 (0=unresponsive, 5=fully awake)
-- BIS index 0-100 (target 40-60 for procedural sedation)
-- ASA sedation guidelines, NYSORA, Miller's Anesthesia, Eleveld model, Bouillon response surface
-- All drug delivery is INTRAVENOUS (IV); no subcutaneous/oral routes in this simulator
-
-## Teaching style
-- Adapt explanation depth to ${level} level
-- Be concise but complete (2-4 sentences unless a detailed explanation is requested)
-- Cite guidelines when giving clinical recommendations
-
-## Current simulation context
-${buildContextString(ctx)}
-
-Respond only to the user's question/request. Do not repeat the context back unless directly relevant.`;
-}
-
-function buildContextString(ctx: ClaudeContext): string {
-  const lines: string[] = [];
-  if (ctx.patient) {
-    const { age, weight, sex, asa, comorbidities, mallampati, osa, drugSensitivity } = ctx.patient;
-    lines.push(`Patient: ${age}yo ${sex}, ${weight}kg, ASA ${asa}`);
-    if (mallampati) lines.push(`Mallampati: ${mallampati}`);
-    if (osa) lines.push('OSA: YES');
-    if (drugSensitivity && drugSensitivity !== 1.0) lines.push(`Drug sensitivity modifier: ${drugSensitivity.toFixed(2)}x`);
-    if (comorbidities.length) lines.push(`Comorbidities: ${comorbidities.join(', ')}`);
-  }
-  lines.push(`Vitals: HR ${Math.round(ctx.vitals.hr)}, BP ${Math.round(ctx.vitals.sbp)}/${Math.round(ctx.vitals.dbp)}, SpO2 ${Math.round(ctx.vitals.spo2)}%, RR ${Math.round(ctx.vitals.rr)}, EtCO2 ${Math.round(ctx.vitals.etco2)}`);
-  lines.push(`MOASS: ${ctx.moass}/5`);
-  if (ctx.eeg) lines.push(`EEG/BIS: ${Math.round(ctx.eeg.bisIndex)}, state: ${ctx.eeg.sedationState}`);
-  const ceEntries = Object.entries(ctx.pkStates)
-    .filter(([, s]) => s.ce > 0)
-    .map(([d, s]) => `${d}: ${s.ce.toFixed(3)} mcg/mL`);
-  if (ceEntries.length) lines.push(`Drug Ce: ${ceEntries.join(', ')}`);
-  if (ctx.elapsedSeconds) lines.push(`Elapsed: ${Math.floor(ctx.elapsedSeconds / 60)}m${ctx.elapsedSeconds % 60}s`);
-  if (ctx.recentEvents?.length) lines.push(`Recent events: ${ctx.recentEvents.slice(-3).join('; ')}`);
-  return lines.join('\n');
-}
 
 // ---------------------------------------------------------------------------
 // Offline fallback - enhanced pattern matching against KNOWLEDGE_BASE
@@ -307,7 +260,7 @@ export async function streamClaude(
       model: 'claude-sonnet-4-20250514',
       max_tokens: 512,
       stream: true,
-      system: ctx._systemOverride || buildSystemPrompt(ctx),
+      system: ctx._systemOverride || buildMillieSystemPrompt(ctx),
       messages: [{ role: 'user', content: query }],
     }),
     signal,

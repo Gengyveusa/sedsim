@@ -155,7 +155,7 @@ export default function SedationGauge() {
   ];
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4" data-region="moass">
       {/* Mode selector - aviation style tab bar */}
       <div className="flex gap-2">
         {(['avatar', 'risk', 'petals'] as GaugeMode[]).map(m => (
@@ -205,7 +205,7 @@ export default function SedationGauge() {
 
           {/* ===== MODE D: RISK RADAR ===== */}
           {mode === 'risk' && (
-            <g>
+            <g data-region="radar">
               {[60, 120, 180, 240].map(r => <circle key={r} cx={cx} cy={cy} r={r} fill="none" stroke="#334155" strokeWidth={0.5} />)}
               <polygon points={radarPoints} fill={radarFill} stroke={gaugeColor} strokeWidth={2} />
               {radarAxes.map((label, i) => {
@@ -293,7 +293,7 @@ export default function SedationGauge() {
                 const lp = polarToCartesian(cx, cy, innerR + 65, angle);
                 const ceLp = polarToCartesian(cx, cy, innerR + 42, angle);
                 return (
-                  <g key={drugName}>
+                  <g key={drugName} {...(drugName === 'propofol' ? { 'data-region': 'propofol' } : {})}>
                     <path d={petalPath(cx, cy, angle, innerR, outerPetalR, 28)} fill={color} opacity={isActive ? 0.6 : 0.15} stroke={color} strokeWidth={isActive ? 1.5 : 0.5} />
                     {/* Drug name */}
                     <text x={lp.x} y={lp.y} fill={isActive ? color : '#64748b'} fontSize="18" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{drug ? drug.name : drugName}</text>

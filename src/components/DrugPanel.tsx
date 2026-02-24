@@ -147,7 +147,7 @@ export default function DrugPanel() {
   );
 
   return (
-    <div>
+    <div data-region="drugs">
       <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">
         Drugs
       </div>

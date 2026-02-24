@@ -9,7 +9,7 @@ import { LearningPanelContent } from './LearningPanel';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
 
-type AITab = 'eeg' | 'mentor' | 'oxyhb' | 'frankstarling' | 'echosim' | 'learn';
+type AITab = 'eeg' | 'mentor' | 'simmaster' | 'oxyhb' | 'frankstarling' | 'echosim' | 'learn';
 
 export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AITab | null>(null);
@@ -18,7 +18,7 @@ export const Dashboard: React.FC = () => {
   // Respond to external requests to switch tab (e.g., from ScenarioEngine)
   const storeActiveAITab = useAIStore(s => s.activeAITab);
   useEffect(() => {
-    if (storeActiveAITab === 'mentor' || storeActiveAITab === 'eeg') {
+    if (storeActiveAITab === 'mentor' || storeActiveAITab === 'eeg' || storeActiveAITab === 'simmaster') {
       setActiveTab(storeActiveAITab as AITab);
     }
   }, [storeActiveAITab]);
@@ -37,9 +37,12 @@ export const Dashboard: React.FC = () => {
     combinedEff: s.combinedEff,
   }));
 
+  const simMasterEnabled = useAIStore(s => s.simMasterEnabled);
+
   const tabs: { id: AITab; label: string; icon: string }[] = [
     { id: 'eeg', label: 'EEG', icon: '\ud83e\udde0' },
-    { id: 'mentor', label: 'Mentor', icon: '\ud83c\udf93' },
+    { id: 'mentor', label: 'Millie', icon: '\ud83c\udf93' },
+    { id: 'simmaster', label: 'SimMaster', icon: '\ud83c\udfaf' },
     { id: 'oxyhb', label: 'O\u2082-Hb', icon: '\ud83e\ude78' },
     { id: 'frankstarling', label: 'F-S', icon: '\u2764' },
     { id: 'echosim', label: 'Echo', icon: '\ud83d\udc93' },
@@ -148,6 +151,31 @@ export const Dashboard: React.FC = () => {
                   isOpen={mentorOpen}
                   onToggle={() => setMentorOpen(!mentorOpen)}
                 />
+              )}
+              {activeTab === 'simmaster' && (
+                <div className="p-4 space-y-4">
+                  <p className="text-xs text-gray-400">
+                    Proactive AI observer that highlights critical events on screen in real-time.
+                  </p>
+                  <button
+                    onClick={() => {
+                      const store = useAIStore.getState();
+                      store.setSimMasterEnabled(!store.simMasterEnabled);
+                    }}
+                    className={`px-4 py-2 rounded text-white text-sm font-bold transition-colors w-full ${
+                      simMasterEnabled
+                        ? 'bg-red-600 hover:bg-red-500'
+                        : 'bg-purple-600 hover:bg-purple-500'
+                    }`}
+                  >
+                    {simMasterEnabled ? 'Disable SimMaster' : 'Enable SimMaster'}
+                  </button>
+                  {simMasterEnabled && (
+                    <p className="text-[10px] text-green-400 animate-pulse">
+                      SimMaster is actively observing the simulation...
+                    </p>
+                  )}
+                </div>
               )}
               {activeTab === 'oxyhb' && (
                 <div className="p-2">
