@@ -38,13 +38,13 @@ export interface ClaudeContext {
   eeg?: EEGState;
   pkStates: Record<string, { ce: number }>;
   elapsedSeconds?: number;
-    _systemOverride?: string;
+  _systemOverride?: string;
   learnerLevel?: 'novice' | 'intermediate' | 'advanced';
   recentEvents?: string[];
 }
 
 // ---------------------------------------------------------------------------
-// Knowledge base (offline fallback — kept from mentor.ts)
+// Knowledge base (offline fallback)
 // ---------------------------------------------------------------------------
 
 export const KNOWLEDGE_BASE: Record<string, { text: string; citations: string[] }> = {
@@ -88,12 +88,43 @@ export const KNOWLEDGE_BASE: Record<string, { text: string; citations: string[] 
     text: 'OSA patients require special monitoring: increased sensitivity to respiratory depressants, higher risk of airway obstruction, consider reduced opioid dosing. STOP-BANG score guides risk stratification.',
     citations: ['ASA OSA Perioperative Guidelines', 'STOP-BANG Scoring'],
   },
+  arrhythmia: {
+    text: 'Arrhythmias during sedation: Ventricular fibrillation (VF) and pulseless ventricular tachycardia (VT) require immediate defibrillation per ACLS. Junctional rhythms may occur with propofol. Torsades de pointes: give magnesium 2g IV. Check electrolytes, stop QT-prolonging agents.',
+    citations: ['ACLS Guidelines 2020', 'AHA Arrhythmia Management'],
+  },
+  cardiac_arrest: {
+    text: 'Cardiac arrest during sedation: Initiate CPR immediately. For VF/pulseless VT: defibrillate 200J biphasic. Epinephrine 1mg IV every 3-5 min. Amiodarone 300mg IV for refractory VF/VT. Address reversible causes (Hs and Ts). Drug-induced arrest: stop all sedatives.',
+    citations: ['ACLS Guidelines 2020', 'AHA Emergency Cardiovascular Care'],
+  },
+  overdose: {
+    text: 'Drug overdose during sedation: For opioid overdose, give naloxone 0.04-0.4mg IV titrated. For benzodiazepine overdose, give flumazenil 0.2mg IV. There is no specific reversal for propofol - supportive care with airway management. Monitor for resedation after reversal.',
+    citations: ['ASA Sedation Rescue Guidelines', 'Toxicology references'],
+  },
+  crash: {
+    text: 'Patient crashing during sedation: 1) Call for help. 2) Stop all sedative infusions. 3) Secure airway (jaw thrust, BVM, consider intubation). 4) Give 100% O2. 5) Fluid resuscitation. 6) Vasopressors if needed (ephedrine 5-10mg or phenylephrine 100mcg). 7) Follow ACLS if arrest.',
+    citations: ['ASA Difficult Airway Algorithm', 'Emergency Sedation Response Protocol'],
+  },
+  airway: {
+    text: 'Airway management during sedation: Start with chin lift/jaw thrust. If obstruction persists, insert oral or nasal airway. For severe obstruction, use LMA or endotracheal intubation. Always have suction ready. Position patient with head elevation.',
+    citations: ['ASA Difficult Airway Algorithm', 'NYSORA Airway Management'],
+  },
+  naloxone: {
+    text: 'Naloxone for opioid reversal: Start with 0.04mg IV (40mcg) to avoid complete reversal and rebound pain. Titrate every 2-3 min. Duration is shorter than most opioids, so monitor for resedation. Higher doses (0.4-2mg) for respiratory arrest.',
+    citations: ['ACLS Guidelines', 'ASA Opioid Reversal'],
+  },
+  ketamine: {
+    text: 'Ketamine is a dissociative anesthetic providing sedation, analgesia, and amnesia while preserving airway reflexes and respiratory drive. Dose: 0.5-1 mg/kg IV for sedation. Preserves hemodynamics via sympathetic stimulation. Watch for emergence reactions (treat with midazolam).',
+    citations: ['Ketamine Clinical Guidelines', 'Green et al. Annals EM'],
+  },
+  dexmedetomidine: {
+    text: 'Dexmedetomidine is a selective alpha-2 agonist providing sedation without significant respiratory depression. Load 1mcg/kg over 10 min, maintain 0.2-0.7 mcg/kg/hr. Causes bradycardia and hypotension. Unique "cooperative sedation" with arousable patient.',
+    citations: ['Dexmedetomidine Package Insert', 'ASA Sedation Guidelines'],
+  },
 };
 
 // ---------------------------------------------------------------------------
-// Simple response cache (query → response text)
+// Simple response cache (query -> response text)
 // ---------------------------------------------------------------------------
-
 const responseCache = new Map<string, string>();
 
 // ---------------------------------------------------------------------------
@@ -102,8 +133,7 @@ const responseCache = new Map<string, string>();
 
 function buildSystemPrompt(ctx: ClaudeContext): string {
   const level = ctx.learnerLevel ?? 'intermediate';
-  return `You are an expert AI mentor embedded in SedSim, a real-time IV procedural sedation simulator.
-You are acting as a virtual attending anesthesiologist / sedation specialist who teaches ${level}-level clinicians.
+  return `You are an expert AI mentor embedded in SedSim, a real-time IV procedural sedation simulator. You are acting as a virtual attending anesthesiologist / sedation specialist who teaches ${level}-level clinicians.
 
 ## Pharmacology knowledge base
 - 3-compartment Marsh/Schnider PK models for all IV drugs (propofol, midazolam, fentanyl, ketamine, dexmedetomidine)
@@ -114,10 +144,6 @@ You are acting as a virtual attending anesthesiologist / sedation specialist who
 
 ## Teaching style
 - Adapt explanation depth to ${level} level
-- For novice: use analogies and simple cause-effect chains
-- For intermediate: include pharmacokinetic reasoning (Ce, EC50, ke0)
-- For advanced: discuss response surfaces, individual variability, Schnider vs Marsh differences
-- Always reference the specific patient's characteristics when relevant
 - Be concise but complete (2-4 sentences unless a detailed explanation is requested)
 - Cite guidelines when giving clinical recommendations
 
@@ -133,13 +159,13 @@ function buildContextString(ctx: ClaudeContext): string {
     const { age, weight, sex, asa, comorbidities, mallampati, osa, drugSensitivity } = ctx.patient;
     lines.push(`Patient: ${age}yo ${sex}, ${weight}kg, ASA ${asa}`);
     if (mallampati) lines.push(`Mallampati: ${mallampati}`);
-    if (osa) lines.push('OSA: YES — increased sensitivity to respiratory depressants');
+    if (osa) lines.push('OSA: YES');
     if (drugSensitivity && drugSensitivity !== 1.0) lines.push(`Drug sensitivity modifier: ${drugSensitivity.toFixed(2)}x`);
     if (comorbidities.length) lines.push(`Comorbidities: ${comorbidities.join(', ')}`);
   }
-  lines.push(`Vitals: HR ${ctx.vitals.hr}, BP ${ctx.vitals.sbp}/${ctx.vitals.dbp}, SpO2 ${ctx.vitals.spo2}%, RR ${ctx.vitals.rr}, EtCO2 ${ctx.vitals.etco2}`);
+  lines.push(`Vitals: HR ${Math.round(ctx.vitals.hr)}, BP ${Math.round(ctx.vitals.sbp)}/${Math.round(ctx.vitals.dbp)}, SpO2 ${Math.round(ctx.vitals.spo2)}%, RR ${Math.round(ctx.vitals.rr)}, EtCO2 ${Math.round(ctx.vitals.etco2)}`);
   lines.push(`MOASS: ${ctx.moass}/5`);
-  if (ctx.eeg) lines.push(`EEG/BIS: ${ctx.eeg.bisIndex}, state: ${ctx.eeg.sedationState}`);
+  if (ctx.eeg) lines.push(`EEG/BIS: ${Math.round(ctx.eeg.bisIndex)}, state: ${ctx.eeg.sedationState}`);
   const ceEntries = Object.entries(ctx.pkStates)
     .filter(([, s]) => s.ce > 0)
     .map(([d, s]) => `${d}: ${s.ce.toFixed(3)} mcg/mL`);
@@ -150,7 +176,7 @@ function buildContextString(ctx: ClaudeContext): string {
 }
 
 // ---------------------------------------------------------------------------
-// Offline fallback — pattern-match against KNOWLEDGE_BASE
+// Offline fallback - enhanced pattern matching against KNOWLEDGE_BASE
 // ---------------------------------------------------------------------------
 
 export function offlineFallback(
@@ -159,59 +185,84 @@ export function offlineFallback(
 ): { text: string; citations: string[]; confidence: number } {
   const q = query.toLowerCase();
 
-    // Handle greetings and general queries with a warm mentor response
+  // Handle greetings
   const greetings = ['hello', 'hi', 'hey', 'help', 'what can you do', 'who are you'];
-  const isGreeting = greetings.some(g => q.includes(g));
-  if (isGreeting) {
+  if (greetings.some(g => q.includes(g))) {
     const moassDesc = ctx.moass <= 1 ? 'deeply sedated' : ctx.moass <= 3 ? 'moderately sedated' : 'lightly sedated or awake';
     return {
-      text: `Hi! I'm Millie, your AI sedation mentor. The patient is currently ${moassDesc} (MOASS ${ctx.moass}/5) with SpO2 ${ctx.vitals.spo2}%, HR ${ctx.vitals.hr}, BP ${ctx.vitals.sbp}/${(ctx.vitals as any).dbp ?? '?'}. Ask me about drug dosing, EEG interpretation, airway management, or any clinical concern. I can also explain what is happening physiologically at any time.`,
+      text: `Hi! I'm Millie, your AI sedation mentor. The patient is currently ${moassDesc} (MOASS ${ctx.moass}/5) with SpO2 ${Math.round(ctx.vitals.spo2)}%, HR ${Math.round(ctx.vitals.hr)}, BP ${Math.round(ctx.vitals.sbp)}/${Math.round(ctx.vitals.dbp)}. Ask me about drug dosing, EEG interpretation, airway management, or any clinical concern.`,
       citations: ['Millie AI Mentor'],
       confidence: 0.9,
     };
   }
-  let entry: { text: string; citations: string[] } | undefined;
 
-  if (q.includes('spo2') || q.includes('desat') || q.includes('oxygen')) entry = KNOWLEDGE_BASE['desaturation'];
-  else if (q.includes('brady') || q.includes('heart rate') || q.includes(' hr')) entry = KNOWLEDGE_BASE['bradycardia'];
-  else if (q.includes('hypotension') || q.includes('blood pressure') || q.includes(' bp')) entry = KNOWLEDGE_BASE['hypotension'];
+  // Pattern match to knowledge base entries
+  let entry: { text: string; citations: string[] } | undefined;
+  if (q.includes('spo2') || q.includes('desat') || q.includes('oxygen') || q.includes('hypox')) entry = KNOWLEDGE_BASE['desaturation'];
+  else if (q.includes('brady') || (q.includes('heart') && q.includes('slow'))) entry = KNOWLEDGE_BASE['bradycardia'];
+  else if (q.includes('hypotension') || q.includes('blood pressure') || q.includes('low bp') || q.includes('pressure drop')) entry = KNOWLEDGE_BASE['hypotension'];
   else if (q.includes('burst') || q.includes('suppression')) entry = KNOWLEDGE_BASE['burst_suppression'];
-  else if (q.includes('awareness') || q.includes('too light')) entry = KNOWLEDGE_BASE['awareness'];
-  else if (q.includes('eeg') || q.includes('interpret') || q.includes('bis')) entry = KNOWLEDGE_BASE['eeg_interpretation'];
-  else if (q.includes('titrat') || q.includes('dose') || q.includes('how much')) entry = KNOWLEDGE_BASE['propofol_titration'];
-  else if (q.includes('synergy') || q.includes('interaction')) entry = KNOWLEDGE_BASE['drug_synergy'];
+  else if (q.includes('awareness') || q.includes('too light') || q.includes('waking up')) entry = KNOWLEDGE_BASE['awareness'];
+  else if (q.includes('eeg') || q.includes('interpret') || q.includes('bis') || q.includes('brain wave')) entry = KNOWLEDGE_BASE['eeg_interpretation'];
+  else if (q.includes('titrat') || q.includes('dose') || q.includes('how much') || q.includes('bolus')) entry = KNOWLEDGE_BASE['propofol_titration'];
+  else if (q.includes('synergy') || q.includes('interaction') || q.includes('combine')) entry = KNOWLEDGE_BASE['drug_synergy'];
   else if (q.includes('pediatric') || q.includes('child')) entry = KNOWLEDGE_BASE['pediatric'];
-  else if (q.includes('osa') || q.includes('sleep apnea') || q.includes('apnoea')) entry = KNOWLEDGE_BASE['osa'];
+  else if (q.includes('osa') || q.includes('sleep apnea') || q.includes('apnoea') || q.includes('apnea')) entry = KNOWLEDGE_BASE['osa'];
+  else if (q.includes('arrhyth') || q.includes('vfib') || q.includes('vtach') || q.includes('fibrillation') || q.includes('tachycardia') || q.includes('junctional') || q.includes('rhythm')) entry = KNOWLEDGE_BASE['arrhythmia'];
+  else if (q.includes('arrest') || q.includes('cpr') || q.includes('code blue') || q.includes('pulseless') || q.includes('asystole')) entry = KNOWLEDGE_BASE['cardiac_arrest'];
+  else if (q.includes('overdose') || q.includes('reversal') || q.includes('reverse') || q.includes('flumazenil')) entry = KNOWLEDGE_BASE['overdose'];
+  else if (q.includes('crash') || q.includes('dying') || q.includes('emergency') || q.includes('resuscitat') || q.includes('save')) entry = KNOWLEDGE_BASE['crash'];
+  else if (q.includes('airway') || q.includes('intubat') || q.includes('lma') || q.includes('jaw thrust') || q.includes('obstruct')) entry = KNOWLEDGE_BASE['airway'];
+  else if (q.includes('naloxone') || q.includes('narcan')) entry = KNOWLEDGE_BASE['naloxone'];
+  else if (q.includes('ketamine') || q.includes('dissociative')) entry = KNOWLEDGE_BASE['ketamine'];
+  else if (q.includes('dexmedetomidine') || q.includes('precedex') || q.includes('dex ')) entry = KNOWLEDGE_BASE['dexmedetomidine'];
 
   let text = entry?.text ?? '';
   let confidence = entry ? 0.85 : 0.65;
 
-  // Append live context observations
+  // Append live context observations for critical states
   const extras: string[] = [];
-  if (ctx.vitals.spo2 < 92) extras.push(`⚠ Current SpO2 ${ctx.vitals.spo2}% — IMMEDIATE ACTION REQUIRED.`);
-  if (ctx.vitals.sbp < 85) extras.push(`⚠ BP ${ctx.vitals.sbp}/${ctx.vitals.dbp} — significant hypotension.`);
-  if (ctx.vitals.hr < 45) extras.push(`⚠ HR ${ctx.vitals.hr} — symptomatic bradycardia threshold.`);
-  if (ctx.eeg && ctx.eeg.bisIndex < 20) extras.push(`⚠ BIS ${ctx.eeg.bisIndex} — burst suppression detected.`);
+  if (ctx.vitals.spo2 < 92) extras.push(`Current SpO2 ${Math.round(ctx.vitals.spo2)}% -- IMMEDIATE ACTION REQUIRED.`);
+  if (ctx.vitals.sbp < 85) extras.push(`BP ${Math.round(ctx.vitals.sbp)}/${Math.round(ctx.vitals.dbp)} -- significant hypotension.`);
+  if (ctx.vitals.hr < 45) extras.push(`HR ${Math.round(ctx.vitals.hr)} -- symptomatic bradycardia threshold.`);
+  if (ctx.vitals.hr > 130) extras.push(`HR ${Math.round(ctx.vitals.hr)} -- significant tachycardia.`);
+  if (ctx.vitals.rr <= 4) extras.push(`RR ${Math.round(ctx.vitals.rr)} -- severe respiratory depression!`);
+  if (ctx.eeg && ctx.eeg.bisIndex < 20) extras.push(`BIS ${Math.round(ctx.eeg.bisIndex)} -- burst suppression detected.`);
 
   if (!text) {
-    // Build a context-aware response when no knowledge base entry matches
+    // Build comprehensive context-aware response
     const parts: string[] = [];
-    parts.push(`Current patient status: MOASS ${ctx.moass}/5, SpO2 ${ctx.vitals.spo2}%, HR ${ctx.vitals.hr}, BP ${ctx.vitals.sbp}/${(ctx.vitals as any).dbp ?? '?'}, RR ${ctx.vitals.rr}, EtCO2 ${ctx.vitals.etco2}.`);
-    if (ctx.eeg) parts.push(`EEG/BIS: ${ctx.eeg.bisIndex} (${ctx.eeg.sedationState}).`);
+    parts.push(`Current patient status: MOASS ${ctx.moass}/5, SpO2 ${Math.round(ctx.vitals.spo2)}%, HR ${Math.round(ctx.vitals.hr)}, BP ${Math.round(ctx.vitals.sbp)}/${Math.round(ctx.vitals.dbp)}, RR ${Math.round(ctx.vitals.rr)}, EtCO2 ${Math.round(ctx.vitals.etco2)}.`);
+    if (ctx.eeg) parts.push(`EEG/BIS: ${Math.round(ctx.eeg.bisIndex)} (${ctx.eeg.sedationState}).`);
     const ceEntries = Object.entries(ctx.pkStates).filter(([, s]) => s.ce > 0).map(([d, s]) => `${d} Ce ${s.ce.toFixed(2)} mcg/mL`);
     if (ceEntries.length) parts.push(`Active drugs: ${ceEntries.join(', ')}.`);
-    // Sedation depth assessment
-    if (ctx.moass <= 1) parts.push('The patient is deeply sedated (MOASS 0-1). Ensure airway patency, monitor for respiratory depression, and consider whether this depth is appropriate for the procedure.');
-    else if (ctx.moass <= 3) parts.push('Sedation depth is in the moderate range (MOASS 2-3), which is typically appropriate for procedural sedation. Continue monitoring.');
-    else if (ctx.moass >= 4) parts.push('The patient is lightly sedated (MOASS 4-5). If procedural sedation is needed, consider titrating additional medication.');
-    // Vital sign assessment
-    if (ctx.vitals.spo2 < 94) parts.push('SpO2 is below 94% -- consider increasing FiO2, performing chin lift/jaw thrust, and monitoring EtCO2 for hypoventilation.');
-    if (ctx.vitals.hr < 50) parts.push('Heart rate is below 50 bpm. Consider atropine 0.5 mg IV if symptomatic or hemodynamically significant.');
-    if (ctx.vitals.sbp < 90) parts.push('Systolic BP is below 90 mmHg. Consider IV fluid bolus, reducing sedative infusion rate, or vasopressor support.');
-    if (ctx.vitals.rr < 8) parts.push('Respiratory rate is critically low. Assess airway, consider bag-mask ventilation, and review opioid dosing.');
-    if (parts.length <= 2) parts.push('All vitals are within acceptable ranges. Continue standard monitoring and titrate medications as needed. Ask me about specific drugs, dosing, EEG patterns, or clinical scenarios.');
+
+    // Crisis detection - auto-match knowledge base when vitals are critical
+    if (ctx.vitals.spo2 < 90) {
+      parts.push(KNOWLEDGE_BASE['desaturation'].text);
+      confidence = 0.85;
+    } else if (ctx.vitals.hr < 45) {
+      parts.push(KNOWLEDGE_BASE['bradycardia'].text);
+      confidence = 0.85;
+    } else if (ctx.vitals.sbp < 75) {
+      parts.push(KNOWLEDGE_BASE['hypotension'].text);
+      confidence = 0.85;
+    } else if (ctx.vitals.rr <= 4) {
+      parts.push('Severe respiratory depression detected. Consider naloxone if opioids are active, perform jaw thrust, prepare BVM ventilation.');
+      confidence = 0.8;
+    } else if (ctx.moass <= 1) {
+      parts.push('The patient is deeply sedated (MOASS 0-1). Ensure airway patency, monitor for respiratory depression, and consider whether this depth is appropriate.');
+    } else if (ctx.moass <= 3) {
+      parts.push('Sedation depth is in the moderate range (MOASS 2-3), appropriate for procedural sedation. Continue monitoring.');
+    } else if (ctx.moass >= 4) {
+      parts.push('The patient is lightly sedated (MOASS 4-5). If deeper sedation is needed, consider titrating additional medication.');
+    }
+
+    if (parts.length <= 2 && extras.length === 0) {
+      parts.push('All vitals are within acceptable ranges. Continue standard monitoring and titrate medications as needed. Ask me about specific drugs, dosing, EEG patterns, or clinical scenarios.');
+    }
     text = parts.join(' ');
-    confidence = 0.75;
+    if (!confidence || confidence < 0.7) confidence = 0.75;
   }
 
   if (extras.length) {
@@ -226,11 +277,6 @@ export function offlineFallback(
 // Claude API streaming call
 // ---------------------------------------------------------------------------
 
-/**
- * Stream a response from Claude.  Calls `onChunk` for each text delta and
- * resolves with the full accumulated text.  Throws on network/API errors so
- * callers can fall back to `offlineFallback`.
- */
 export async function streamClaude(
   query: string,
   ctx: ClaudeContext,
@@ -238,26 +284,27 @@ export async function streamClaude(
   signal?: AbortSignal
 ): Promise<string> {
   const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-    const proxyUrl = import.meta.env.VITE_CLAUDE_PROXY_URL as string | undefined;
+  const proxyUrl = import.meta.env.VITE_CLAUDE_PROXY_URL as string | undefined;
   const useProxy = !!proxyUrl;
   const endpoint = proxyUrl || 'https://api.anthropic.com/v1/messages';
+
   if (!useProxy && !apiKey) throw new Error('No API key');
 
-  const cacheKey = `${query}|${ctx.moass}|${ctx.vitals.spo2}|${ctx.vitals.sbp}`;
+  const cacheKey = `${query}|${ctx.moass}|${Math.round(ctx.vitals.spo2)}|${Math.round(ctx.vitals.sbp)}`;
   if (responseCache.has(cacheKey)) {
     const cached = responseCache.get(cacheKey)!;
     onChunk(cached);
     return cached;
   }
 
-    const response = await fetch(endpoint, {
+  const response = await fetch(endpoint, {
     method: 'POST',
-        headers: {
+    headers: {
       'Content-Type': 'application/json',
-      ...(useProxy ? {} : { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }),
-              },
-                                     body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
+      ...(useProxy ? {} : { 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }),
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 512,
       stream: true,
       system: ctx._systemOverride || buildSystemPrompt(ctx),
