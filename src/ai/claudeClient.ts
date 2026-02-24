@@ -158,6 +158,18 @@ export function offlineFallback(
   ctx: ClaudeContext
 ): { text: string; citations: string[]; confidence: number } {
   const q = query.toLowerCase();
+
+    // Handle greetings and general queries with a warm mentor response
+  const greetings = ['hello', 'hi', 'hey', 'help', 'what can you do', 'who are you'];
+  const isGreeting = greetings.some(g => q.includes(g));
+  if (isGreeting) {
+    const moassDesc = ctx.moass <= 1 ? 'deeply sedated' : ctx.moass <= 3 ? 'moderately sedated' : 'lightly sedated or awake';
+    return {
+      text: `Hi! I'm Millie, your AI sedation mentor. The patient is currently ${moassDesc} (MOASS ${ctx.moass}/5) with SpO2 ${ctx.vitals.spo2}%, HR ${ctx.vitals.hr}, BP ${ctx.vitals.sbp}/${(ctx.vitals as any).dbp ?? '?'}. Ask me about drug dosing, EEG interpretation, airway management, or any clinical concern. I can also explain what is happening physiologically at any time.`,
+      citations: ['Millie AI Mentor'],
+      confidence: 0.9,
+    };
+  }
   let entry: { text: string; citations: string[] } | undefined;
 
   if (q.includes('spo2') || q.includes('desat') || q.includes('oxygen')) entry = KNOWLEDGE_BASE['desaturation'];
@@ -245,7 +257,7 @@ export async function streamClaude(
       ...(useProxy ? {} : { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }),
               },
                                      body: JSON.stringify({
-      model: 'claude-opus-4-0-20250514',
+            model: 'claude-sonnet-4-20250514',
       max_tokens: 512,
       stream: true,
       system: ctx._systemOverride || buildSystemPrompt(ctx),
