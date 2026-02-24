@@ -25,18 +25,18 @@ interface SimMasterOverlayProps {
 const STATUS_CONFIG: Record<ClinicalStatus, {
   bg: string; border: string; text: string; dot: string; glow: string; icon: string;
 }> = {
-  normal:   { bg: 'bg-emerald-950/80', border: 'border-emerald-500/60', text: 'text-emerald-300', dot: 'bg-emerald-400', glow: 'shadow-emerald-500/20', icon: '\u2713' },
-  warning:  { bg: 'bg-amber-950/80',   border: 'border-amber-500/60',   text: 'text-amber-300',   dot: 'bg-amber-400',   glow: 'shadow-amber-500/30',   icon: '\u26A0' },
-  danger:   { bg: 'bg-red-950/80',     border: 'border-red-500/60',     text: 'text-red-300',     dot: 'bg-red-500',     glow: 'shadow-red-500/40',     icon: '\u2716' },
-  critical: { bg: 'bg-red-950/90',     border: 'border-red-400',        text: 'text-red-200',     dot: 'bg-red-400',     glow: 'shadow-red-500/60',     icon: '\u203C' },
+  normal:   { bg: 'bg-emerald-950/80', border: 'border-emerald-500/60', text: 'text-emerald-300', dot: 'bg-emerald-400', glow: 'shadow-emerald-500/20', icon: String.fromCodePoint(0x2713) },
+  warning:  { bg: 'bg-amber-950/80',   border: 'border-amber-500/60',   text: 'text-amber-300',   dot: 'bg-amber-400',   glow: 'shadow-amber-500/30',   icon: String.fromCodePoint(0x26A0) },
+  danger:   { bg: 'bg-red-950/80',     border: 'border-red-500/60',     text: 'text-red-300',     dot: 'bg-red-500',     glow: 'shadow-red-500/40',     icon: String.fromCodePoint(0x2716) },
+  critical: { bg: 'bg-red-950/90',     border: 'border-red-400',        text: 'text-red-200',     dot: 'bg-red-400',     glow: 'shadow-red-500/60',     icon: String.fromCodePoint(0x203C) },
 };
 
 const SEVERITY_STYLES: Record<string, {
   bg: string; border: string; text: string; headerBg: string; glow: string;
 }> = {
-  info:    { bg: 'bg-slate-900/95',  border: 'border-cyan-500/50',   text: 'text-cyan-200',   headerBg: 'bg-cyan-900/60',   glow: 'shadow-cyan-500/20' },
-  warning: { bg: 'bg-slate-900/95',  border: 'border-amber-500/50',  text: 'text-amber-200',  headerBg: 'bg-amber-900/60',  glow: 'shadow-amber-500/30' },
-  danger:  { bg: 'bg-slate-900/95',  border: 'border-red-500/60',    text: 'text-red-200',    headerBg: 'bg-red-900/60',    glow: 'shadow-red-500/40' },
+  info:    { bg: 'bg-slate-900/95', border: 'border-cyan-500/50',  text: 'text-cyan-200',  headerBg: 'bg-cyan-900/60',  glow: 'shadow-cyan-500/20' },
+  warning: { bg: 'bg-slate-900/95', border: 'border-amber-500/50', text: 'text-amber-200', headerBg: 'bg-amber-900/60', glow: 'shadow-amber-500/30' },
+  danger:  { bg: 'bg-slate-900/95', border: 'border-red-500/60',   text: 'text-red-200',   headerBg: 'bg-red-900/60',   glow: 'shadow-red-500/40' },
 };
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ const SimMasterOverlay: React.FC<SimMasterOverlayProps> = ({ enabled }) => {
   }, []);
 
   // Determine overall status
-  const overallStatus = useMemo<ClinicalStatus>(() => {
+  const overallStatus = useMemo(() => {
     if (assessments.some(a => a.status === 'critical')) return 'critical';
     if (assessments.some(a => a.status === 'danger')) return 'danger';
     if (assessments.some(a => a.status === 'warning')) return 'warning';
@@ -141,7 +141,6 @@ const SimMasterOverlay: React.FC<SimMasterOverlayProps> = ({ enabled }) => {
     // Run immediately
     evaluate();
     const interval = setInterval(evaluate, 3000);
-
     return () => {
       clearInterval(interval);
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -162,18 +161,21 @@ const SimMasterOverlay: React.FC<SimMasterOverlayProps> = ({ enabled }) => {
   const statusColor = STATUS_CONFIG[overallStatus];
 
   // Highlight ring around target element
-  const highlightStyle: React.CSSProperties | null = targetRect && annotation && isVisible ? {
-    position: 'fixed',
-    left: targetRect.left - 4,
-    top: targetRect.top - 4,
-    width: targetRect.width + 8,
-    height: targetRect.height + 8,
-    zIndex: 9998,
-    pointerEvents: 'none' as const,
-    borderRadius: 8,
-    opacity: 1,
-    transition: 'all 0.4s ease',
-  } : null;
+  const highlightStyle: React.CSSProperties | null =
+    targetRect && annotation && isVisible
+      ? {
+          position: 'fixed',
+          left: targetRect.left - 4,
+          top: targetRect.top - 4,
+          width: targetRect.width + 8,
+          height: targetRect.height + 8,
+          zIndex: 9998,
+          pointerEvents: 'none' as const,
+          borderRadius: 8,
+          opacity: 1,
+          transition: 'all 0.4s ease',
+        }
+      : null;
 
   return (
     <>
@@ -182,83 +184,68 @@ const SimMasterOverlay: React.FC<SimMasterOverlayProps> = ({ enabled }) => {
         <div
           style={highlightStyle}
           className={`border-2 ${
-            annotation?.severity === 'danger' ? 'border-red-500 simmaster-pulse-ring' :
-            annotation?.severity === 'warning' ? 'border-amber-400 simmaster-glow-ring' :
-            'border-cyan-400/60'
+            annotation?.severity === 'danger' ? 'border-red-500 simmaster-pulse-ring' : 'border-amber-400 simmaster-glow-ring'
           }`}
         />
       )}
 
       {/* Main SimMaster panel - bottom right */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 16,
-          right: 16,
-          zIndex: 9999,
-          width: isExpanded ? 320 : 48,
-          transition: 'width 0.3s ease',
-        }}
-      >
+      <div className="fixed bottom-16 right-2 z-[9999] pointer-events-auto" style={{ maxWidth: 320 }}>
+
         {/* Collapsed state - just a status orb */}
         {!isExpanded && (
-          <button
+          <div
             onClick={() => setIsExpanded(true)}
             className={`w-12 h-12 rounded-full ${statusColor.bg} border-2 ${statusColor.border} flex items-center justify-center shadow-lg ${statusColor.glow} hover:scale-110 transition-transform cursor-pointer`}
             title="Expand SimMaster"
           >
-            <span className={`text-lg ${statusColor.text}`}>{statusColor.icon}</span>
-          </button>
+            <span className="text-lg">{statusColor.icon}</span>
+          </div>
         )}
 
         {/* Expanded panel */}
         {isExpanded && (
-          <div className={`rounded-xl border ${sev.border} ${sev.bg} backdrop-blur-md shadow-2xl ${sev.glow} overflow-hidden`}>
+          <div className={`${sev.bg} border ${sev.border} rounded-xl shadow-2xl ${sev.glow} overflow-hidden`}>
+
             {/* Header */}
-            <div className={`flex items-center justify-between px-3 py-2 ${sev.headerBg} border-b ${sev.border}`}>
+            <div className={`flex items-center justify-between px-3 py-2 ${sev.headerBg}`}>
               <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${statusColor.dot} ${
-                  overallStatus === 'critical' || overallStatus === 'danger' ? 'animate-pulse' : ''
-                }`} />
-                <span className="text-sm font-bold text-white tracking-wide">SimMaster</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded ${statusColor.bg} ${statusColor.text} border ${statusColor.border}`}>
+                <span className={`w-2.5 h-2.5 rounded-full ${statusColor.dot} ${overallStatus !== 'normal' ? 'animate-pulse' : ''}`} />
+                <span className="text-xs font-bold text-white">SimMaster</span>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${statusColor.bg} ${statusColor.text} border ${statusColor.border}`}>
                   {overallStatus.toUpperCase()}
                 </span>
               </div>
+              <span className="text-gray-400 text-xs">{String.fromCodePoint(0x2014)}</span>
               <button
                 onClick={() => setIsExpanded(false)}
                 className="text-gray-500 hover:text-white text-sm leading-none px-1 cursor-pointer"
                 title="Minimize"
               >
-                \u2014
+                {String.fromCodePoint(0x2014)}
               </button>
             </div>
 
             {/* Vital sign pills */}
             {assessments.length > 0 && (
-              <div className="px-3 py-2 border-b border-gray-700/50">
-                <div className="flex flex-wrap gap-1.5">
-                  {assessments.map((a) => (
-                    <VitalPill key={a.param} a={a} />
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-1 px-3 py-2">
+                {assessments.map((a) => (
+                  <VitalPill key={a.param} a={a} />
+                ))}
               </div>
             )}
 
             {/* Clinical observation */}
             {annotation && isVisible && (
-              <div className="px-3 py-2.5">
-                <p className={`text-sm leading-relaxed ${sev.text}`}>
-                  {annotation.message}
-                </p>
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <span className="text-[10px] text-gray-500">\u27A4</span>
-                  <span className="text-[10px] text-gray-500">
-                    {SCREEN_REGIONS[annotation.target]?.label ?? annotation.target}
-                  </span>
+              <div className={`px-3 py-2 border-t border-gray-700/50`}>
+                <p className={`text-xs ${sev.text} leading-relaxed`}>{annotation.message}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-[9px] text-gray-500">{String.fromCodePoint(0x27A4)}</span>
+                  <span className="text-[9px] text-gray-500">{SCREEN_REGIONS[annotation.target]?.label ?? annotation.target}</span>
                 </div>
               </div>
             )}
+
           </div>
         )}
       </div>
