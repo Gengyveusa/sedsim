@@ -207,19 +207,6 @@ export const autoObserve = (context: {
 
   const observations: string[] = [];
 
-  // EEG-based observations
-  if (eeg) {
-    if (eeg.bisIndex <= 20) {
-      observations.push(`\u26A0 BIS ${eeg.bisIndex} – burst suppression detected. Sedation is excessively deep. Consider reducing hypnotic dose.`);
-    } else if (eeg.bisIndex <= 40) {
-      observations.push(`BIS ${eeg.bisIndex} (${eeg.sedationState}). Deep sedation. Monitor for hemodynamic depression.`);
-    } else if (eeg.bisIndex <= 60) {
-      observations.push(`BIS ${eeg.bisIndex} – moderate sedation. Appropriate range for procedural sedation (target 40-60).`);
-    } else if (eeg.bisIndex > 75 && moass >= 3 && Object.values(pkStates).some(s => s.ce > 0)) {
-      observations.push(`BIS ${eeg.bisIndex} – patient may be under-sedated (MOASS ${moass}). Consider supplemental dose if clinically indicated.`);
-    }
-  }
-
   // Vital sign observations
   if (vitals.spo2 < 90) {
     observations.push(`\u26A0 SpO\u2082 critically low at ${vitals.spo2}%. Increase FiO2, apply jaw thrust, reduce respiratory-depressant infusion.`);
@@ -255,7 +242,7 @@ export const autoObserve = (context: {
     if (moass >= 2 && moass <= 3) {
       observations.push(`Status check at T+${Math.floor(elapsedSeconds / 60)}min: MOASS ${moass}/5 – target sedation depth maintained. Vitals stable.`);
     } else if (moass === 1) {
-      observations.push(`Status at T+${Math.floor(elapsedSeconds / 60)}min: Deep sedation (MOASS 1). ${eeg ? `BIS ${eeg.bisIndex}. ` : ''}Monitor airway and hemodynamics.`);
+              observations.push(`Status at T+${Math.floor(elapsedSeconds / 60)}min: Deep sedation (MOASS 1). Monitor airway and hemodynamics.`);
     }
   }
 
