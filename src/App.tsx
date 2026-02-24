@@ -59,6 +59,35 @@ export default function App() {
             <LocalAnesthPanel />
             <EmergencyDrugsPanel />
             <IVFluidsPanel />
+
+                        {/* SimMaster Panel */}
+            <div className="border border-gray-700 rounded p-3 bg-gray-800/50">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">{"\ud83c\udfaf"}</span>
+                <span className="text-sm font-bold text-white">SimMaster</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-3">
+                Proactive AI observer that highlights critical events on screen in real-time.
+              </p>
+              <button
+                onClick={() => {
+                  const store = useAIStore.getState();
+                  store.setSimMasterEnabled(!store.simMasterEnabled);
+                }}
+                className={`px-4 py-2 rounded text-white text-sm font-bold transition-colors w-full ${
+                  simMasterEnabled
+                    ? 'bg-red-600 hover:bg-red-500'
+                    : 'bg-purple-600 hover:bg-purple-500'
+                }`}
+              >
+                {simMasterEnabled ? 'Disable SimMaster' : 'Enable SimMaster'}
+              </button>
+              {simMasterEnabled && (
+                <p className="text-[10px] text-green-400 mt-2 animate-pulse">
+                  SimMaster is actively observing the simulation...
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Center - Hero Gauge + Monitor */}
