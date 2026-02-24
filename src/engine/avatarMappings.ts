@@ -15,7 +15,24 @@
  *   - Hepatic/Renal: clearance badges
  */
 
-import { Patient } from '../types';
+import { Patient, Vitals, MOASSLevel, CardiacRhythm } from '../types';
+
+// ─── PhysiologyAvatar props ───────────────────────────────────────────────────
+
+/**
+ * Props for the PhysiologyAvatar component.
+ * Exported here so rhythm-aware consumers can reference the interface
+ * alongside the other avatar mapping types.
+ */
+export interface PhysiologyAvatarProps {
+  vitals: Vitals;
+  moass: MOASSLevel;
+  combinedEff: number;
+  patient: Patient;
+  /** Cardiac rhythm; overrides vitals.rhythm for arrest-state computation. */
+  rhythm?: CardiacRhythm;
+  size?: number;
+}
 
 // ─── Phenotype classification ────────────────────────────────────────────────
 

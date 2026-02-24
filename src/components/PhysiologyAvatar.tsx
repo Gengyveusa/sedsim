@@ -1,15 +1,7 @@
 import { useState } from 'react';
-import { Vitals, MOASSLevel, Patient, CardiacRhythm } from '../types';
+import { Vitals, Patient, CardiacRhythm } from '../types';
 import { isPulselessRhythm } from '../engine/cardiacRhythm';
-
-interface PhysiologyAvatarProps {
-  vitals: Vitals;
-  moass: MOASSLevel;
-  combinedEff: number;
-  patient: Patient;
-  rhythm?: CardiacRhythm;
-  size?: number;
-}
+import { PhysiologyAvatarProps } from '../engine/avatarMappings';
 
 // Tooltip descriptions for anatomy and values
 const TOOLTIPS: Record<string, string> = {
@@ -110,6 +102,35 @@ function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: numb
   }
   // ---- END ARREST OVERRIDE ----
 
+  // ---- PULSELESS VTACH OVERRIDE: severely reduced but non-zero CO ----
+  if (activeRhythm === 'ventricular_tachycardia' && map < 30) {
+    const vtachCO = 0.3;  // ~0-0.5 L/min — rate too fast for adequate filling
+    const vtachSV = Math.round((vtachCO * 1000) / Math.max(1, hr));
+    const vtachEF = 0.08; // < 15%
+    const fio2 = 0.21;
+    const paco2 = rr > 0 ? Math.max(20, Math.min(80, 40 * (14 / Math.max(4, rr)))) : 80;
+    const pao2Alveolar = fio2 * (760 - 47) - paco2 / 0.8;
+    const pao2 = Math.max(20, spo2 - 30);
+    const aaGradient = Math.max(0, pao2Alveolar - pao2);
+    const gasExchangeEff = Math.max(0, Math.min(1, 1 - aaGradient / 100));
+    const capPo2 = (pao2 + pao2Alveolar) / 2;
+    const capHydrostatic = 11;
+    const capOncotic = 25;
+    return {
+      hr, co: vtachCO, sv: vtachSV, ef: vtachEF,
+      preload: 0.1, afterload: 0.2, heartState: 'vtach' as const,
+      contractility: 200, rvDilation: 1.1, lvDilation: 1.1, wallThickness: 0.9,
+      raP: 28, rvSys: 32, rvDia: 28, laP: 14, lvSys: sbp, lvDia: 14,
+      paSys: 30, paDia: 20, paMean: (30 + 2 * 20) / 3, pcwp: 14,
+      pulmonaryEdema: 'none' as const, svr: (map * 80) / Math.max(0.1, vtachCO),
+      sbp, dbp, map,
+      pao2, paco2, pao2Alveolar, aaGradient, gasExchangeEff, capPo2,
+      capHydrostatic, capOncotic, netFiltration: capHydrostatic - capOncotic,
+      cbf: 0.1, spo2, rr, pulsePressure: sbp - dbp,
+    };
+  }
+  // ---- END PULSELESS VTACH OVERRIDE ----
+
   const pulsePressure = sbp - dbp;
   const sv = Math.max(20, Math.min(120, pulsePressure * 1.2));
   const co = (hr * sv) / 1000;
@@ -124,7 +145,7 @@ function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: numb
   if (combinedEff > 0.3) contractility *= (1 - combinedEff * 0.4);
   contractility = Math.max(400, Math.min(2500, contractility));
 
-  let heartState: 'normal' | 'hyperdynamic' | 'failure' | 'dilated' | 'vfib' | 'pea' | 'asystole' = 'normal';
+  let heartState: 'normal' | 'hyperdynamic' | 'failure' | 'dilated' | 'vfib' | 'pea' | 'asystole' | 'vtach' = 'normal';
   if (co > 7 && hr > 100) heartState = 'hyperdynamic';
   else if (ef < 0.35 || (map < 60 && hr > 100)) heartState = 'failure';
   else if (ef < 0.45 && co < 3.5) heartState = 'dilated';
@@ -192,11 +213,13 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
   const cx = size / 2;
   const cy = size * 0.38;
   const isArrest = cs.heartState === 'vfib' || cs.heartState === 'pea' || cs.heartState === 'asystole';
+  const isPulselessVTach = cs.heartState === 'vtach';
   const beatDur = (!isArrest && cs.hr > 0) ? 60 / cs.hr : 0;
 
   const heartColor = cs.heartState === 'vfib' ? '#9333ea'
     : cs.heartState === 'asystole' ? '#374151'
     : cs.heartState === 'pea' ? '#6b7280'
+    : cs.heartState === 'vtach' ? '#f97316'
     : cs.heartState === 'failure' ? '#dc2626'
     : cs.heartState === 'hyperdynamic' ? '#f59e0b'
     : cs.heartState === 'dilated' ? '#f97316'
@@ -437,6 +460,7 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
             cs.heartState === 'vfib' ? '#581c87'
             : cs.heartState === 'asystole' ? '#111827'
             : cs.heartState === 'pea' ? '#1f2937'
+            : cs.heartState === 'vtach' ? '#7c2d12'
             : cs.heartState === 'failure' ? '#7f1d1d'
             : cs.heartState === 'hyperdynamic' ? '#713f12'
             : cs.heartState === 'dilated' ? '#7c2d12'
@@ -446,6 +470,7 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
             cs.heartState === 'vfib' ? '#9333ea'
             : cs.heartState === 'asystole' ? '#374151'
             : cs.heartState === 'pea' ? '#6b7280'
+            : cs.heartState === 'vtach' ? '#f97316'
             : cs.heartState === 'failure' ? '#dc2626'
             : cs.heartState === 'hyperdynamic' ? '#f59e0b'
             : cs.heartState === 'dilated' ? '#f97316'
@@ -456,6 +481,7 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
           {cs.heartState === 'vfib' ? 'V-FIB ARREST'
             : cs.heartState === 'asystole' ? 'ASYSTOLE'
             : cs.heartState === 'pea' ? 'PEA ARREST'
+            : cs.heartState === 'vtach' ? 'P-VTACH ARREST'
             : cs.heartState === 'failure' ? 'HF - Reduced EF'
             : cs.heartState === 'hyperdynamic' ? 'HYPERDYNAMIC'
             : cs.heartState === 'dilated' ? 'DILATED CM'
@@ -464,7 +490,7 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
       </g>
 
       {/* CARDIAC ARREST banner overlay */}
-      {isArrest && (
+      {(isArrest || isPulselessVTach) && (
         <g>
           <rect x={cx - 110} y={cy - 20} width={220} height={28} rx={6}
             fill="#7f1d1d" stroke="#ef4444" strokeWidth={2} opacity={0.92} />
@@ -478,16 +504,16 @@ export default function PhysiologyAvatar({ vitals, moass: _moass, combinedEff, p
       {/* Row 1: CO / EF / SV */}
       <g onMouseEnter={(e) => onHover('co', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <text x={cx - 120} y={cy + 140} fill="#94a3b8" fontSize="12">CO</text>
-        <text x={cx - 120} y={cy + 157} fill={isArrest ? '#ef4444' : '#22d3ee'} fontSize="17" fontWeight="bold">{cs.co.toFixed(1)}</text>
+        <text x={cx - 120} y={cy + 157} fill={(isArrest || isPulselessVTach) ? '#ef4444' : '#22d3ee'} fontSize="17" fontWeight="bold">{cs.co.toFixed(1)}</text>
         <text x={cx - 84} y={cy + 157} fill="#64748b" fontSize="10">L/min</text>
       </g>
       <g onMouseEnter={(e) => onHover('ef', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <text x={cx - 22} y={cy + 140} fill="#94a3b8" fontSize="12">EF</text>
-        <text x={cx - 22} y={cy + 157} fill={isArrest || cs.ef < 0.4 ? '#ef4444' : '#22c55e'} fontSize="17" fontWeight="bold">{(cs.ef * 100).toFixed(0)}%</text>
+        <text x={cx - 22} y={cy + 157} fill={(isArrest || isPulselessVTach || cs.ef < 0.4) ? '#ef4444' : '#22c55e'} fontSize="17" fontWeight="bold">{(cs.ef * 100).toFixed(0)}%</text>
       </g>
       <g onMouseEnter={(e) => onHover('sv', e)} onMouseLeave={offHover} style={{ cursor: 'pointer' }}>
         <text x={cx + 45} y={cy + 140} fill="#94a3b8" fontSize="12">SV</text>
-        <text x={cx + 45} y={cy + 157} fill={isArrest ? '#ef4444' : '#22d3ee'} fontSize="17" fontWeight="bold">{cs.sv.toFixed(0)}</text>
+        <text x={cx + 45} y={cy + 157} fill={(isArrest || isPulselessVTach) ? '#ef4444' : '#22d3ee'} fontSize="17" fontWeight="bold">{cs.sv.toFixed(0)}</text>
         <text x={cx + 81} y={cy + 157} fill="#64748b" fontSize="10">mL</text>
       </g>
 
