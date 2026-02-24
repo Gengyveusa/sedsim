@@ -60,7 +60,7 @@ export default function App() {
             <EmergencyDrugsPanel />
             <IVFluidsPanel />
 
-                        {/* SimMaster Panel */}
+            {/* SimMaster Panel */}
             <div className="border border-gray-700 rounded p-3 bg-gray-800/50">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-base">{"\ud83c\udfaf"}</span>
@@ -111,7 +111,7 @@ export default function App() {
               <button
                 onClick={() => setAirwayExpanded(true)}
                 className="h-full w-10 flex items-center justify-center bg-gray-800/60 hover:bg-gray-700/80 transition-colors group"
-                title="Show Airway & O&#x2082;"
+                title="Show Airway & O&#8322;"
               >
                 <span className="text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase" style={{ writingMode: 'vertical-rl' as const, textOrientation: 'mixed' as const }}>Airway</span>
               </button>
@@ -119,7 +119,7 @@ export default function App() {
             {airwayExpanded && (
               <div className="flex flex-col h-full bg-sim-panel">
                 <div className="flex items-center justify-between px-2 py-1 border-b border-gray-700">
-                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Airway & O&#x2082;</span>
+                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Airway & O&#8322;</span>
                   <button
                     onClick={() => setAirwayExpanded(false)}
                     className="text-gray-400 hover:text-white text-sm px-1"
@@ -183,10 +183,10 @@ export default function App() {
         {/* Bottom Control Bar */}
         <ControlBar />
       </div>
-          {/* AI Dashboard */}
-          <div className="fixed bottom-20 right-4 z-40">
-            <Dashboard />
-          </div>
+        {/* AI Dashboard */}
+        <div className="fixed bottom-20 right-4 z-40">
+          <Dashboard />
+        </div>
       {showTutorial && (
         <TutorialOverlay
           onClose={() => setShowTutorial(false)}
