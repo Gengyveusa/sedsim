@@ -153,10 +153,9 @@ export const Dashboard: React.FC = () => {
                 <div className="p-2">
                   <OxyHbCurve
                     vitals={simState.vitals}
+                    fio2={simState.fio2}
                     patient={simState.patient}
-                    moass={simState.moass}
-                    combinedEff={simState.combinedEff}
-                    pkStates={simState.pkStates}
+                    airwayDevice={simState.airwayDevice}
                   />
                 </div>
               )}
