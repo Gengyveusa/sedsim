@@ -143,7 +143,7 @@ export function assessAllVitals(
   vitals: Vitals,
   moass: MOASSLevel,
   eeg?: EEGState,
-  pkStates?: Record<string, { ce: number }>
+  _pkStates?: Record<string, { ce: number }>
 ): VitalAssessment[] {
   const results: VitalAssessment[] = [
     { param: 'hr',   value: vitals.hr,   status: assessParam('hr', vitals.hr),     label: 'HR',   unit: 'bpm' },
