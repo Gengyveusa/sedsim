@@ -12,14 +12,12 @@ import IVFluidsPanel from './components/IVFluidsPanel';
 import TrendGraph from './components/TrendGraph';
 import ControlBar from './components/ControlBar';
 import EventLog from './components/EventLog';
-import TutorialOverlay from './components/TutorialOverlay';
 import SedationGauge from './components/SedationGauge';
 import SimMasterOverlay from './components/SimMasterOverlay';
 import { Dashboard } from './components/Dashboard';
 
 export default function App() {
   const { isRunning, speedMultiplier, tick, trendData } = useSimStore();
-  const [showTutorial, setShowTutorial] = useState(false);
   const [trendsExpanded, setTrendsExpanded] = useState(false);
   const [airwayExpanded, setAirwayExpanded] = useState(false);
   const simMasterEnabled = useAIStore(s => s.simMasterEnabled);
@@ -40,15 +38,6 @@ export default function App() {
       <div className="h-screen flex flex-col bg-sim-bg text-white">
         {/* Top Banner */}
         <PatientBanner />
-        <button
-          onClick={() => setShowTutorial(true)}
-          className="absolute top-4 right-4 z-10 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg transition-colors flex items-center gap-2"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-          Tutorial
-        </button>
 
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
@@ -83,7 +72,7 @@ export default function App() {
                 {simMasterEnabled ? 'Disable SimMaster' : 'Enable SimMaster'}
               </button>
               {simMasterEnabled && (
-                <p className="text-[10px] text-green-400 mt-2 animate-pulse">
+                <p className="text-xs text-green-400 mt-2 animate-pulse">
                   SimMaster is actively observing the simulation...
                 </p>
               )}
@@ -91,27 +80,22 @@ export default function App() {
           </div>
 
           {/* Center - Hero Gauge + Monitor */}
-          <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div className="flex-1 flex flex-col min-w-0">
             {/* Compact vitals monitor strip at top */}
-            <MonitorPanel vitals={useSimStore.getState().vitals} history={trendData.map(t => t.vitals)} />
-
+            <MonitorPanel vitals={trendData.map((t: { vitals: unknown }) => t.vitals)} />
             {/* HERO: Giant Sedation Gauge - takes up most of center */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 flex items-center justify-center">
               <SedationGauge />
             </div>
           </div>
 
           {/* Right Sidebar - Collapsible Intervention Panel */}
-          <div
-            className={`transition-all duration-300 ease-in-out border-l border-gray-700 overflow-hidden flex flex-col ${
-              airwayExpanded ? 'w-56' : 'w-10'
-            }`}
-          >
+          <div className="flex flex-row">
             {!airwayExpanded && (
               <button
                 onClick={() => setAirwayExpanded(true)}
                 className="h-full w-10 flex items-center justify-center bg-gray-800/60 hover:bg-gray-700/80 transition-colors group"
-                title="Show Airway & O&#8322;"
+                title="Show Airway & O\u2082"
               >
                 <span className="text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase" style={{ writingMode: 'vertical-rl' as const, textOrientation: 'mixed' as const }}>Airway</span>
               </button>
@@ -119,7 +103,7 @@ export default function App() {
             {airwayExpanded && (
               <div className="flex flex-col h-full bg-sim-panel">
                 <div className="flex items-center justify-between px-2 py-1 border-b border-gray-700">
-                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Airway & O&#8322;</span>
+                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Airway & O\u2082</span>
                   <button
                     onClick={() => setAirwayExpanded(false)}
                     className="text-gray-400 hover:text-white text-sm px-1"
@@ -183,15 +167,10 @@ export default function App() {
         {/* Bottom Control Bar */}
         <ControlBar />
       </div>
-        {/* AI Dashboard */}
-        <div className="fixed bottom-20 right-4 z-40">
-          <Dashboard />
-        </div>
-      {showTutorial && (
-        <TutorialOverlay
-          onClose={() => setShowTutorial(false)}
-        />
-      )}
+      {/* AI Dashboard */}
+      <div className="fixed bottom-20 right-4 z-40">
+        <Dashboard />
+      </div>
       <SimMasterOverlay enabled={simMasterEnabled} />
     </>
   );
