@@ -215,7 +215,7 @@ export const autoObserve = (context: {
       observations.push(`BIS ${eeg.bisIndex} (${eeg.sedationState}). Deep sedation. Monitor for hemodynamic depression.`);
     } else if (eeg.bisIndex <= 60) {
       observations.push(`BIS ${eeg.bisIndex} – moderate sedation. Appropriate range for procedural sedation (target 40-60).`);
-    } else if (eeg.bisIndex > 75 && moass >= 3) {
+    } else if (eeg.bisIndex > 75 && moass >= 3 && Object.values(pkStates).some(s => s.ce > 0)) {
       observations.push(`BIS ${eeg.bisIndex} – patient may be under-sedated (MOASS ${moass}). Consider supplemental dose if clinically indicated.`);
     }
   }
