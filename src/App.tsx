@@ -13,6 +13,8 @@ import ControlBar from './components/ControlBar';
 import EventLog from './components/EventLog';
 import TutorialOverlay from './components/TutorialOverlay';
 import SedationGauge from './components/SedationGauge';
+import SimMasterOverlay from './components/SimMasterOverlay';
+import useAIStore from './store/useAIStore';
 import { Dashboard } from './components/Dashboard';
 
 export default function App() {
@@ -20,6 +22,7 @@ export default function App() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [trendsExpanded, setTrendsExpanded] = useState(false);
   const [airwayExpanded, setAirwayExpanded] = useState(false);
+    const simMasterEnabled = useAIStore(s => s.simMasterEnabled);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -169,6 +172,7 @@ export default function App() {
           onClose={() => setShowTutorial(false)}
         />
       )}
+            <SimMasterOverlay enabled={simMasterEnabled} />
     </>
   );
 }
