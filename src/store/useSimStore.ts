@@ -125,6 +125,7 @@ interface SimState {
   stopIVFluid: () => void;
   setIVAccess: (location: string, gauge: string) => void;
   logEvent: (message: string, type?: LogEntry['type'], severity?: LogEntry['severity']) => void;
+  overrideVital: (parameter: string, value: number) => void;
   reset: () => void;
 }
 
@@ -585,6 +586,12 @@ const useSimStore = create<SimState>((set, get) => ({
     set({
       eventLog: [...state.eventLog, { time: state.elapsedSeconds, type, message, severity }],
     });
+  },
+
+  overrideVital: (parameter, value) => {
+    const state = get();
+    const updated = { ...state.vitals, [parameter]: value };
+    set({ vitals: updated });
   },
 
   reset: () => {

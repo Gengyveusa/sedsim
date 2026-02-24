@@ -46,7 +46,9 @@ export type SimAction =
   | { type: 'apply_intervention'; intervention: string }
   | { type: 'select_patient'; archetypeKey: string }
   | { type: 'advance_time'; seconds: number }
-  | { type: 'set_speed'; speed: number };
+  | { type: 'set_speed'; speed: number }
+  | { type: 'set_vital'; parameter: string; value: number }
+  | { type: 'start_desaturation'; rate: number };
 
 export interface InteractiveScenario {
   id: string;
@@ -77,6 +79,49 @@ export interface InteractiveScenario {
   debrief: {
     discussionQuestions: string[];
     keyTakeaways: string[];
+  };
+  // Optional enrichment fields
+  shortObjective?: string;
+  tags?: string[];
+  teachingPoints?: string[];
+  patientDetail?: {
+    age: number;
+    sex: 'M' | 'F' | 'Other';
+    heightCm: number;
+    weightKg: number;
+    asa: 1 | 2 | 3 | 4;
+    comorbidities: string[];
+    airway?: {
+      mallampati: 1 | 2 | 3 | 4;
+      bmi: number;
+      neckCircumferenceCm?: number;
+      notes?: string;
+    };
+    baselineMeds?: string[];
+  };
+  successCriteria?: {
+    description: string;
+    maxSpo2Drop?: number;
+    noMoassBelow?: number;
+    maxTotalDoses?: Record<string, number>;
+    timeInTargetMoassRange?: { low: number; high: number; minSeconds: number };
+  };
+  failureCriteria?: {
+    description: string;
+    spo2BelowForS?: { threshold: number; duration: number };
+    sbpBelowForS?: { threshold: number; duration: number };
+    moass0ForS?: { duration: number };
+    hardStopEvents?: string[];
+  };
+  debriefEnhanced?: {
+    keyQuestions: string[];
+    graphsToHighlight: string[];
+    scoringWeights?: {
+      titration: number;
+      airwayManagement: number;
+      hemodynamicControl: number;
+      complicationResponse: number;
+    };
   };
 }
 
@@ -278,6 +323,10 @@ export class ScenarioEngine {
   stop() {
     if (this.timerId) clearInterval(this.timerId);
     this.timerId = null;
+    if (this.desaturationTimer) {
+      clearInterval(this.desaturationTimer);
+      this.desaturationTimer = null;
+    }
     this.started = false;
     useAIStore.getState().setScenarioRunning(false);
     useAIStore.getState().setCurrentQuestion(null);
@@ -542,6 +591,8 @@ export class ScenarioEngine {
     }
   }
 
+  private desaturationTimer: ReturnType<typeof setInterval> | null = null;
+
   private applySimAction(action: SimAction) {
     const sim = useSimStore.getState();
     switch (action.type) {
@@ -567,6 +618,28 @@ export class ScenarioEngine {
       case 'set_speed':
         sim.setSpeed(action.speed);
         break;
+      case 'set_vital':
+        // Override a vital sign directly in the store
+        sim.overrideVital(action.parameter, action.value);
+        break;
+      case 'start_desaturation': {
+        // Gradually decrease SpO2 at the specified rate (% per minute) using elapsed time
+        if (this.desaturationTimer) clearInterval(this.desaturationTimer);
+        const startSpo2 = useSimStore.getState().vitals.spo2;
+        const startMs = Date.now();
+        this.desaturationTimer = setInterval(() => {
+          const elapsedMin = (Date.now() - startMs) / 60000;
+          const targetSpo2 = Math.max(60, startSpo2 - action.rate * elapsedMin);
+          const current = useSimStore.getState().vitals.spo2;
+          if (current > 60) {
+            useSimStore.getState().overrideVital('spo2', Math.min(current, targetSpo2));
+          } else {
+            if (this.desaturationTimer) clearInterval(this.desaturationTimer);
+            this.desaturationTimer = null;
+          }
+        }, 1000);
+        break;
+      }
     }
   }
 
@@ -601,6 +674,7 @@ export class ScenarioEngine {
     const sim = useSimStore.getState();
     const score = generateDebrief(sim.eventLog, sim.trendData);
     const { discussionQuestions, keyTakeaways } = this.scenario.debrief;
+    const enhanced = this.scenario.debriefEnhanced;
 
     const debriefLines = [
       `🎓 **Scenario Debrief — ${this.scenario.title}**\n`,
@@ -610,14 +684,35 @@ export class ScenarioEngine {
         `• Complication Response: ${score.complicationResponse}%`,
     ];
 
+    if (enhanced?.scoringWeights) {
+      const w = enhanced.scoringWeights;
+      debriefLines.push(
+        `📊 **Scoring Breakdown:**\n` +
+          `• Titration (${Math.round(w.titration * 100)}%)\n` +
+          `• Airway Management (${Math.round(w.airwayManagement * 100)}%)\n` +
+          `• Hemodynamic Control (${Math.round(w.hemodynamicControl * 100)}%)\n` +
+          `• Complication Response (${Math.round(w.complicationResponse * 100)}%)`
+      );
+    }
+
     if (score.strengths.length) {
       debriefLines.push(`✅ **Strengths:**\n${score.strengths.map(s => `• ${s}`).join('\n')}`);
     }
     if (score.improvements.length) {
       debriefLines.push(`🔧 **Areas for Improvement:**\n${score.improvements.map(i => `• ${i}`).join('\n')}`);
     }
+
+    if (enhanced?.keyQuestions?.length) {
+      debriefLines.push(`💬 **Key Questions:**\n${enhanced.keyQuestions.map(q => `• ${q}`).join('\n')}`);
+    } else {
+      debriefLines.push(`💬 **Discussion Questions:**\n${discussionQuestions.map(q => `• ${q}`).join('\n')}`);
+    }
+
+    if (enhanced?.graphsToHighlight?.length) {
+      debriefLines.push(`📈 **Review These Graphs:** ${enhanced.graphsToHighlight.join(', ')}`);
+    }
+
     debriefLines.push(
-      `💬 **Discussion Questions:**\n${discussionQuestions.map(q => `• ${q}`).join('\n')}`,
       `🔑 **Key Takeaways:**\n${keyTakeaways.map(t => `• ${t}`).join('\n')}`,
     );
 

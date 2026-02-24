@@ -1049,10 +1049,336 @@ export const MOD_RENAL_BIOPSY: InteractiveScenario = {
   },
 };
 
+export const DENTAL_OVERSEDATION_ASA2: InteractiveScenario = {
+  id: 'dental_oversedation_asa2',
+  title: 'Dental Extraction - Oversedation in an Anxious ASA II Patient',
+  difficulty: 'moderate',
+  patientArchetype: 'elderly',
+  procedure: 'Lower molar extraction under IV sedation',
+  description: '52yo anxious woman with HTN and suspected OSA (STOP-BANG 5/8) presents for office-based lower molar extraction. Titration synergy between midazolam, fentanyl, and propofol creates oversedation risk.',
+  tags: ['dental', 'office-based', 'OSA', 'oversedation', 'opioid-synergy'],
+  shortObjective: 'Titrate moderate sedation safely in an OSA-risk dental patient',
+  patientDetail: {
+    age: 52,
+    sex: 'F',
+    heightCm: 165,
+    weightKg: 78,
+    asa: 2,
+    comorbidities: ['hypertension', 'suspected OSA (STOP-BANG 5/8)'],
+    airway: {
+      mallampati: 3,
+      bmi: 29,
+      neckCircumferenceCm: 41,
+      notes: 'Loud snorer, daytime somnolence, STOP-BANG 5/8',
+    },
+    baselineMeds: ['lisinopril 10 mg daily'],
+  },
+  learningObjectives: [
+    'Apply STOP-BANG screening to modify sedation plan in office-based settings',
+    'Recognize synergistic CNS depression from midazolam + fentanyl + propofol',
+    'Identify snoring under sedation as early airway obstruction requiring intervention',
+    'Perform jaw thrust and verbal stimulation as first-line airway rescue',
+    'Weigh patient demand for deeper sedation against clinical safety',
+  ],
+  clinicalPearls: [
+    'STOP-BANG ≥ 5: high OSA probability — reduce all sedative doses by 25-50%',
+    'Propofol + benzodiazepine + opioid triple combination is the most common cause of dental sedation death',
+    'Snoring under sedation = partial obstruction — act before SpO2 falls',
+    'Office-based sedation safety depends on prevention, not rescue',
+    'Single operator-sedationist: cognitive load is highest — have a written sedation plan',
+  ],
+  preopVignette: {
+    indication: 'Lower left first molar extraction',
+    setting: 'Office-based oral surgery suite, single operator-sedationist',
+    history: [
+      '52yo F, BMI 29, hypertension on lisinopril',
+      'Snores loudly, daytime somnolence, STOP-BANG 5/8',
+      'NKDA, no prior sedation complications reported',
+      'Very anxious — requests "to feel nothing"',
+    ],
+    exam: [
+      'Mallampati 3, neck circumference 41 cm',
+      'BP 142/88, HR 84, RR 16, SpO2 98% on room air',
+    ],
+    baselineMonitors: ['ECG', 'SpO2 (continuous)', 'NIBP q3min', 'EtCO2 (nasal cannula)', 'Precordial stethoscope'],
+    targetSedationGoal: 'Moderate sedation (MOASS 2-3)',
+  },
+  drugProtocols: [
+    { name: 'midazolam', route: 'IV', typicalBolusRange: [0.5, 2], maxTotalDose: 4, unit: 'mg' },
+    { name: 'fentanyl', route: 'IV', typicalBolusRange: [25, 75], maxTotalDose: 150, unit: 'mcg' },
+    { name: 'propofol', route: 'IV', typicalBolusRange: [10, 30], maxTotalDose: 200, unit: 'mg' },
+  ],
+  steps: [
+    {
+      id: 'intro',
+      phase: 'pre_induction',
+      triggerType: 'on_start',
+      millieDialogue: [
+        "Meet your patient: a 52-year-old anxious woman gripping the armrests, asking 'Will I feel any pain?'",
+        'She has a STOP-BANG score of 5/8 — loud snoring, neck 41 cm, BMI 29, HTN, and daytime somnolence.',
+        'STOP-BANG ≥ 5 means HIGH probability of OSA. This changes your sedation plan significantly.',
+      ],
+      teachingPoints: [
+        'STOP-BANG ≥ 5 predicts moderate-to-severe OSA with >60% sensitivity.',
+        'OSA patients have reduced pharyngeal muscle tone under sedation — obstruction occurs at lower drug levels.',
+        'Office-based setting: no immediate anesthesia backup. Prevention is your safety net.',
+      ],
+    },
+    {
+      id: 'sedation_plan',
+      phase: 'pre_induction',
+      triggerType: 'on_step_complete',
+      afterStepId: 'intro',
+      millieDialogue: [
+        'The patient insists she needs to "feel nothing." The dentist wants to start immediately.',
+        'What is the safest initial sedation strategy for this OSA-risk patient?',
+      ],
+      question: {
+        type: 'single_choice',
+        prompt: 'Best initial sedation strategy for this OSA-risk patient?',
+        options: [
+          'Low-dose midazolam 0.5-1 mg IV, then carefully titrate',
+          'Midazolam 2 mg + fentanyl 100 mcg upfront for anxiolysis',
+          'Propofol infusion immediately at 50 mcg/kg/min',
+          'Postpone — OSA patients cannot be sedated in office',
+        ],
+        correctAnswer: 'Low-dose midazolam 0.5-1 mg IV, then carefully titrate',
+        feedback: {
+          'Low-dose midazolam 0.5-1 mg IV, then carefully titrate': 'Correct! Start low, titrate slow. OSA patients need 25-50% dose reduction and careful incremental dosing.',
+          'Midazolam 2 mg + fentanyl 100 mcg upfront for anxiolysis': 'Dangerous — loading doses in an OSA patient risk rapid oversedation and airway obstruction.',
+          'Propofol infusion immediately at 50 mcg/kg/min': 'Propofol infusion without prior airway assessment and team briefing is unsafe in office-based settings.',
+          'Postpone — OSA patients cannot be sedated in office': 'Incorrect — OSA patients can be safely sedated with proper risk stratification and dose modification.',
+        },
+      },
+    },
+    {
+      id: 'midazolam_dose',
+      phase: 'induction',
+      triggerType: 'on_step_complete',
+      afterStepId: 'sedation_plan',
+      millieDialogue: [
+        'You decide to start with midazolam IV. The patient weighs 78 kg.',
+        'What is the appropriate initial midazolam dose for this OSA-risk patient?',
+      ],
+      question: {
+        type: 'numeric_range',
+        prompt: 'Initial midazolam dose in mg (normal adult: 1-2.5 mg; OSA risk: reduce by ~50%)',
+        correctAnswer: 0.5,
+        idealRange: [0.5, 1],
+        feedback: {
+          low: 'Below 0.5 mg is unlikely to provide meaningful anxiolysis.',
+          ideal: 'Good — 0.5-1 mg is an appropriate conservative start for this OSA patient.',
+          high: 'Above 1 mg initial dose is too high for an OSA-risk patient — risk of early obstruction.',
+        },
+      },
+      simActions: [
+        { type: 'administer_drug', drug: 'midazolam', dose: 0.5 },
+        { type: 'set_airway_device', device: 'nasal_cannula' },
+        { type: 'set_fio2', fio2: 0.32 },
+      ],
+      highlight: ['midazolam-dose', 'airway-nasal_cannula'],
+      teachingPoints: [
+        'Peak IV midazolam effect: 3-5 minutes. Wait before redosing.',
+        'Nasal cannula EtCO2 monitoring: essential for detecting early hypoventilation in OSA patients.',
+      ],
+    },
+    {
+      id: 'wait_assess',
+      phase: 'induction',
+      triggerType: 'on_step_complete',
+      afterStepId: 'midazolam_dose',
+      millieDialogue: [
+        '2 minutes later: the patient is slightly relaxed, HR 78, RR 14, SpO2 98%.',
+        'She says "I still feel nervous." The dentist asks if you can give more.',
+        'Key teaching: midazolam takes 3-5 minutes to peak. Adding more before peak effect = stacking doses = oversedation.',
+      ],
+      teachingPoints: [
+        'Midazolam IV peak effect: 3-5 minutes. Always wait before re-dosing.',
+        'In OSA patients, drug effect onset may seem delayed because baseline arousal is blunted — do not rush.',
+        'EtCO2 is rising from 38 to 42 — early sign of mild hypoventilation.',
+      ],
+      simActions: [{ type: 'advance_time', seconds: 120 }],
+    },
+    {
+      id: 'fentanyl_dose',
+      phase: 'induction',
+      triggerType: 'on_step_complete',
+      afterStepId: 'wait_assess',
+      millieDialogue: [
+        'The patient is now MOASS 3-4. The dentist is ready to inject local anesthetic.',
+        'You decide to add fentanyl for analgesia. What dose do you choose?',
+      ],
+      question: {
+        type: 'numeric_range',
+        prompt: 'Fentanyl dose in mcg (typical 25-75 mcg; reduce for OSA + midazolam synergy)',
+        correctAnswer: 25,
+        idealRange: [25, 50],
+        feedback: {
+          low: 'Below 25 mcg may be insufficient for pain during local injection.',
+          ideal: '25-50 mcg is appropriate — conservative given midazolam is on board and OSA risk is present.',
+          high: 'Above 50 mcg adds significant synergistic respiratory depression on top of midazolam in an OSA patient.',
+        },
+      },
+      simActions: [
+        { type: 'administer_drug', drug: 'fentanyl', dose: 25 },
+      ],
+      teachingPoints: [
+        'Opioid + benzodiazepine synergy: combined effect on respiratory drive is multiplicative, not additive.',
+        'Fentanyl peak effect IV: 3-5 minutes. Reasses sedation depth before any propofol.',
+      ],
+    },
+    {
+      id: 'propofol_titration',
+      phase: 'maintenance',
+      triggerType: 'on_step_complete',
+      afterStepId: 'fentanyl_dose',
+      millieDialogue: [
+        'The patient is now MOASS 2-3. The dentist begins the extraction. The patient flinches.',
+        'You consider adding propofol. What is the appropriate bolus dose?',
+      ],
+      question: {
+        type: 'numeric_range',
+        prompt: 'Propofol bolus in mg (triple combination risk — titrate carefully)',
+        correctAnswer: 20,
+        idealRange: [10, 30],
+        feedback: {
+          low: 'Below 10 mg is unlikely to deepen sedation meaningfully.',
+          ideal: '10-30 mg is appropriate — small increment given midazolam + fentanyl already on board.',
+          high: 'Above 30 mg bolus in this patient with midazolam + fentanyl already given risks rapid oversedation and apnea.',
+        },
+      },
+      simActions: [
+        { type: 'administer_drug', drug: 'propofol', dose: 20 },
+      ],
+      teachingPoints: [
+        'Triple combination (BZD + opioid + propofol) is the leading pharmacological cause of sedation fatalities.',
+        'Each added drug class reduces the safe ceiling for the others.',
+        'In office-based settings: 10-20 mg propofol increments with 2-3 minute waits between doses.',
+      ],
+      highlight: ['propofol-dose'],
+    },
+    {
+      id: 'desaturation_event',
+      phase: 'complication',
+      triggerType: 'on_physiology',
+      triggerCondition: { parameter: 'spo2', operator: '<', threshold: 93, durationSeconds: 5 },
+      millieDialogue: [
+        '🚨 SpO2 dropping below 93%! You hear snoring — partial airway obstruction.',
+        'The patient is breathing shallowly. EtCO2 has risen to 52 mmHg.',
+        'What is your immediate response?',
+      ],
+      question: {
+        type: 'single_choice',
+        prompt: 'Immediate management of snoring + SpO2 < 93% under sedation?',
+        options: [
+          'Jaw thrust + verbal stimulation + increase FiO2',
+          'Administer flumazenil 0.2 mg IV immediately',
+          'Insert nasal airway and give 100% O2',
+          'Continue monitoring — this is normal variation',
+        ],
+        correctAnswer: 'Jaw thrust + verbal stimulation + increase FiO2',
+        feedback: {
+          'Jaw thrust + verbal stimulation + increase FiO2': 'Correct! Jaw thrust opens the airway, verbal stimulation raises arousal, and increased FiO2 buys time.',
+          'Administer flumazenil 0.2 mg IV immediately': 'Reversal agents are second-line. First manage the physical obstruction with positioning/jaw thrust.',
+          'Insert nasal airway and give 100% O2': 'Nasal airway is appropriate if jaw thrust fails — but jaw thrust + stimulation first is less invasive.',
+          'Continue monitoring — this is normal variation': 'Dangerous! SpO2 < 93% with snoring is a clinical emergency, not normal variation.',
+        },
+      },
+      simActions: [
+        { type: 'apply_intervention', intervention: 'jaw_thrust' },
+        { type: 'set_fio2', fio2: 0.6 },
+      ],
+      highlight: ['spo2-display', 'etco2-display'],
+      teachingPoints: [
+        'Snoring under sedation = partial obstruction = airway emergency.',
+        'Jaw thrust is the most effective single maneuver to open the upper airway.',
+        'Verbal stimulation raises arousal level — often resolves mild obstruction.',
+        'Increase FiO2 immediately to maximize oxygen reserve while treating obstruction.',
+      ],
+    },
+    {
+      id: 'recovery_assessment',
+      phase: 'recovery',
+      triggerType: 'on_physiology',
+      triggerCondition: { parameter: 'spo2', operator: '>=', threshold: 95, durationSeconds: 30 },
+      millieDialogue: [
+        '✅ SpO2 has recovered to ≥95% after your intervention.',
+        'You have administered: midazolam 1 mg, fentanyl 25 mcg, propofol 20 mg total.',
+        'The patient is now at MOASS 2. The extraction is complete.',
+        'Which of the following is the most important discharge criterion after office-based sedation in an OSA patient?',
+      ],
+      question: {
+        type: 'single_choice',
+        prompt: 'Most critical discharge criterion after sedation in an OSA patient?',
+        options: [
+          'Aldrete score ≥ 9 AND sustained SpO2 ≥ 95% on room air for ≥ 30 minutes',
+          'Patient is awake and says "I feel fine"',
+          'SpO2 ≥ 90% on supplemental oxygen for 10 minutes',
+          'MOASS score returned to 5',
+        ],
+        correctAnswer: 'Aldrete score ≥ 9 AND sustained SpO2 ≥ 95% on room air for ≥ 30 minutes',
+        feedback: {
+          'Aldrete score ≥ 9 AND sustained SpO2 ≥ 95% on room air for ≥ 30 minutes': 'Correct! OSA patients must demonstrate sustained room-air SpO2 ≥ 95% — not just on supplemental O2.',
+          'Patient is awake and says "I feel fine"': 'Subjective self-assessment is insufficient — lingering drug effects impair self-perception.',
+          'SpO2 ≥ 90% on supplemental oxygen for 10 minutes': 'SpO2 on supplemental O2 masks underlying hypoventilation. Must be room air. 90% is too low for office discharge.',
+          'MOASS score returned to 5': 'MOASS alone does not assess cardiovascular stability, pain control, or recovery adequacy.',
+        },
+      },
+      teachingPoints: [
+        'OSA discharge criteria: SpO2 ≥ 95% on room air × 30 min minimum.',
+        'Do not discharge with supplemental oxygen — it masks ongoing hypoventilation.',
+        'Written discharge instructions: no driving × 24h, adult escort required.',
+      ],
+    },
+  ],
+  successCriteria: {
+    description: 'Achieved moderate sedation without SpO2 < 93% or excessive dosing',
+    maxSpo2Drop: 5,
+    noMoassBelow: 1,
+    maxTotalDoses: { propofol: 200, fentanyl: 150 },
+  },
+  failureCriteria: {
+    description: 'SpO2 critically low, severe hypotension, or prolonged deep sedation',
+    spo2BelowForS: { threshold: 88, duration: 60 },
+    sbpBelowForS: { threshold: 80, duration: 60 },
+    moass0ForS: { duration: 120 },
+  },
+  debriefEnhanced: {
+    keyQuestions: [
+      'How does a STOP-BANG score of 5 change your dosing thresholds for midazolam, fentanyl, and propofol?',
+      'At what point did airway obstruction become predictable and preventable in this scenario?',
+      'What monitoring modality would have given you the earliest warning of hypoventilation?',
+      'How do you respond when a patient (or dentist) demands deeper sedation than is clinically safe?',
+    ],
+    graphsToHighlight: ['SpO2 trend', 'EtCO2 trend', 'drug timeline'],
+    scoringWeights: {
+      titration: 0.35,
+      airwayManagement: 0.30,
+      hemodynamicControl: 0.15,
+      complicationResponse: 0.20,
+    },
+  },
+  debrief: {
+    discussionQuestions: [
+      'How does a STOP-BANG score of 5 change your dosing thresholds?',
+      'What monitoring gave the earliest warning of hypoventilation?',
+      'How do you respond when patient demand conflicts with clinical safety?',
+    ],
+    keyTakeaways: [
+      'STOP-BANG ≥ 5 demands modified sedation plan — reduce all drug doses by 25-50%',
+      'Snoring under sedation is a clinical emergency requiring immediate intervention',
+      'Triple combination (BZD + opioid + propofol) is the leading pharmacological cause of office-based sedation fatality',
+      'Office-based sedation safety depends on prevention, not rescue',
+      'Patient demand for deeper sedation does not override clinical judgment',
+    ],
+  },
+};
+
 export const MODERATE_SCENARIOS: InteractiveScenario[] = [
   MOD_ELDERLY_COPD,
   MOD_OBESE_OSA,
   MOD_PEDIATRIC_DENTAL,
   MOD_DIABETIC_CARDIOVERSION,
   MOD_RENAL_BIOPSY,
+  DENTAL_OVERSEDATION_ASA2,
 ];
