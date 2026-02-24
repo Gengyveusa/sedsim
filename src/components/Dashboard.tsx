@@ -66,17 +66,17 @@ export const Dashboard: React.FC = () => {
                 className="text-gray-400 hover:text-white text-sm px-1"
                 title="Close"
               >
-                \u00d7
+                &#x00d7;
               </button>
             </div>
             {/* Panel content */}
             <div className="flex-1 overflow-y-auto">
               {activeTab === 'eeg' && (
                 <>
-                  <EEGPanel />
+                  <EEGPanel eegState={simState.eegState} isRunning={simState.isRunning} />
                   {simState.digitalTwin && (
-                    <div className="p-3 border-t border-gray-700 text-xs">
-                      <h3 className="text-sm font-bold text-white mb-2">Digital Twin \u2013 Risk Metrics</h3>
+                    <div className="p-3 border-t border-gray-700 text-[10px]">
+                      <h3 className="text-xs font-bold text-white mb-2">Digital Twin &ndash; Risk Metrics</h3>
                       <div className="space-y-1">
                         <div className="flex justify-between">
                           <span className="text-gray-400">Hypotension Risk</span>
@@ -124,10 +124,10 @@ export const Dashboard: React.FC = () => {
                         )}
                         {simState.digitalTwin.predictedOutcome.aclsGuidance.length > 0 && (
                           <div className="mt-2">
-                            <span className="text-yellow-400 font-bold">\u26a0 ACLS Guidance</span>
+                            <span className="text-yellow-400 font-bold">&#x26a0; ACLS Guidance</span>
                             {simState.digitalTwin.predictedOutcome.aclsGuidance.map((g: string, i: number) => (
                               <div key={i} className="text-yellow-200 ml-2">
-                                \u2022 {g}
+                                &#x2022; {g}
                               </div>
                             ))}
                           </div>
@@ -138,7 +138,16 @@ export const Dashboard: React.FC = () => {
                 </>
               )}
               {activeTab === 'mentor' && (
-                <MentorChat isOpen={mentorOpen} onToggle={() => setMentorOpen(!mentorOpen)} />
+                <MentorChat
+                  vitals={simState.vitals}
+                  moass={simState.moass}
+                  eegState={simState.eegState}
+                  digitalTwin={simState.digitalTwin}
+                  eventLog={simState.eventLog}
+                  pkStates={simState.pkStates}
+                  isOpen={mentorOpen}
+                  onToggle={() => setMentorOpen(!mentorOpen)}
+                />
               )}
               {activeTab === 'oxyhb' && (
                 <div className="p-2">
