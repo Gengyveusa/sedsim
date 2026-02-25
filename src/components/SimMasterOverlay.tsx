@@ -1,273 +1,248 @@
 // src/components/SimMasterOverlay.tsx
-// Beautiful floating overlay for SimMaster v2 - displays real-time
-// vital sign assessments with color-coded status indicators and
-// clinical observations pointing to specific UI regions.
+// SimMaster v3 — Active AI Teaching Companion overlay
+// Commentary, panel pointers, Socratic Q&A, mini vitals row
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
-  SimMasterAnnotation,
-  SCREEN_REGIONS,
-  generateObservation,
-  assessAllVitals,
-  hasSignificantChange,
-  VitalAssessment,
-  ClinicalStatus,
+  assessAllVitals, VitalAssessment, ClinicalStatus, SimMasterAction,
+  SimMasterContext, detectEvents, generateActions, shouldAskQuestion,
 } from '../ai/simMaster';
+import { streamClaude } from '../ai/claudeClient';
+import { buildSimMasterSystemPrompt, getQuestionForEvent, SocraticQuestion } from '../ai/simMasterPrompt';
 import useSimStore from '../store/useSimStore';
+import useAIStore from '../store/useAIStore';
 
-interface SimMasterOverlayProps {
-  enabled: boolean;
-}
+interface SimMasterOverlayProps { enabled: boolean; }
 
-// ---------------------------------------------------------------------------
-// Status colors and icons
-// ---------------------------------------------------------------------------
-const STATUS_CONFIG: Record<ClinicalStatus, {
-  bg: string; border: string; text: string; dot: string; glow: string; icon: string;
-}> = {
-  normal:   { bg: 'bg-emerald-950/80', border: 'border-emerald-500/60', text: 'text-emerald-300', dot: 'bg-emerald-400', glow: 'shadow-emerald-500/20', icon: String.fromCodePoint(0x2713) },
-  warning:  { bg: 'bg-amber-950/80',   border: 'border-amber-500/60',   text: 'text-amber-300',   dot: 'bg-amber-400',   glow: 'shadow-amber-500/30',   icon: String.fromCodePoint(0x26A0) },
-  danger:   { bg: 'bg-red-950/80',     border: 'border-red-500/60',     text: 'text-red-300',     dot: 'bg-red-500',     glow: 'shadow-red-500/40',     icon: String.fromCodePoint(0x2716) },
-  critical: { bg: 'bg-red-950/90',     border: 'border-red-400',        text: 'text-red-200',     dot: 'bg-red-400',     glow: 'shadow-red-500/60',     icon: String.fromCodePoint(0x203C) },
+const STATUS_CONFIG: Record<ClinicalStatus, { bg: string; border: string; text: string; dot: string; glow: string; icon: string; }> = {
+  normal:   { bg: 'bg-emerald-950/80', border: 'border-emerald-500/60', text: 'text-emerald-300', dot: 'bg-emerald-400', glow: '', icon: '\u2713' },
+  warning:  { bg: 'bg-amber-950/80',   border: 'border-amber-500/60',   text: 'text-amber-300',   dot: 'bg-amber-400',   glow: '', icon: '\u26A0' },
+  danger:   { bg: 'bg-red-950/80',     border: 'border-red-500/60',     text: 'text-red-300',     dot: 'bg-red-500',     glow: '', icon: '\u2716' },
+  critical: { bg: 'bg-red-950/90',     border: 'border-red-400',        text: 'text-red-200',     dot: 'bg-red-400',     glow: '', icon: '\u203C' },
 };
 
-const SEVERITY_STYLES: Record<string, {
-  bg: string; border: string; text: string; headerBg: string; glow: string;
-}> = {
-  info:    { bg: 'bg-slate-900/95', border: 'border-cyan-500/50',  text: 'text-cyan-200',  headerBg: 'bg-cyan-900/60',  glow: 'shadow-cyan-500/20' },
-  warning: { bg: 'bg-slate-900/95', border: 'border-amber-500/50', text: 'text-amber-200', headerBg: 'bg-amber-900/60', glow: 'shadow-amber-500/30' },
-  danger:  { bg: 'bg-slate-900/95', border: 'border-red-500/60',   text: 'text-red-200',   headerBg: 'bg-red-900/60',   glow: 'shadow-red-500/40' },
+const PANEL_LABELS: Record<string, string> = {
+  monitor: 'Monitor', avatar: 'Avatar', radar: 'Radar', petals: 'Petals',
+  eeg: 'EEG', echo: 'Echo', frank_starling: 'F-S', oxyhb: 'O\u2082-Hb',
+  drug_panel: 'Drugs', trends: 'Trends', ghost_dose: 'Ghost Dose',
+  sedation_gauge: 'Gauge', risk_metrics: 'Risks', emergency_drugs: 'Emergency',
+  iv_fluids: 'IV Fluids', airway: 'Airway', learning_panel: 'Learn',
 };
 
-// ---------------------------------------------------------------------------
-// Vital Pill component
-// ---------------------------------------------------------------------------
+const PANEL_TO_TAB: Record<string, string> = {
+  eeg: 'eeg', echo: 'echosim', frank_starling: 'frankstarling',
+  oxyhb: 'oxyhb', learning_panel: 'learn', risk_metrics: 'eeg',
+};
+
+const PANEL_TO_GAUGE: Record<string, string> = {
+  avatar: 'avatar', radar: 'risk', petals: 'petals',
+};
+
 const VitalPill: React.FC<{ a: VitalAssessment }> = ({ a }) => {
   const c = STATUS_CONFIG[a.status];
   const pulse = a.status === 'critical' || a.status === 'danger' ? 'animate-pulse' : '';
   return (
-    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md border ${c.border} ${c.bg} ${pulse}`}>
-      <span className={`w-2 h-2 rounded-full ${c.dot} inline-block flex-shrink-0`} />
-      <span className={`text-xs font-bold ${c.text}`}>{a.label}</span>
-      <span className="text-xs text-gray-400">{a.value}{a.unit}</span>
+    <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded border ${c.border} ${c.bg} ${pulse}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${c.dot} flex-shrink-0`} />
+      <span className={`text-[10px] font-bold ${c.text}`}>{a.label}</span>
+      <span className="text-[10px] text-gray-400">{a.value}{a.unit}</span>
     </div>
   );
 };
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
 const SimMasterOverlay: React.FC<SimMasterOverlayProps> = ({ enabled }) => {
-  const [annotation, setAnnotation] = useState<SimMasterAnnotation | null>(null);
+  const [currentAction, setCurrentAction] = useState<SimMasterAction | null>(null);
   const [assessments, setAssessments] = useState<VitalAssessment[]>([]);
-  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const simState = useSimStore((s) => ({
-    vitals: s.vitals,
-    moass: s.moass,
-    eegState: s.eegState,
-    pkStates: s.pkStates,
-    isRunning: s.isRunning,
+  const [actionQueue, setActionQueue] = useState<SimMasterAction[]>([]);
+  const [pendingQuestion, setPendingQuestion] = useState<SocraticQuestion | null>(null);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [claudeFeedback, setClaudeFeedback] = useState('');
+  const [isAskingQuestion, setIsAskingQuestion] = useState(false);
+  const [isStreamingFeedback, setIsStreamingFeedback] = useState(false);
+  const lastSocraticTimeRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const openSidebarTab = useAIStore((s: { openSidebarTab: (id: string) => void }) => s.openSidebarTab);
+  const switchGaugeMode = useAIStore((s: { switchGaugeMode: (m: string) => void }) => s.switchGaugeMode);
+  // Use store destructuring — selector left untyped (matches codebase pattern)
+  const simState = useSimStore(s => ({
+    vitals: s.vitals, moass: s.moass, eegState: s.eegState, pkStates: s.pkStates,
+    isRunning: s.isRunning, combinedEff: s.combinedEff, patient: s.patient,
+    emergencyState: s.emergencyState, activeAlarms: s.activeAlarms, infusions: s.infusions,
+    frankStarlingPoint: s.frankStarlingPoint, oxyHbPoint: s.oxyHbPoint,
+    activeTab: s.activeTab, activeGaugeMode: s.activeGaugeMode,
+    lastDrugAdministered: s.lastDrugAdministered, lastInterventionApplied: s.lastInterventionApplied,
+    elapsedSeconds: s.elapsedSeconds, speedMultiplier: s.speedMultiplier,
+    userIdleSeconds: s.userIdleSeconds, drugsAdministeredCount: s.drugsAdministeredCount,
+    isScenarioActive: s.isScenarioActive,
   }));
+  const learnerLevel = useAIStore(s => s.tutorialState?.learnerLevel ?? 'intermediate') as 'novice' | 'intermediate' | 'advanced';
 
-  // Find target DOM element
-  const updateTargetPosition = useCallback((targetId: string) => {
-    const region = SCREEN_REGIONS[targetId];
-    if (!region) return;
-    const el = document.querySelector(region.selector);
-    if (el) {
-      setTargetRect(el.getBoundingClientRect());
-    }
-  }, []);
-
-  // Determine overall status
   const overallStatus = useMemo(() => {
-    if (assessments.some(a => a.status === 'critical')) return 'critical';
-    if (assessments.some(a => a.status === 'danger')) return 'danger';
-    if (assessments.some(a => a.status === 'warning')) return 'warning';
-    return 'normal';
+    if (assessments.some(a => a.status === 'critical')) return 'critical' as ClinicalStatus;
+    if (assessments.some(a => a.status === 'danger')) return 'danger' as ClinicalStatus;
+    if (assessments.some(a => a.status === 'warning')) return 'warning' as ClinicalStatus;
+    return 'normal' as ClinicalStatus;
   }, [assessments]);
 
-  // Proactive evaluation loop - runs every 3 seconds, fully offline
+  const buildContext = useCallback((): SimMasterContext => ({
+    patient: simState.patient,
+    vitals: simState.vitals, moass: simState.moass, combinedEff: simState.combinedEff,
+    emergencyState: simState.emergencyState, activeAlarms: simState.activeAlarms,
+    pkStates: simState.pkStates,
+    infusions: Object.fromEntries(
+      Object.entries(simState.infusions as Record<string, { rate: number; isRunning: boolean }>)
+        .map(([k, v]) => [k, { rate: v.rate, isRunning: v.isRunning }])
+    ),
+    eegState: simState.eegState, frankStarlingPoint: simState.frankStarlingPoint,
+    oxyHbPoint: simState.oxyHbPoint, activeTab: simState.activeTab,
+    activeGaugeMode: simState.activeGaugeMode,
+    lastDrugAdministered: simState.lastDrugAdministered,
+    lastInterventionApplied: simState.lastInterventionApplied,
+    elapsedSeconds: simState.elapsedSeconds, simSpeed: simState.speedMultiplier,
+    userIdleSeconds: simState.userIdleSeconds, drugsAdministeredCount: simState.drugsAdministeredCount,
+    scenarioActive: simState.isScenarioActive,
+  }), [simState]);
+
+  const executeAction = useCallback((action: SimMasterAction) => {
+    setCurrentAction(action);
+    if (action.openTab && action.targetPanel) {
+      const tabId = PANEL_TO_TAB[action.targetPanel];
+      if (tabId) openSidebarTab(tabId);
+    }
+    const gaugeSwitch = action.switchGauge ?? (action.targetPanel ? PANEL_TO_GAUGE[action.targetPanel] : undefined);
+    if (gaugeSwitch) switchGaugeMode(gaugeSwitch);
+  }, [openSidebarTab, switchGaugeMode]);
+
   useEffect(() => {
     if (!enabled || !simState.isRunning) {
-      setAnnotation(null);
-      setAssessments([]);
-      setIsVisible(false);
-      return;
+      setCurrentAction(null); setAssessments([]); setActionQueue([]); return;
     }
-
     const evaluate = () => {
-      const snapshot = {
-        vitals: simState.vitals,
-        moass: simState.moass,
-        eeg: simState.eegState ?? undefined,
-        pkStates: simState.pkStates,
-      };
-
-      // Always update vital assessments
-      const allVitals = assessAllVitals(
-        simState.vitals,
-        simState.moass,
-        simState.eegState ?? undefined,
-        simState.pkStates
-      );
-      setAssessments(allVitals);
-
-      // Only update annotation on significant change
-      if (hasSignificantChange(snapshot)) {
-        const obs = generateObservation(
-          simState.vitals,
-          simState.moass,
-          simState.eegState ?? undefined,
-          simState.pkStates
-        );
-        setAnnotation(obs);
-        updateTargetPosition(obs.target);
-        setIsVisible(true);
-
-        // Auto-cycle annotations every 12 seconds
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => {
-          setIsVisible(false);
-          setTimeout(() => setAnnotation(null), 400);
-        }, 12000);
+      setAssessments(assessAllVitals(simState.vitals, simState.moass, simState.eegState ?? undefined, simState.pkStates));
+      const ctx = buildContext();
+      const events = detectEvents(ctx);
+      if (events.length > 0) {
+        const newActions = generateActions(events, ctx);
+        if (newActions.length > 0) {
+          setActionQueue(prev => [...prev, ...newActions].sort((a, b) => b.priority - a.priority).slice(0, 5));
+        }
       }
     };
-
-    // Run immediately
     evaluate();
-    const interval = setInterval(evaluate, 3000);
-    return () => {
-      clearInterval(interval);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [enabled, simState, updateTargetPosition]);
+    const id = setInterval(evaluate, 3000);
+    return () => clearInterval(id);
+  }, [enabled, simState, buildContext]);
 
-  // Update position on resize
   useEffect(() => {
-    if (!annotation) return;
-    const handleResize = () => updateTargetPosition(annotation.target);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [annotation, updateTargetPosition]);
+    if (!currentAction && actionQueue.length > 0) {
+      const [next, ...rest] = actionQueue;
+      setActionQueue(rest);
+      executeAction(next);
+      const t = setTimeout(() => setCurrentAction(null), next.displayDuration);
+      return () => clearTimeout(t);
+    }
+  }, [currentAction, actionQueue, executeAction]);
+
+  useEffect(() => {
+    if (!enabled || !simState.isRunning || isAskingQuestion) return;
+    const id = setInterval(() => {
+      const ctx = buildContext();
+      if (shouldAskQuestion(ctx, lastSocraticTimeRef.current)) {
+        const q = getQuestionForEvent('nothing_happening', learnerLevel);
+        if (q) { setPendingQuestion(q); setIsAskingQuestion(true); setUserAnswer(''); setClaudeFeedback(''); lastSocraticTimeRef.current = Date.now(); }
+      }
+    }, 15000);
+    return () => clearInterval(id);
+  }, [enabled, simState.isRunning, isAskingQuestion, buildContext, learnerLevel]);
+
+  const handleSubmitAnswer = useCallback(async () => {
+    if (!pendingQuestion || !userAnswer.trim()) return;
+    setIsStreamingFeedback(true); setClaudeFeedback('');
+    const ctx = buildContext();
+    const query = `The learner was asked: "${pendingQuestion.question.replace('{moass}', String(ctx.moass)).replace('{spo2}', String(Math.round(ctx.vitals.spo2))).replace('{combinedEff}', String((ctx.combinedEff * 100).toFixed(0)))}" Their answer: "${userAnswer}" Evaluate in 3-4 sentences. Note what's correct/missing. Be encouraging but clinically accurate.`;
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+    try {
+      await streamClaude(query, {
+        vitals: ctx.vitals, moass: ctx.moass, pkStates: ctx.pkStates,
+        eeg: ctx.eegState ?? undefined, learnerLevel,
+        _systemOverride: buildSimMasterSystemPrompt({ ...ctx, learnerLevel, recentEvents: [pendingQuestion.trigger] }),
+      }, (chunk: string) => setClaudeFeedback(prev => prev + chunk), abortRef.current.signal);
+    } catch { setClaudeFeedback('Offline. Key topics: ' + pendingQuestion.expectedTopics.join(', ')); }
+    finally { setIsStreamingFeedback(false); }
+  }, [pendingQuestion, userAnswer, buildContext, learnerLevel]);
 
   if (!enabled || !simState.isRunning) return null;
 
-  const sev = annotation ? SEVERITY_STYLES[annotation.severity] ?? SEVERITY_STYLES.info : SEVERITY_STYLES.info;
-  const statusColor = STATUS_CONFIG[overallStatus];
-
-  // Highlight ring around target element
-  const highlightStyle: React.CSSProperties | null =
-    targetRect && annotation && isVisible
-      ? {
-          position: 'fixed',
-          left: targetRect.left - 4,
-          top: targetRect.top - 4,
-          width: targetRect.width + 8,
-          height: targetRect.height + 8,
-          zIndex: 9998,
-          pointerEvents: 'none' as const,
-          borderRadius: 8,
-          opacity: 1,
-          transition: 'all 0.4s ease',
-        }
-      : null;
+  const sc = STATUS_CONFIG[overallStatus];
+  const ACTION_COLORS: Record<string, string> = {
+    narrate: 'text-cyan-300', direct_attention: 'text-amber-300', ask_question: 'text-purple-300',
+    explain: 'text-blue-300', suggest_action: 'text-red-300', quiz: 'text-green-300',
+  };
+  const actionColor = currentAction ? (ACTION_COLORS[currentAction.type] ?? 'text-gray-300') : 'text-gray-300';
+  const targetPanel = currentAction?.targetPanel;
+  const tabId = targetPanel ? PANEL_TO_TAB[targetPanel] : null;
+  const gaugeId = targetPanel ? PANEL_TO_GAUGE[targetPanel] : null;
 
   return (
-    <>
-      {/* Highlight ring around target */}
-      {highlightStyle && (
-        <div
-          style={highlightStyle}
-          className={`border-2 ${
-            annotation?.severity === 'danger' ? 'border-red-500 simmaster-pulse-ring' : 'border-amber-400 simmaster-glow-ring'
-          }`}
-        />
-      )}
-
-      {/* Main SimMaster panel - bottom left */}
-      <div className="fixed bottom-16 left-[330px] z-[9999] pointer-events-auto" style={{ maxWidth: 320 }}>
-
-        {/* Collapsed state - just a status orb */}
-        {!isExpanded && (
-          <div
-            onClick={() => setIsExpanded(true)}
-            className={`w-12 h-12 rounded-full ${statusColor.bg} border-2 ${statusColor.border} flex items-center justify-center shadow-lg ${statusColor.glow} hover:scale-110 transition-transform cursor-pointer`}
-            title="Expand SimMaster"
-          >
-            <span className="text-lg">{statusColor.icon}</span>
+    <div className="fixed bottom-16 left-[330px] z-[9999] pointer-events-auto" style={{ maxWidth: 340 }}>
+      {!isExpanded ? (
+        <div onClick={() => setIsExpanded(true)} className={`w-12 h-12 rounded-full ${sc.bg} border-2 ${sc.border} flex items-center justify-center shadow-lg cursor-pointer hover:scale-110 transition-transform`} title="Expand SimMaster">
+          <span className="text-lg">{sc.icon}</span>
+        </div>
+      ) : (
+        <div className="bg-slate-900/95 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800/80 border-b border-slate-700">
+            <span className="flex items-center gap-2 text-xs font-bold text-white">
+              <span className={`w-2 h-2 rounded-full ${sc.dot} ${overallStatus !== 'normal' ? 'animate-pulse' : ''}`} />
+              SimMaster
+              <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${sc.bg} ${sc.text} border ${sc.border}`}>{overallStatus.toUpperCase()}</span>
+            </span>
+            <button onClick={() => setIsExpanded(false)} className="text-gray-500 hover:text-white text-sm px-1">&mdash;</button>
           </div>
-        )}
-
-        {/* Expanded panel */}
-        {isExpanded && (
-          <div className={`${sev.bg} border ${sev.border} rounded-xl shadow-2xl ${sev.glow} overflow-hidden`}>
-
-            {/* Header */}
-            <div className={`flex items-center justify-between px-3 py-2 ${sev.headerBg}`}>
-              <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${statusColor.dot} ${overallStatus !== 'normal' ? 'animate-pulse' : ''}`} />
-                <span className="text-xs font-bold text-white">SimMaster</span>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${statusColor.bg} ${statusColor.text} border ${statusColor.border}`}>
-                  {overallStatus.toUpperCase()}
-                </span>
-              </div>
-              <span className="text-gray-400 text-xs">{String.fromCodePoint(0x2014)}</span>
-              <button
-                onClick={() => setIsExpanded(false)}
-                className="text-gray-500 hover:text-white text-sm leading-none px-1 cursor-pointer"
-                title="Minimize"
-              >
-                {String.fromCodePoint(0x2014)}
-              </button>
-            </div>
-
-            {/* Vital sign pills */}
-            {assessments.length > 0 && (
-              <div className="flex flex-wrap gap-1 px-3 py-2">
-                {assessments.map((a) => (
-                  <VitalPill key={a.param} a={a} />
-                ))}
-              </div>
-            )}
-
-            {/* Clinical observation */}
-            {annotation && isVisible && (
-              <div className={`px-3 py-2 border-t border-gray-700/50`}>
-                <p className={`text-xs ${sev.text} leading-relaxed`}>{annotation.message}</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="text-[9px] text-gray-500">{String.fromCodePoint(0x27A4)}</span>
-                  <span className="text-[9px] text-gray-500">{SCREEN_REGIONS[annotation.target]?.label ?? annotation.target}</span>
+          {currentAction && (
+            <div className="px-3 py-2 border-b border-slate-700/50">
+              <p className={`text-[9px] font-bold uppercase mb-0.5 ${actionColor}`}>
+                {currentAction.type.replace('_', ' ')}{targetPanel ? ` \u2192 ${PANEL_LABELS[targetPanel] ?? targetPanel}` : ''}
+              </p>
+              <p className={`text-xs leading-relaxed ${actionColor}`}>{currentAction.message}</p>
+              {(tabId || gaugeId) && (
+                <div className="mt-1.5 flex gap-1.5">
+                  {tabId && <button onClick={() => openSidebarTab(tabId)} className="text-[9px] px-2 py-0.5 rounded bg-blue-900/60 border border-blue-500/50 text-blue-300 hover:bg-blue-800/60 cursor-pointer">Open {PANEL_LABELS[targetPanel!]}</button>}
+                  {gaugeId && <button onClick={() => switchGaugeMode(gaugeId)} className="text-[9px] px-2 py-0.5 rounded bg-teal-900/60 border border-teal-500/50 text-teal-300 hover:bg-teal-800/60 cursor-pointer">Switch to {PANEL_LABELS[targetPanel!]}</button>}
                 </div>
-              </div>
-            )}
-
-          </div>
-        )}
-      </div>
-
-      {/* CSS animations */}
-      <style>{`
-        @keyframes simmaster-pulse-ring-kf {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-          50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-        }
-        .simmaster-pulse-ring {
-          animation: simmaster-pulse-ring-kf 1.5s ease-in-out infinite;
-        }
-        @keyframes simmaster-glow-ring-kf {
-          0%, 100% { box-shadow: 0 0 4px rgba(245, 158, 11, 0.3); }
-          50% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.5); }
-        }
-        .simmaster-glow-ring {
-          animation: simmaster-glow-ring-kf 2s ease-in-out infinite;
-        }
-      `}</style>
-    </>
+              )}
+            </div>
+          )}
+          {isAskingQuestion && pendingQuestion && (
+            <div className="px-3 py-2 border-b border-slate-700/50 bg-purple-950/30">
+              <p className="text-[9px] font-bold uppercase text-purple-400 mb-1">Question</p>
+              <p className="text-xs text-purple-200 leading-relaxed mb-2">
+                {pendingQuestion.question.replace('{moass}', String(simState.moass)).replace('{spo2}', String(Math.round(simState.vitals.spo2))).replace('{combinedEff}', String((simState.combinedEff * 100).toFixed(0)))}
+              </p>
+              {!claudeFeedback ? (
+                <div className="flex gap-1.5">
+                  <input type="text" value={userAnswer} onChange={e => setUserAnswer(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmitAnswer()} placeholder="Type your answer..." className="flex-1 text-xs bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                  <button onClick={handleSubmitAnswer} disabled={!userAnswer.trim() || isStreamingFeedback} className="text-[9px] px-2 py-1 rounded bg-purple-700 hover:bg-purple-600 text-white disabled:opacity-50 cursor-pointer">Submit</button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-[10px] text-green-300 leading-relaxed">{claudeFeedback}</p>
+                  {!isStreamingFeedback && <button onClick={() => { setIsAskingQuestion(false); setPendingQuestion(null); setClaudeFeedback(''); setUserAnswer(''); }} className="mt-1 text-[9px] text-slate-400 hover:text-white cursor-pointer">Dismiss</button>}
+                </div>
+              )}
+            </div>
+          )}
+          {assessments.length > 0 && (
+            <div className="flex flex-wrap gap-1 px-3 py-1.5">
+              {assessments.map(a => <VitalPill key={a.param} a={a} />)}
+            </div>
+          )}
+        </div>
+      )}
+      <style>{`.simmaster-glow { animation: simmaster-glow-kf 2s ease-in-out infinite; } @keyframes simmaster-glow-kf { 0%,100% { box-shadow: 0 0 4px rgba(245,158,11,0.3); } 50% { box-shadow: 0 0 12px rgba(245,158,11,0.5); } }`}</style>
+    </div>
   );
 };
 

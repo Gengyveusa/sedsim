@@ -1,21 +1,42 @@
 /**
  * src/ai/simMaster.ts
- * SimMaster v2 - Proactive AI clinical observer with built-in
- * normal/abnormal/critical range intelligence.
- * Monitors simulator state and produces on-screen annotations
- * pointing to specific UI regions with severity-graded alerts.
+ * SimMaster v3 — Active AI Teaching Companion
+ *
+ * Replaces the passive vital-sign alarm panel with a pedagogically-oriented
+ * event detection + action generation engine. Consumes the full simulation
+ * state, detects clinical/educational events, and generates SimMasterAction
+ * objects that drive the overlay UI (narration, panel pointers, questions).
  */
 
-import { Vitals, MOASSLevel } from '../types';
+import { Vitals, MOASSLevel, Patient } from '../types';
 import { EEGState } from '../engine/eegModel';
 
 // ---------------------------------------------------------------------------
-// Clinical Range Definitions
+// Re-export legacy types for backward compatibility
 // ---------------------------------------------------------------------------
 
 export type ClinicalStatus = 'normal' | 'warning' | 'danger' | 'critical';
 
-interface ClinicalRange {
+export interface ScreenRegion {
+  id: string;
+  label: string;
+  selector: string;
+  description: string;
+}
+
+export const SCREEN_REGIONS: Record<string, ScreenRegion> = {
+  hr_display:   { id: 'hr_display',   label: 'Heart Rate',      selector: '[data-region="hr"]',    description: 'Heart rate display' },
+  bp_display:   { id: 'bp_display',   label: 'Blood Pressure',  selector: '[data-region="bp"]',    description: 'Blood pressure display' },
+  spo2_display: { id: 'spo2_display', label: 'SpO2',            selector: '[data-region="spo2"]',  description: 'Oxygen saturation' },
+  rr_display:   { id: 'rr_display',   label: 'Resp Rate',       selector: '[data-region="rr"]',    description: 'Respiratory rate' },
+  etco2_display:{ id: 'etco2_display',label: 'EtCO2',           selector: '[data-region="etco2"]', description: 'End-tidal CO2' },
+  moass_gauge:  { id: 'moass_gauge',  label: 'MOASS',            selector: '[data-region="moass"]', description: 'Sedation depth gauge' },
+  radar_chart:  { id: 'radar_chart',  label: 'Radar',            selector: '[data-region="radar"]', description: 'Drug concentration radar' },
+  ecg_trace:    { id: 'ecg_trace',    label: 'ECG',              selector: '[data-region="ecg"]',   description: 'ECG waveform' },
+  drug_panel:   { id: 'drug_panel',   label: 'Drug Panel',       selector: '[data-region="drugs"]', description: 'Drug bolus controls' },
+};
+
+export interface ClinicalRange {
   label: string;
   unit: string;
   normal: [number, number];
@@ -92,59 +113,17 @@ export function assessParam(key: string, value: number): ClinicalStatus {
   return 'warning';
 }
 
-// ---------------------------------------------------------------------------
-// Helper: round a vital value for display
-// ---------------------------------------------------------------------------
-function rv(v: number, decimals = 0): number {
-  const f = Math.pow(10, decimals);
-  return Math.round(v * f) / f;
-}
-
-// ---------------------------------------------------------------------------
-// Screen region map
-// ---------------------------------------------------------------------------
-
-export interface ScreenRegion {
-  id: string;
-  label: string;
-  selector: string;
-  description: string;
-}
-
-export const SCREEN_REGIONS: Record<string, ScreenRegion> = {
-  hr_display:   { id: 'hr_display',   label: 'Heart Rate',      selector: '[data-region="hr"]',    description: 'Heart rate display' },
-  bp_display:   { id: 'bp_display',   label: 'Blood Pressure',  selector: '[data-region="bp"]',    description: 'Blood pressure display' },
-  spo2_display: { id: 'spo2_display', label: 'SpO2',            selector: '[data-region="spo2"]',  description: 'Oxygen saturation' },
-  rr_display:   { id: 'rr_display',   label: 'Resp Rate',       selector: '[data-region="rr"]',    description: 'Respiratory rate' },
-  etco2_display:{ id: 'etco2_display',label: 'EtCO2',           selector: '[data-region="etco2"]', description: 'End-tidal CO2' },
-  moass_gauge:  { id: 'moass_gauge',  label: 'MOASS',            selector: '[data-region="moass"]', description: 'Sedation depth gauge' },
-  radar_chart:  { id: 'radar_chart',  label: 'Radar',            selector: '[data-region="radar"]', description: 'Drug concentration radar' },
-  ecg_trace:    { id: 'ecg_trace',    label: 'ECG',              selector: '[data-region="ecg"]',   description: 'ECG waveform' },
-  drug_panel:   { id: 'drug_panel',   label: 'Drug Panel',       selector: '[data-region="drugs"]', description: 'Drug bolus controls' },
-};
-
-// ---------------------------------------------------------------------------
-// Annotation types
-// ---------------------------------------------------------------------------
-
-export interface SimMasterAnnotation {
-  message: string;
-  target: string;
-  severity: 'info' | 'warning' | 'danger';
-  action: 'highlight' | 'point' | 'pulse';
-  timestamp: number;
-}
-
-// ---------------------------------------------------------------------------
-// Full clinical assessment
-// ---------------------------------------------------------------------------
-
 export interface VitalAssessment {
   param: string;
   value: number;
   status: ClinicalStatus;
   label: string;
   unit: string;
+}
+
+function rv(v: number, decimals = 0): number {
+  const f = Math.pow(10, decimals);
+  return Math.round(v * f) / f;
 }
 
 export function assessAllVitals(
@@ -158,8 +137,8 @@ export function assessAllVitals(
     { param: 'spo2', value: rv(vitals.spo2),  status: assessParam('spo2', vitals.spo2), label: 'SpO2',  unit: '%' },
     { param: 'sbp',  value: rv(vitals.sbp),   status: assessParam('sbp', vitals.sbp),   label: 'SBP',   unit: 'mmHg' },
     { param: 'rr',   value: rv(vitals.rr),    status: assessParam('rr', vitals.rr),     label: 'RR',    unit: '/min' },
-    { param: 'etco2',value: rv(vitals.etco2),  status: assessParam('etco2', vitals.etco2),label: 'EtCO2', unit: 'mmHg' },
-    { param: 'moass',value: moass,             status: assessParam('moass', moass),       label: 'MOASS', unit: '/5' },
+    { param: 'etco2',value: rv(vitals.etco2), status: assessParam('etco2', vitals.etco2),label: 'EtCO2', unit: 'mmHg' },
+    { param: 'moass',value: moass,            status: assessParam('moass', moass),       label: 'MOASS', unit: '/5' },
   ];
   if (eeg) {
     results.push({ param: 'bis', value: rv(eeg.bisIndex), status: assessParam('bis', eeg.bisIndex), label: 'BIS', unit: '' });
@@ -167,71 +146,656 @@ export function assessAllVitals(
   return results;
 }
 
-// ---------------------------------------------------------------------------
-// Clinical message templates
-// ---------------------------------------------------------------------------
-
-const PARAM_TO_TARGET: Record<string, string> = {
-  hr: 'hr_display',
-  spo2: 'spo2_display',
-  sbp: 'bp_display',
-  rr: 'rr_display',
-  etco2: 'etco2_display',
-  moass: 'moass_gauge',
-  bis: 'ecg_trace',
-};
-
-interface ClinicalMessage {
-  param: string;
-  status: ClinicalStatus;
-  condition: (v: number) => boolean;
-  message: (v: number) => string;
+// Legacy annotation type (kept for backward compat with SimMasterOverlay v2)
+export interface SimMasterAnnotation {
+  message: string;
   target: string;
-  priority: number;
+  severity: 'info' | 'warning' | 'danger';
+  action: 'highlight' | 'point' | 'pulse';
+  timestamp: number;
 }
 
-const CLINICAL_MESSAGES: ClinicalMessage[] = [
-  // CRITICAL - immediate life threats
-  { param: 'rr', status: 'critical', condition: v => v === 0, priority: 100,
-    message: () => 'APNEA! No respiratory effort detected. Bag-mask ventilate immediately!', target: 'rr_display' },
-  { param: 'spo2', status: 'critical', condition: v => v <= 80, priority: 99,
-    message: v => `CRITICAL HYPOXIA: SpO2 ${rv(v)}%! Immediate airway intervention required.`, target: 'spo2_display' },
-  { param: 'hr', status: 'critical', condition: v => v <= 30 || v >= 150, priority: 98,
-    message: v => rv(v) <= 30
-      ? `CRITICAL BRADYCARDIA: HR ${rv(v)}. Push atropine 1mg IV NOW.`
-      : `CRITICAL TACHYCARDIA: HR ${rv(v)}. Assess for V-tach, consider amiodarone.`, target: 'hr_display' },
-  { param: 'sbp', status: 'critical', condition: v => v <= 60, priority: 97,
-    message: v => `CARDIOVASCULAR COLLAPSE: SBP ${rv(v)}mmHg. Vasopressors + fluid resuscitation NOW.`, target: 'bp_display' },
-  { param: 'etco2', status: 'critical', condition: v => v >= 80, priority: 96,
-    message: v => `SEVERE HYPERCARBIA: EtCO2 ${rv(v)}mmHg. Respiratory failure - assist ventilation!`, target: 'etco2_display' },
-  // DANGER - requires immediate attention
-  { param: 'spo2', status: 'danger', condition: v => v <= 88, priority: 90,
-    message: v => `DESATURATION: SpO2 ${rv(v)}%. Increase FiO2, jaw thrust, consider airway adjunct.`, target: 'spo2_display' },
-  { param: 'rr', status: 'danger', condition: v => v <= 5 && v > 0, priority: 89,
-    message: v => `Severe respiratory depression: RR ${rv(v)}/min. Assess for opioid overdose.`, target: 'rr_display' },
-  { param: 'sbp', status: 'danger', condition: v => v <= 75, priority: 88,
-    message: v => `Significant hypotension: SBP ${rv(v)}mmHg. Fluid bolus 250-500mL, reduce propofol.`, target: 'bp_display' },
-  { param: 'hr', status: 'danger', condition: v => v <= 40, priority: 87,
-    message: v => `Bradycardia: HR ${rv(v)}bpm. Atropine 0.5mg IV if symptomatic.`, target: 'hr_display' },
-  { param: 'etco2', status: 'danger', condition: v => v >= 60, priority: 86,
-    message: v => `Hypercarbia: EtCO2 ${rv(v)}mmHg. Inadequate ventilation - stimulate breathing.`, target: 'etco2_display' },
-  { param: 'moass', status: 'danger', condition: v => v === 0, priority: 85,
-    message: () => 'Patient is UNRESPONSIVE (MOASS 0). Verify airway, check drug levels.', target: 'moass_gauge' },
-  // WARNING - trending abnormal
-  { param: 'spo2', status: 'warning', condition: v => v <= 92, priority: 70,
-    message: v => `SpO2 trending down to ${rv(v)}%. Monitor airway patency, increase O2.`, target: 'spo2_display' },
-  { param: 'rr', status: 'warning', condition: v => v <= 8, priority: 69,
-    message: v => `Respiratory rate low at ${rv(v)}/min. Watch for further depression.`, target: 'rr_display' },
-  { param: 'sbp', status: 'warning', condition: v => v <= 85, priority: 68,
-    message: v => `BP trending low: ${rv(v)}mmHg. Consider reducing sedative infusion rate.`, target: 'bp_display' },
-  { param: 'hr', status: 'warning', condition: v => v <= 50, priority: 67,
-    message: v => `Heart rate trending low: ${rv(v)}bpm. May be drug-related.`, target: 'hr_display' },
-  { param: 'etco2', status: 'warning', condition: v => v >= 50, priority: 66,
-    message: v => `EtCO2 elevated: ${rv(v)}mmHg. Hypoventilation developing.`, target: 'etco2_display' },
-];
+// ---------------------------------------------------------------------------
+// NEW v3: SimMasterAction — richer action type driving the new overlay
+// ---------------------------------------------------------------------------
+
+export type SimMasterActionType =
+  | 'narrate'
+  | 'direct_attention'
+  | 'ask_question'
+  | 'explain'
+  | 'suggest_action'
+  | 'quiz';
+
+export type SimMasterTargetPanel =
+  | 'monitor'
+  | 'avatar'
+  | 'radar'
+  | 'petals'
+  | 'eeg'
+  | 'echo'
+  | 'frank_starling'
+  | 'oxyhb'
+  | 'drug_panel'
+  | 'trends'
+  | 'ghost_dose'
+  | 'sedation_gauge'
+  | 'risk_metrics'
+  | 'emergency_drugs'
+  | 'iv_fluids'
+  | 'airway'
+  | 'learning_panel';
+
+export interface SimMasterAction {
+  type: SimMasterActionType;
+  message: string;
+  targetPanel?: SimMasterTargetPanel;
+  openTab?: boolean;           // should SimMaster auto-open this sidebar tab?
+  switchGauge?: string;        // should SimMaster switch the gauge mode?
+  highlightSelector?: string;
+  question?: string;
+  expectedTopics?: string[];
+  priority: number;            // higher = more important (shown first)
+  displayDuration: number;     // ms to display this action
+  requiresUserResponse?: boolean;
+  eventType?: string;          // which event triggered this action
+}
 
 // ---------------------------------------------------------------------------
-// Significant change detection
+// NEW v3: Full simulation context
+// ---------------------------------------------------------------------------
+
+export interface SimMasterContext {
+  // Patient
+  patient: Patient;
+  // Vitals & physiology
+  vitals: Vitals;
+  moass: MOASSLevel;
+  combinedEff: number;
+  emergencyState?: {
+    level: 'normal' | 'warning' | 'critical' | 'arrest';
+    isArrest: boolean;
+  };
+  activeAlarms: { type: string; message: string; severity: 'warning' | 'danger' }[];
+  // Drug state
+  pkStates: Record<string, { ce: number; cp?: number }>;
+  infusions: Record<string, { rate: number; isRunning: boolean }>;
+  // Visualization state
+  eegState?: EEGState | null;
+  frankStarlingPoint?: { vedv: number; vesv: number; sv: number; ef: number; ees: number } | null;
+  oxyHbPoint?: { p50: number; paco2: number; pH: number } | null;
+  // User behavior
+  activeTab?: string;
+  activeGaugeMode?: string;
+  lastDrugAdministered?: { name: string; dose: number; timestamp: number } | null;
+  lastInterventionApplied?: string | null;
+  elapsedSeconds: number;
+  simSpeed: number;
+  userIdleSeconds: number;
+  drugsAdministeredCount?: number;
+  scenarioActive?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Event detection types
+// ---------------------------------------------------------------------------
+
+export type SimMasterEventType =
+  | 'drug_onset'
+  | 'drug_peak'
+  | 'drug_wearing_off'
+  | 'synergy_developing'
+  | 'intervention_applied'
+  | 'sedation_deepening'
+  | 'sedation_lightening'
+  | 'vital_trend'
+  | 'eeg_transition'
+  | 'rhythm_change'
+  | 'desaturation_cascade'
+  | 'hemodynamic_compromise'
+  | 'frank_starling_shift'
+  | 'oxyhb_curve_shift'
+  | 'user_idle'
+  | 'nothing_happening'
+  | 'scenario_checkpoint';
+
+export interface SimMasterEvent {
+  type: SimMasterEventType;
+  data: Record<string, unknown>;
+  timestamp: number;
+}
+
+// ---------------------------------------------------------------------------
+// Internal state for event detection (module-level)
+// ---------------------------------------------------------------------------
+
+interface DetectionState {
+  prevMoass: MOASSLevel;
+  prevVitals: Vitals;
+  prevCe: Record<string, number>;
+  prevEegState: string; // sedationState string
+  prevRhythm: string;
+  prevCombinedEff: number;
+  lastEventTimes: Partial<Record<SimMasterEventType, number>>;
+  lastSocraticTime: number;
+  prevIntervention: string | null;
+  prevP50: number;
+}
+
+let detectionState: DetectionState | null = null;
+
+function initDetectionState(ctx: SimMasterContext): DetectionState {
+  return {
+    prevMoass: ctx.moass,
+    prevVitals: { ...ctx.vitals },
+    prevCe: Object.fromEntries(Object.entries(ctx.pkStates).map(([k, v]) => [k, v.ce])),
+    prevEegState: ctx.eegState?.sedationState ?? 'awake',
+    prevRhythm: ctx.vitals.rhythm ?? 'normal_sinus',
+    prevCombinedEff: ctx.combinedEff,
+    lastEventTimes: {},
+    lastSocraticTime: 0,
+    prevIntervention: ctx.lastInterventionApplied ?? null,
+    prevP50: ctx.oxyHbPoint?.p50 ?? 26.6,
+  };
+}
+
+function cooldown(
+  state: DetectionState,
+  eventType: SimMasterEventType,
+  minGapMs: number
+): boolean {
+  const last = state.lastEventTimes[eventType] ?? 0;
+  return Date.now() - last < minGapMs;
+}
+
+// ---------------------------------------------------------------------------
+// Event Detector
+// ---------------------------------------------------------------------------
+
+export function detectEvents(ctx: SimMasterContext): SimMasterEvent[] {
+  if (!detectionState) {
+    detectionState = initDetectionState(ctx);
+    return [];
+  }
+
+  const state = detectionState;
+  const events: SimMasterEvent[] = [];
+  const now = Date.now();
+
+  // Helper to push event and record time
+  const push = (type: SimMasterEventType, data: Record<string, unknown> = {}) => {
+    events.push({ type, data, timestamp: now });
+    state.lastEventTimes[type] = now;
+  };
+
+  // ── Drug onset / peak / wearing off ──────────────────────────────────────
+  const drugNames = ['propofol', 'fentanyl', 'midazolam', 'ketamine', 'dexmedetomidine'];
+  for (const drugName of drugNames) {
+    const ce = ctx.pkStates[drugName]?.ce ?? 0;
+    const prevCe = state.prevCe[drugName] ?? 0;
+    const delta = ce - prevCe;
+
+    if (!cooldown(state, 'drug_onset', 15000) && prevCe < 0.01 && ce >= 0.01) {
+      push('drug_onset', { drug: drugName, ce });
+    } else if (!cooldown(state, 'drug_wearing_off', 20000) && prevCe > 0.05 && ce < prevCe * 0.7 && ce > 0.005) {
+      push('drug_wearing_off', { drug: drugName, ce, prevCe });
+    } else if (!cooldown(state, 'drug_peak', 20000) && delta < 0 && prevCe > ce * 1.1 && ce > 0.1) {
+      // Peak detected when Ce starts falling after rising
+      push('drug_peak', { drug: drugName, ce });
+    }
+  }
+
+  // ── Synergy developing ────────────────────────────────────────────────────
+  if (!cooldown(state, 'synergy_developing', 30000)) {
+    const propCe = ctx.pkStates['propofol']?.ce ?? 0;
+    const fentCe = ctx.pkStates['fentanyl']?.ce ?? 0;
+    const midazCe = ctx.pkStates['midazolam']?.ce ?? 0;
+    const hasSynergy = (propCe > 0.1 && fentCe > 0.0005) || (propCe > 0.1 && midazCe > 0.01);
+    const prevEff = state.prevCombinedEff;
+    if (hasSynergy && ctx.combinedEff > 0.5 && prevEff < 0.5) {
+      push('synergy_developing', { combinedEff: ctx.combinedEff });
+    }
+  }
+
+  // ── Intervention applied ─────────────────────────────────────────────────
+  if (
+    ctx.lastInterventionApplied &&
+    ctx.lastInterventionApplied !== state.prevIntervention &&
+    !cooldown(state, 'intervention_applied', 10000)
+  ) {
+    push('intervention_applied', { intervention: ctx.lastInterventionApplied });
+  }
+
+  // ── Sedation deepening / lightening ──────────────────────────────────────
+  if (!cooldown(state, 'sedation_deepening', 15000) && ctx.moass < state.prevMoass && state.prevMoass - ctx.moass >= 1) {
+    push('sedation_deepening', { moass: ctx.moass, prevMoass: state.prevMoass });
+  }
+  if (!cooldown(state, 'sedation_lightening', 15000) && ctx.moass > state.prevMoass && ctx.moass - state.prevMoass >= 1) {
+    push('sedation_lightening', { moass: ctx.moass, prevMoass: state.prevMoass });
+  }
+
+  // ── EEG transition ────────────────────────────────────────────────────────
+  const currentEegState = ctx.eegState?.sedationState ?? 'awake';
+  if (!cooldown(state, 'eeg_transition', 20000) && currentEegState !== state.prevEegState) {
+    push('eeg_transition', {
+      from: state.prevEegState,
+      to: currentEegState,
+      bis: ctx.eegState?.bisIndex ?? 0,
+    });
+  }
+
+  // ── Rhythm change ─────────────────────────────────────────────────────────
+  const currentRhythm = ctx.vitals.rhythm ?? 'normal_sinus';
+  if (!cooldown(state, 'rhythm_change', 20000) && currentRhythm !== state.prevRhythm) {
+    push('rhythm_change', { from: state.prevRhythm, to: currentRhythm });
+  }
+
+  // ── Desaturation cascade ──────────────────────────────────────────────────
+  if (!cooldown(state, 'desaturation_cascade', 15000)) {
+    const spo2Falling = ctx.vitals.spo2 < 94 && ctx.vitals.spo2 < state.prevVitals.spo2 - 1;
+    const rrFalling = ctx.vitals.rr < 10 && ctx.vitals.rr < state.prevVitals.rr - 1;
+    const etco2Rising = ctx.vitals.etco2 > 45 && ctx.vitals.etco2 > state.prevVitals.etco2 + 2;
+    if ((spo2Falling && rrFalling) || (spo2Falling && etco2Rising)) {
+      push('desaturation_cascade', { spo2: ctx.vitals.spo2, rr: ctx.vitals.rr, etco2: ctx.vitals.etco2 });
+    }
+  }
+
+  // ── Hemodynamic compromise ────────────────────────────────────────────────
+  if (!cooldown(state, 'hemodynamic_compromise', 20000)) {
+    const sbpFalling = ctx.vitals.sbp < 90 && ctx.vitals.sbp < state.prevVitals.sbp - 5;
+    const mapFalling = ctx.vitals.map < 65 && ctx.vitals.map < (state.prevVitals.map ?? ctx.vitals.map) - 5;
+    if (sbpFalling || mapFalling) {
+      push('hemodynamic_compromise', { sbp: ctx.vitals.sbp, map: ctx.vitals.map });
+    }
+  }
+
+  // ── Frank-Starling shift ──────────────────────────────────────────────────
+  if (!cooldown(state, 'frank_starling_shift', 30000) && ctx.frankStarlingPoint) {
+    // Detect significant VEDV change (preload shift)
+    const prevVedv = (state as unknown as Record<string, number>)['prevVedv'] ?? ctx.frankStarlingPoint.vedv;
+    if (Math.abs(ctx.frankStarlingPoint.vedv - prevVedv) > 10) {
+      push('frank_starling_shift', {
+        vedv: ctx.frankStarlingPoint.vedv,
+        sv: ctx.frankStarlingPoint.sv,
+        ees: ctx.frankStarlingPoint.ees,
+      });
+      (state as unknown as Record<string, number>)['prevVedv'] = ctx.frankStarlingPoint.vedv;
+    }
+  }
+
+  // ── O2-Hb curve shift ────────────────────────────────────────────────────
+  if (!cooldown(state, 'oxyhb_curve_shift', 30000) && ctx.oxyHbPoint) {
+    if (Math.abs(ctx.oxyHbPoint.p50 - state.prevP50) > 2) {
+      push('oxyhb_curve_shift', {
+        p50: ctx.oxyHbPoint.p50,
+        direction: ctx.oxyHbPoint.p50 > state.prevP50 ? 'right' : 'left',
+        paco2: ctx.oxyHbPoint.paco2,
+      });
+    }
+  }
+
+  // ── User idle ─────────────────────────────────────────────────────────────
+  if (!cooldown(state, 'user_idle', 35000) && ctx.userIdleSeconds > 30) {
+    push('user_idle', { idleSeconds: ctx.userIdleSeconds });
+  }
+
+  // ── Nothing happening (teachable stable moment) ───────────────────────────
+  if (!cooldown(state, 'nothing_happening', 50000)) {
+    const vitalsStable =
+      Math.abs(ctx.vitals.spo2 - state.prevVitals.spo2) < 1 &&
+      Math.abs(ctx.vitals.hr - state.prevVitals.hr) < 5 &&
+      Math.abs(ctx.vitals.sbp - state.prevVitals.sbp) < 5;
+    if (vitalsStable && ctx.vitals.spo2 > 94 && ctx.moass >= 2 && ctx.moass <= 4 && ctx.elapsedSeconds > 60) {
+      push('nothing_happening', { moass: ctx.moass });
+    }
+  }
+
+  // ── Update detection state ────────────────────────────────────────────────
+  state.prevMoass = ctx.moass;
+  state.prevVitals = { ...ctx.vitals };
+  state.prevCe = Object.fromEntries(Object.entries(ctx.pkStates).map(([k, v]) => [k, v.ce]));
+  state.prevEegState = currentEegState;
+  state.prevRhythm = currentRhythm;
+  state.prevCombinedEff = ctx.combinedEff;
+  state.prevIntervention = ctx.lastInterventionApplied ?? null;
+  if (ctx.oxyHbPoint) state.prevP50 = ctx.oxyHbPoint.p50;
+
+  return events;
+}
+
+/** Reset the detection state (e.g., on sim reset) */
+export function resetDetectionState(): void {
+  detectionState = null;
+}
+
+// ---------------------------------------------------------------------------
+// Action Generator — converts events to SimMasterAction objects
+// ---------------------------------------------------------------------------
+
+export function generateActions(
+  events: SimMasterEvent[],
+  ctx: SimMasterContext
+): SimMasterAction[] {
+  const actions: SimMasterAction[] = [];
+
+  for (const event of events) {
+    switch (event.type) {
+
+      case 'drug_onset': {
+        const drug = event.data['drug'] as string;
+        const ce = event.data['ce'] as number;
+        const propCe = ctx.pkStates['propofol']?.ce ?? 0;
+        if (drug === 'propofol') {
+          actions.push({
+            type: 'narrate',
+            message: `Propofol is reaching the effect site (Ce ${ce.toFixed(2)} mcg/mL). Check the EEG panel — BIS is dropping and the spectrogram is shifting to lower frequencies as the frontal cortex is depressed.`,
+            targetPanel: 'eeg',
+            openTab: true,
+            priority: 70,
+            displayDuration: 15000,
+            eventType: event.type,
+          });
+        } else if (drug === 'fentanyl') {
+          actions.push({
+            type: 'narrate',
+            message: `Fentanyl is at the effect site (Ce ${(ce * 1000).toFixed(1)} ng/mL). Opioids bind μ-receptors in the brainstem — watch for RR dropping and EtCO2 rising. Check Petals view to see fentanyl's contribution to combined effect.`,
+            targetPanel: 'petals',
+            switchGauge: 'petals',
+            priority: 65,
+            displayDuration: 15000,
+            eventType: event.type,
+          });
+        } else if (drug === 'midazolam') {
+          actions.push({
+            type: 'narrate',
+            message: `Midazolam onset. Benzodiazepines enhance GABA-A inhibition without direct anesthesia. Note how it lowers the propofol Ce needed for the same MOASS — that's synergy. Propofol Ce currently ${propCe.toFixed(2)}.`,
+            targetPanel: 'petals',
+            switchGauge: 'petals',
+            priority: 60,
+            displayDuration: 14000,
+            eventType: event.type,
+          });
+        } else if (drug === 'ketamine') {
+          actions.push({
+            type: 'narrate',
+            message: `Ketamine (Ce ${ce.toFixed(2)}) is active. Unlike propofol, ketamine stimulates sympathetics — watch BP and HR on the monitor. Echo will show improved contractility. EEG will show high-frequency activity, not the slow-wave pattern from propofol.`,
+            targetPanel: 'echo',
+            openTab: true,
+            priority: 65,
+            displayDuration: 16000,
+            eventType: event.type,
+          });
+        }
+        break;
+      }
+
+      case 'drug_wearing_off': {
+        const drug = event.data['drug'] as string;
+        const ce = event.data['ce'] as number;
+        actions.push({
+          type: 'narrate',
+          message: `${drug.charAt(0).toUpperCase() + drug.slice(1)} Ce declining (now ${ce.toFixed(2)} mcg/mL). Redistribution is outpacing effect-site equilibration. Watch MOASS — patient may lighten. Switch to Petals to see drug levels shrinking.`,
+          targetPanel: 'petals',
+          switchGauge: 'petals',
+          priority: 55,
+          displayDuration: 12000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'synergy_developing': {
+        const eff = (event.data['combinedEff'] as number) * 100;
+        actions.push({
+          type: 'explain',
+          message: `Drug synergy active — combined effect ${eff.toFixed(0)}%. Two drugs together exceed the sum of individual effects. The Bouillon response-surface model predicts this supra-additivity. Check the Petals view — overlapping petals = overlapping CNS targets.`,
+          targetPanel: 'petals',
+          switchGauge: 'petals',
+          priority: 75,
+          displayDuration: 16000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'intervention_applied': {
+        const intv = event.data['intervention'] as string;
+        const itvLabel = intv.replace(/_/g, ' ');
+        actions.push({
+          type: 'narrate',
+          message: `${itvLabel} applied. Watch the monitor for effect — SpO2 and RR should respond within 15-30 seconds. The Avatar mode will show chest rise improving. O2-Hb curve operating point should shift back up the steep part of the sigmoid.`,
+          targetPanel: 'avatar',
+          switchGauge: 'avatar',
+          priority: 80,
+          displayDuration: 14000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'sedation_deepening': {
+        const moass = event.data['moass'] as MOASSLevel;
+        actions.push({
+          type: 'narrate',
+          message: `Sedation deepening — MOASS ${moass}. Effect-site concentration is crossing the MOASS threshold. Open the EEG panel to see BIS declining and the DSA spectrogram shifting toward delta frequencies.`,
+          targetPanel: 'eeg',
+          openTab: true,
+          priority: 72,
+          displayDuration: 14000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'sedation_lightening': {
+        const moass = event.data['moass'] as MOASSLevel;
+        actions.push({
+          type: 'narrate',
+          message: `Sedation lightening — MOASS ${moass}. Drug redistribution is allowing consciousness to return. BIS rising, EEG showing more alpha activity. If a procedure is still in progress, this may indicate re-dosing is needed.`,
+          targetPanel: 'eeg',
+          openTab: true,
+          priority: 70,
+          displayDuration: 14000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'eeg_transition': {
+        const from = event.data['from'] as string;
+        const to = event.data['to'] as string;
+        const bis = event.data['bis'] as number;
+        let msg = '';
+        if (to === 'burst_suppression') {
+          msg = `BIS ${bis.toFixed(0)} — burst suppression detected. EEG shows alternating high-amplitude bursts and electrical silence. This is DEEP sedation, likely beyond procedural goals. Suppression ratio is climbing. Consider reducing drug dose.`;
+        } else if (to === 'deep') {
+          msg = `EEG transitioning to deep sedation (BIS ${bis.toFixed(0)}). Open the EEG panel — the DSA spectrogram shows power concentrating in delta range (0-4 Hz). Propofol's signature: frontal alpha spindles disappearing, replaced by slow waves.`;
+        } else if (to === 'moderate') {
+          msg = `EEG shows moderate sedation (BIS ${bis.toFixed(0)}). Theta/delta waves emerging. From ${from}. This is the target range for most procedural sedation (BIS 60-80 = sedation; BIS 40-60 = general anesthesia).`;
+        } else {
+          msg = `EEG state: ${from} → ${to} (BIS ${bis.toFixed(0)}). Open the EEG panel to see the spectral changes in real time.`;
+        }
+        actions.push({
+          type: 'explain',
+          message: msg,
+          targetPanel: 'eeg',
+          openTab: true,
+          priority: 78,
+          displayDuration: 16000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'rhythm_change': {
+        const toRhythm = (event.data['to'] as string).replace(/_/g, ' ');
+        const fromRhythm = (event.data['from'] as string).replace(/_/g, ' ');
+        const isDangerous = ['ventricular fibrillation', 'ventricular tachycardia', 'polymorphic vt', 'asystole', 'pea'].includes(toRhythm);
+        if (isDangerous) {
+          actions.push({
+            type: 'suggest_action',
+            message: `⚠ RHYTHM CHANGE: ${fromRhythm} → ${toRhythm}. This is a DANGEROUS rhythm requiring immediate action. Open Emergency Drugs panel. Follow ACLS algorithm. Stop all sedatives.`,
+            targetPanel: 'emergency_drugs',
+            priority: 100,
+            displayDuration: 20000,
+            eventType: event.type,
+          });
+        } else {
+          actions.push({
+            type: 'narrate',
+            message: `Rhythm change detected: ${fromRhythm} → ${toRhythm}. Look at the ECG on the monitor. Key questions: Is the QRS narrow or wide? Is the rate regular? Are P waves visible? These features guide management.`,
+            targetPanel: 'monitor',
+            priority: 82,
+            displayDuration: 15000,
+            eventType: event.type,
+          });
+        }
+        break;
+      }
+
+      case 'desaturation_cascade': {
+        const spo2 = event.data['spo2'] as number;
+        const rr = event.data['rr'] as number;
+        actions.push({
+          type: 'direct_attention',
+          message: `SpO2 ${spo2.toFixed(0)}% + RR ${rr.toFixed(0)}/min falling together — desaturation cascade. Opioid/hypnotic CNS depression → ↓ respiratory drive → ↓ RR → ↑ EtCO2 → ↓ PaO2 → ↓ SpO2. Open O2-Hb curve to see the operating point sliding down the steep sigmoid.`,
+          targetPanel: 'oxyhb',
+          openTab: true,
+          priority: 90,
+          displayDuration: 18000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'hemodynamic_compromise': {
+        const sbp = event.data['sbp'] as number;
+        const map = event.data['map'] as number;
+        actions.push({
+          type: 'direct_attention',
+          message: `BP falling — SBP ${sbp.toFixed(0)}, MAP ${map.toFixed(0)}. Propofol causes vasodilation + myocardial depression. Open Frank-Starling: the operating point is shifting left (reduced preload) and the ESPVR slope (Ees = contractility) may be declining.`,
+          targetPanel: 'frank_starling',
+          openTab: true,
+          priority: 88,
+          displayDuration: 18000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'frank_starling_shift': {
+        const vedv = event.data['vedv'] as number;
+        const sv = event.data['sv'] as number;
+        actions.push({
+          type: 'explain',
+          message: `Preload changing — VEDV ${vedv.toFixed(0)} mL, SV ${sv.toFixed(0)} mL. Open Frank-Starling to watch the operating point move along the curve. More preload → more stretch → more force (Starling's law). But beyond optimal length, the curve flattens.`,
+          targetPanel: 'frank_starling',
+          openTab: true,
+          priority: 65,
+          displayDuration: 15000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'oxyhb_curve_shift': {
+        const dir = event.data['direction'] as string;
+        const paco2 = event.data['paco2'] as number;
+        actions.push({
+          type: 'explain',
+          message: `O2-Hb curve shifting ${dir} (PaCO2 ${paco2.toFixed(0)} mmHg → P50 changing). ${dir === 'right' ? 'Right shift (Bohr effect): higher CO2/lower pH causes Hb to release O2 more readily. Good for tissue delivery, but SpO2 appears lower for same PaO2.' : 'Left shift: alkalosis makes Hb bind O2 more tightly — less delivery to tissues.'} Open O2-Hb panel.`,
+          targetPanel: 'oxyhb',
+          openTab: true,
+          priority: 62,
+          displayDuration: 16000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'user_idle': {
+        const idle = event.data['idleSeconds'] as number;
+        // Cycle through educational directions when user is idle
+        const idleMsgs = [
+          {
+            msg: `While the patient is stable, explore the Echo tab — real-time echocardiogram shows EF ${(ctx.frankStarlingPoint?.ef ?? 60).toFixed(0)}%. Notice mitral valve opening each cycle. E/A ratio reflects diastolic function.`,
+            panel: 'echo' as SimMasterTargetPanel,
+            tab: true,
+          },
+          {
+            msg: `Have you explored the O2-Hb dissociation curve? The patient's operating point is at SpO2 ${ctx.vitals.spo2.toFixed(0)}%. The curve shape explains why small PaO2 drops near the plateau cause large SpO2 falls on the steep part.`,
+            panel: 'oxyhb' as SimMasterTargetPanel,
+            tab: true,
+          },
+          {
+            msg: `Switch to Avatar view — chest rise matches RR on the monitor. Skin tone reflects SpO2 (normal pink → pale → cyanotic below 90%). Pupils dilate with deep sedation (MOASS ≤1).`,
+            panel: 'avatar' as SimMasterTargetPanel,
+            switchGauge: 'avatar',
+          },
+          {
+            msg: `Check Frank-Starling — the ESPVR slope (Ees) represents contractility. Propofol decreases Ees as you deepen sedation. Notice the PV loop shape changing with drug levels.`,
+            panel: 'frank_starling' as SimMasterTargetPanel,
+            tab: true,
+          },
+        ];
+        const pick = idleMsgs[Math.floor(idle / 30) % idleMsgs.length];
+        actions.push({
+          type: 'direct_attention',
+          message: pick.msg,
+          targetPanel: pick.panel,
+          openTab: pick.tab,
+          switchGauge: pick.switchGauge,
+          priority: 40,
+          displayDuration: 18000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      case 'nothing_happening': {
+        const moass = event.data['moass'] as MOASSLevel;
+        const bis = ctx.eegState?.bisIndex ?? 0;
+        actions.push({
+          type: 'explain',
+          message: `Patient stable at MOASS ${moass}${bis > 0 ? `, BIS ${bis.toFixed(0)}` : ''}. Good sedation management. This is a good time to review the Drug Panel — Ghost Dose shows predicted Ce trajectory for the next dose. What's the expected peak Ce for a 1 mg/kg propofol bolus?`,
+          targetPanel: 'drug_panel',
+          priority: 35,
+          displayDuration: 18000,
+          eventType: event.type,
+        });
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
+
+  // Sort by priority descending
+  return actions.sort((a, b) => b.priority - a.priority);
+}
+
+// ---------------------------------------------------------------------------
+// Directed exploration commentary (for Socratic Q&A via Claude)
+// ---------------------------------------------------------------------------
+
+export function shouldAskQuestion(
+  ctx: SimMasterContext,
+  lastSocraticTime: number
+): boolean {
+  const timeSinceLast = Date.now() - lastSocraticTime;
+  const interval = 60000 + Math.random() * 30000; // 60-90 seconds
+  return (
+    timeSinceLast > interval &&
+    ctx.elapsedSeconds > 30 &&
+    ctx.moass >= 1 &&
+    ctx.moass <= 4 &&
+    ctx.userIdleSeconds < 120 // don't interrupt if user has been idle very long
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Legacy API (backward compatibility)
 // ---------------------------------------------------------------------------
 
 interface SimSnapshot {
@@ -266,68 +830,50 @@ export function hasSignificantChange(current: SimSnapshot): boolean {
   return changed;
 }
 
-// ---------------------------------------------------------------------------
-// Generate the most important observation (offline - no API needed)
-// ---------------------------------------------------------------------------
-
 export function generateObservation(
   vitals: Vitals,
   moass: MOASSLevel,
   eeg?: EEGState,
   pkStates?: Record<string, { ce: number }>
 ): SimMasterAnnotation {
-  // Assess all parameters
   const assessments = assessAllVitals(vitals, moass, eeg, pkStates);
   const abnormal = assessments.filter(a => a.status !== 'normal');
 
-  // Find highest priority matching clinical message
-  for (const cm of CLINICAL_MESSAGES) {
+  const CLINICAL_MESSAGES_INLINE = [
+    { param: 'rr', condition: (v: number) => v === 0, status: 'critical',
+      message: () => 'APNEA! No respiratory effort detected. Bag-mask ventilate immediately!', target: 'rr_display', priority: 100 },
+    { param: 'spo2', condition: (v: number) => v <= 80, status: 'critical',
+      message: (v: number) => `CRITICAL HYPOXIA: SpO2 ${rv(v)}%! Immediate airway intervention required.`, target: 'spo2_display', priority: 99 },
+    { param: 'sbp', condition: (v: number) => v <= 60, status: 'critical',
+      message: (v: number) => `CARDIOVASCULAR COLLAPSE: SBP ${rv(v)}mmHg. Vasopressors + fluid resuscitation NOW.`, target: 'bp_display', priority: 97 },
+    { param: 'spo2', condition: (v: number) => v <= 88, status: 'danger',
+      message: (v: number) => `DESATURATION: SpO2 ${rv(v)}%. Increase FiO2, jaw thrust, consider airway adjunct.`, target: 'spo2_display', priority: 90 },
+    { param: 'rr', condition: (v: number) => v <= 5 && v > 0, status: 'danger',
+      message: (v: number) => `Severe respiratory depression: RR ${rv(v)}/min.`, target: 'rr_display', priority: 89 },
+    { param: 'sbp', condition: (v: number) => v <= 75, status: 'danger',
+      message: (v: number) => `Significant hypotension: SBP ${rv(v)}mmHg. Fluid bolus, reduce propofol.`, target: 'bp_display', priority: 88 },
+    { param: 'spo2', condition: (v: number) => v <= 92, status: 'warning',
+      message: (v: number) => `SpO2 trending down to ${rv(v)}%. Monitor airway patency, increase O2.`, target: 'spo2_display', priority: 70 },
+    { param: 'rr', condition: (v: number) => v <= 8, status: 'warning',
+      message: (v: number) => `Respiratory rate low at ${rv(v)}/min. Watch for further depression.`, target: 'rr_display', priority: 69 },
+  ];
+
+  for (const cm of CLINICAL_MESSAGES_INLINE) {
     const assessment = assessments.find(a => a.param === cm.param);
     if (assessment && cm.condition(assessment.value)) {
-      const sev = cm.status === 'critical' ? 'danger' : cm.status === 'danger' ? 'danger' : 'warning';
       return {
         message: cm.message(assessment.value),
         target: cm.target,
-        severity: sev as 'info' | 'warning' | 'danger',
+        severity: cm.status === 'critical' || cm.status === 'danger' ? 'danger' : 'warning',
         action: cm.status === 'critical' ? 'pulse' : cm.status === 'danger' ? 'point' : 'highlight',
         timestamp: Date.now(),
       };
     }
   }
 
-  // Drug-specific observations if no vital sign alerts
-  if (pkStates) {
-    const propCe = pkStates['propofol']?.ce || 0;
-    const fentCe = pkStates['fentanyl']?.ce || 0;
-    if (propCe > 5) {
-      return {
-        message: `Propofol Ce ${propCe.toFixed(1)} mcg/mL - very high. Risk of burst suppression and hemodynamic compromise.`,
-        target: 'drug_panel',
-        severity: 'warning',
-        action: 'point',
-        timestamp: Date.now(),
-      };
-    }
-    if (fentCe > 0.003 && vitals.rr < 10) {
-      return {
-        message: `Opioid-hypnotic synergy: Fentanyl Ce ${(fentCe * 1000).toFixed(1)}ng/mL with RR ${rv(vitals.rr)}. Monitor closely.`,
-        target: 'rr_display',
-        severity: 'warning',
-        action: 'highlight',
-        timestamp: Date.now(),
-      };
-    }
-  }
-
-  // Positive reinforcement when stable
   if (abnormal.length === 0) {
-    const msgs = [
-      `All vitals in normal range. MOASS ${moass}/5. Good sedation management.`,
-      `Patient stable. HR ${rv(vitals.hr)}, SpO2 ${rv(vitals.spo2)}%, BP ${rv(vitals.sbp)}. Continue monitoring.`,
-      `Sedation depth appropriate (MOASS ${moass}/5). Vitals within target ranges.`,
-    ];
     return {
-      message: msgs[Math.floor(Date.now() / 10000) % msgs.length],
+      message: `All vitals normal. MOASS ${moass}/5. Continue monitoring.`,
       target: 'moass_gauge',
       severity: 'info',
       action: 'highlight',
@@ -335,8 +881,11 @@ export function generateObservation(
     };
   }
 
-  // Fallback: report the first abnormal parameter found
   const worst = abnormal[0];
+  const PARAM_TO_TARGET: Record<string, string> = {
+    hr: 'hr_display', spo2: 'spo2_display', sbp: 'bp_display',
+    rr: 'rr_display', etco2: 'etco2_display', moass: 'moass_gauge', bis: 'ecg_trace',
+  };
   return {
     message: `${worst.label} is ${worst.value}${worst.unit} (${worst.status}). Monitor closely.`,
     target: PARAM_TO_TARGET[worst.param] || 'moass_gauge',
@@ -346,7 +895,6 @@ export function generateObservation(
   };
 }
 
-// Alias for backward compat
 export async function querySimMaster(): Promise<SimMasterAnnotation | null> {
   return null;
 }
@@ -360,6 +908,10 @@ export default {
   assessAllVitals,
   assessParam,
   hasSignificantChange,
+  detectEvents,
+  generateActions,
+  resetDetectionState,
+  shouldAskQuestion,
   SCREEN_REGIONS,
   CLINICAL_RANGES,
 };
