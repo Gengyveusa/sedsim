@@ -55,6 +55,33 @@ const MentorChat: React.FC<MentorChatProps> = ({
   const mentorMessages = useAIStore(s => s.mentorMessages);
   const pendingContinue = useAIStore(s => s.pendingContinue);
 
+  // Countdown for auto-advance timer on "Next Step" button
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (pendingContinue && !currentQuestion) {
+      // Start countdown from 8s (matches AUTO_ADVANCE_MS for steps with dialogue)
+      setAutoAdvanceCountdown(8);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = setInterval(() => {
+        setAutoAdvanceCountdown(prev => {
+          if (prev === null || prev <= 1) {
+            if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null; }
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null; }
+      setAutoAdvanceCountdown(null);
+    }
+    return () => {
+      if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null; }
+    };
+  }, [pendingContinue, currentQuestion]);
+
   // Sync mentor messages from store into local messages (for scenario dialogues)
   const lastSyncedIdxRef = useRef<number>(0);
   useEffect(() => {
@@ -348,11 +375,11 @@ const MentorChat: React.FC<MentorChatProps> = ({
       {pendingContinue && !currentQuestion && (
         <div className="mx-3 mb-2">
           <button
-            onClick={() => scenarioEngine.continuePendingStep()}
+            onClick={() => { scenarioEngine.continuePendingStep(); setAutoAdvanceCountdown(null); }}
             className="w-full text-sm py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-colors"
             style={{ animation: 'continue-pulse 1.5s ease-in-out infinite' }}
           >
-            ▶ Next Step
+            ▶ Next Step{autoAdvanceCountdown !== null ? ` (${autoAdvanceCountdown}s)` : ''}
           </button>
           <style>{`
             @keyframes continue-pulse {

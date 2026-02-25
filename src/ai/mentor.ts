@@ -237,8 +237,8 @@ export const autoObserve = (context: {
     observations.push(`Fentanyl Ce ${(fentCe * 1000).toFixed(1)} ng/mL with RR ${vitals.rr}/min. Opioid synergy with hypnotic – monitor closely.`);
   }
 
-  // Periodic status messages (every 60 seconds)
-  if (observations.length === 0 && elapsedSeconds > 0 && elapsedSeconds % 60 < 2) {
+  // Periodic status messages (every 30 seconds)
+  if (observations.length === 0 && elapsedSeconds > 0 && elapsedSeconds % 30 < 2) {
     if (moass >= 2 && moass <= 3) {
       observations.push(`Status check at T+${Math.floor(elapsedSeconds / 60)}min: MOASS ${moass}/5 – target sedation depth maintained. Vitals stable.`);
     } else if (moass === 1) {

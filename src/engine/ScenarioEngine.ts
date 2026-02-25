@@ -198,7 +198,7 @@ export function jsonScenarioToInteractive(json: SedSimScenario): InteractiveScen
         }
       } else {
         triggerType = 'on_step_complete';
-        afterStepId = predecessors[0];
+        afterStepId = predecessors[0] ?? json.states[idx - 1]?.id;
       }
     }
 
@@ -338,6 +338,7 @@ export class ScenarioEngine {
   private jsonScenario: SedSimScenario | null = null;
   private jsonAnswers = new Map<string, string>(); // stateId → selected option label
   private lastStepFiredAt = 0;
+  private autoAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
 
   loadScenario(scenario: InteractiveScenario) {
     this.jsonScenario = scenario.jsonSource ?? null;
@@ -351,6 +352,7 @@ export class ScenarioEngine {
     this.awaitingContinue = null;
     this.lastStepFiredAt = 0;
     this.started = false;
+    if (this.autoAdvanceTimer) { clearTimeout(this.autoAdvanceTimer); this.autoAdvanceTimer = null; }
     // Reset sim and select patient archetype
     const sim = useSimStore.getState();
     sim.reset();
@@ -523,6 +525,7 @@ export class ScenarioEngine {
   }
 
   continuePendingStep() {
+    if (this.autoAdvanceTimer) { clearTimeout(this.autoAdvanceTimer); this.autoAdvanceTimer = null; }
     if (!this.awaitingContinue) return;
     const stepId = this.awaitingContinue.stepId;
     this.firedStepIds.add(stepId);
@@ -533,6 +536,7 @@ export class ScenarioEngine {
   stop() {
     if (this.timerId) clearInterval(this.timerId);
     this.timerId = null;
+    if (this.autoAdvanceTimer) { clearTimeout(this.autoAdvanceTimer); this.autoAdvanceTimer = null; }
     if (this.desaturationTimer) {
       clearInterval(this.desaturationTimer);
       this.desaturationTimer = null;
@@ -566,9 +570,11 @@ export class ScenarioEngine {
   private evaluateTriggers() {
     if (!this.scenario) return;
 
-    // Cooldown: skip non-physiology triggers within 5 scenario-seconds of the last
+    // Cooldown: skip non-physiology triggers within a scenario-second window of the last
     // fired step to prevent rapid progression. on_physiology safety triggers are exempt.
-    const cooldownActive = this.scenarioTimeSeconds - this.lastStepFiredAt < 5;
+    // on_step_complete uses a shorter 2s cooldown for natural sequential flow.
+    const cooldownSeconds = 5;
+    const cooldownActive = this.scenarioTimeSeconds - this.lastStepFiredAt < cooldownSeconds;
 
     const sim = useSimStore.getState();
     const vitals = sim.vitals;
@@ -634,8 +640,9 @@ export class ScenarioEngine {
       }
 
       if (shouldFire) {
-        // Enforce cooldown for non-physiology triggers
-        if (cooldownActive && step.triggerType !== 'on_physiology') continue;
+        // Enforce cooldown for non-physiology triggers; on_step_complete uses 2s cooldown
+        const stepCooldown = step.triggerType === 'on_step_complete' ? 2 : cooldownSeconds;
+        if (this.scenarioTimeSeconds - this.lastStepFiredAt < stepCooldown && step.triggerType !== 'on_physiology') continue;
         // If a physiology trigger fires while awaiting continue, auto-clear the pending continue
         if (this.awaitingContinue && step.triggerType === 'on_physiology') {
           this.awaitingContinue = null;
@@ -753,9 +760,17 @@ export class ScenarioEngine {
       if (step.teachingPoints?.length) {
         this.speakAsMillie(['📚 **Teaching Points:**\n' + step.teachingPoints.map(tp => `• ${tp}`).join('\n')]);
       }
-      // ALL non-question steps require the student to click Next Step before advancing.
+      // Gate next step behind Continue / Next Step button, but also auto-advance after a delay.
+      // User can click "Next Step" early to skip the wait.
       this.awaitingContinue = { stepId: step.id };
       useAIStore.getState().setPendingContinue({ stepId: step.id, stepLabel: step.id });
+      const AUTO_ADVANCE_MS = step.millieDialogue.length > 0 ? 8000 : 3000;
+      if (this.autoAdvanceTimer) clearTimeout(this.autoAdvanceTimer);
+      this.autoAdvanceTimer = setTimeout(() => {
+        this.autoAdvanceTimer = null;
+        this.continuePendingStep();
+        this.evaluateTriggers();
+      }, AUTO_ADVANCE_MS);
     } else {
       // Present question — pause until answered
       this.speakAsMillie(step.millieDialogue);
