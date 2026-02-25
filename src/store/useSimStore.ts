@@ -60,6 +60,15 @@ interface SimState {
   isRunning: boolean;
   speedMultiplier: number;
 
+  // SimMaster user behavior tracking
+  activeTab: string;
+  activeGaugeMode: string;
+  userIdleSeconds: number;
+  lastUserInteraction: number;
+  lastDrugAdministered: { name: string; dose: number; timestamp: number } | null;
+  lastInterventionApplied: string | null;
+  drugsAdministeredCount: number;
+
   // Patient
   patient: Patient;
   archetypeKey: string;
@@ -136,6 +145,9 @@ interface SimState {
   setIVAccess: (location: string, gauge: string) => void;
   logEvent: (message: string, type?: LogEntry['type'], severity?: LogEntry['severity']) => void;
   overrideVital: (parameter: string, value: number) => void;
+  setActiveTab: (tab: string) => void;
+  setActiveGaugeMode: (mode: string) => void;
+  recordUserInteraction: () => void;
   reset: () => void;
 }
 
@@ -252,6 +264,15 @@ const useSimStore = create<SimState>((set, get) => ({
   elapsedSeconds: 0,
   isRunning: false,
   speedMultiplier: 1,
+
+  // SimMaster user behavior tracking
+  activeTab: '',
+  activeGaugeMode: 'petals',
+  userIdleSeconds: 0,
+  lastUserInteraction: Date.now(),
+  lastDrugAdministered: null,
+  lastInterventionApplied: null,
+  drugsAdministeredCount: 0,
 
   patient: PATIENT_ARCHETYPES.healthy_adult,
   archetypeKey: 'healthy_adult',
@@ -446,6 +467,9 @@ const useSimStore = create<SimState>((set, get) => ({
     // Pre-compute derived visualization state (all components are pure consumers)
     const vizState = computeVisualizationState(newVitals, newPkStates, patient, moass, combinedEff, fio2);
 
+    // Update userIdleSeconds
+    const newUserIdleSeconds = state.userIdleSeconds + dt;
+
     set({
       elapsedSeconds: newTime,
       pkStates: newPkStates,
@@ -459,6 +483,7 @@ const useSimStore = create<SimState>((set, get) => ({
       digitalTwin: newDigitalTwin,
       ivFluids: newIvFluids,
       emergencyState: newEmergencyState,
+      userIdleSeconds: newUserIdleSeconds,
       ...vizState,
     });
   },
@@ -486,6 +511,10 @@ const useSimStore = create<SimState>((set, get) => ({
     set({
       pkStates: { ...state.pkStates, [drugName]: newState },
       eventLog: [...state.eventLog, logEntry],
+      lastDrugAdministered: { name: drug.name, dose, timestamp: Date.now() },
+      drugsAdministeredCount: state.drugsAdministeredCount + 1,
+      lastUserInteraction: Date.now(),
+      userIdleSeconds: 0,
     });
   },
 
@@ -611,6 +640,9 @@ const useSimStore = create<SimState>((set, get) => ({
     set({
       interventions: newInterventions,
       eventLog: [...state.eventLog, logEntry],
+      lastInterventionApplied: intervention,
+      lastUserInteraction: Date.now(),
+      userIdleSeconds: 0,
     });
   },
 
@@ -741,6 +773,18 @@ const useSimStore = create<SimState>((set, get) => ({
     set({ vitals: updated });
   },
 
+  setActiveTab: (tab) => {
+    set({ activeTab: tab, lastUserInteraction: Date.now(), userIdleSeconds: 0 });
+  },
+
+  setActiveGaugeMode: (mode) => {
+    set({ activeGaugeMode: mode, lastUserInteraction: Date.now(), userIdleSeconds: 0 });
+  },
+
+  recordUserInteraction: () => {
+    set({ lastUserInteraction: Date.now(), userIdleSeconds: 0 });
+  },
+
   reset: () => {
     const state = get();
     const patient = state.patient;
@@ -786,6 +830,13 @@ const useSimStore = create<SimState>((set, get) => ({
         isArrest: false,
         requiresImmediateIntervention: false,
       },
+      activeTab: '',
+      activeGaugeMode: 'petals',
+      userIdleSeconds: 0,
+      lastUserInteraction: Date.now(),
+      lastDrugAdministered: null,
+      lastInterventionApplied: null,
+      drugsAdministeredCount: 0,
       ...DEFAULT_VIZ_STATE,
     });
   },

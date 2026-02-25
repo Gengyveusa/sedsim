@@ -59,6 +59,9 @@ interface AIState {
   // SimMaster
   simMasterEnabled: boolean;
   simMasterAnnotation: SimMasterAnnotation | null;
+  // SimMaster tab/gauge control requests (set by SimMaster, consumed by Dashboard/SedationGauge)
+  requestOpenTab: string | null;
+  requestGaugeMode: string | null;
 
   // Actions
   initializeAI: () => void;
@@ -85,6 +88,10 @@ interface AIState {
   setPendingContinue: (pending: { stepId: string; stepLabel: string } | null) => void;
   setSimMasterEnabled: (enabled: boolean) => void;
   setSimMasterAnnotation: (a: SimMasterAnnotation | null) => void;
+  openSidebarTab: (tabId: string) => void;
+  switchGaugeMode: (mode: string) => void;
+  clearTabRequest: () => void;
+  clearGaugeModeRequest: () => void;
 }
 
 const useAIStore = create<AIState>((set, get) => ({
@@ -112,6 +119,8 @@ const useAIStore = create<AIState>((set, get) => ({
   pendingContinue: null,
   simMasterEnabled: false,
   simMasterAnnotation: null,
+  requestOpenTab: null,
+  requestGaugeMode: null,
 
   initializeAI: () => {
     const orchestrator = new MultiAgentOrchestrator();
@@ -253,6 +262,22 @@ const useAIStore = create<AIState>((set, get) => ({
 
   setSimMasterAnnotation: (a) => {
     set({ simMasterAnnotation: a });
+  },
+
+  openSidebarTab: (tabId) => {
+    set({ requestOpenTab: tabId });
+  },
+
+  switchGaugeMode: (mode) => {
+    set({ requestGaugeMode: mode });
+  },
+
+  clearTabRequest: () => {
+    set({ requestOpenTab: null });
+  },
+
+  clearGaugeModeRequest: () => {
+    set({ requestGaugeMode: null });
   },
 }));
 

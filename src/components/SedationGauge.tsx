@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import useSimStore from '../store/useSimStore';
+import useAIStore from '../store/useAIStore';
 import { DRUG_DATABASE } from '../engine/drugs';
 import { hillEffect } from '../engine/pdModel';
 import { MOASSLevel } from '../types';
@@ -81,7 +82,28 @@ export default function SedationGauge() {
   const [mode, setMode] = useState<GaugeMode>('petals');
   const [autoSwitched, setAutoSwitched] = useState(false);
 
-      const { combinedEff, moass, pkStates, vitals, patient } = useSimStore();
+  const { combinedEff, moass, pkStates, vitals, patient, setActiveGaugeMode } = useSimStore();
+
+  // Respond to SimMaster gauge switch requests
+  const requestGaugeMode = useAIStore((s: { requestGaugeMode: string | null }) => s.requestGaugeMode);
+  const clearGaugeModeRequest = useAIStore((s: { clearGaugeModeRequest: () => void }) => s.clearGaugeModeRequest);
+
+  useEffect(() => {
+    if (requestGaugeMode) {
+      const modeMap: Record<string, GaugeMode> = {
+        avatar: 'avatar', risk: 'risk', radar: 'risk', petals: 'petals',
+      };
+      const mapped = modeMap[requestGaugeMode];
+      if (mapped) setMode(mapped);
+      clearGaugeModeRequest();
+    }
+  }, [requestGaugeMode, clearGaugeModeRequest]);
+
+  // Sync mode to store
+  useEffect(() => {
+    setActiveGaugeMode(mode);
+  }, [mode, setActiveGaugeMode]);
+
   const size = 800;
   const cy = size / 2;
   const cx = size / 2;  

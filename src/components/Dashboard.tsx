@@ -15,13 +15,32 @@ export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AITab | null>(null);
   const [mentorOpen, setMentorOpen] = useState(true);
 
-  // Respond to external requests to switch tab (e.g., from ScenarioEngine)
+  const setStoreActiveTab = useSimStore(s => s.setActiveTab);
+  const recordUserInteraction = useSimStore(s => s.recordUserInteraction);
+
+  // Respond to external requests to switch tab (e.g., from ScenarioEngine or SimMaster)
   const storeActiveAITab = useAIStore(s => s.activeAITab);
+  const requestOpenTab = useAIStore(s => s.requestOpenTab);
+  const clearTabRequest = useAIStore(s => s.clearTabRequest);
+
   useEffect(() => {
     if (storeActiveAITab === 'mentor' || storeActiveAITab === 'eeg' || storeActiveAITab === 'simmaster') {
       setActiveTab(storeActiveAITab as AITab);
     }
   }, [storeActiveAITab]);
+
+  // React to SimMaster's tab open requests
+  useEffect(() => {
+    if (requestOpenTab) {
+      setActiveTab(requestOpenTab as AITab);
+      clearTabRequest();
+    }
+  }, [requestOpenTab, clearTabRequest]);
+
+  // Sync active tab to store for SimMaster awareness
+  useEffect(() => {
+    setStoreActiveTab(activeTab ?? '');
+  }, [activeTab, setStoreActiveTab]);
 
   const simState = useSimStore((s) => ({
     vitals: s.vitals,
@@ -50,7 +69,9 @@ export const Dashboard: React.FC = () => {
   ];
 
   const handleTabClick = (id: AITab) => {
-    setActiveTab(activeTab === id ? null : id);
+    const newTab = activeTab === id ? null : id;
+    setActiveTab(newTab);
+    recordUserInteraction();
   };
 
   return (
