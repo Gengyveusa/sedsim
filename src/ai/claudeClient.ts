@@ -37,11 +37,14 @@ export interface ClaudeContext {
   vitals: Vitals;
   moass: MOASSLevel;
   eeg?: EEGState;
-  pkStates: Record<string, { ce: number }>;
+  pkStates: Record<string, { ce: number; cp?: number }>;
   elapsedSeconds?: number;
   _systemOverride?: string;
   learnerLevel?: 'novice' | 'intermediate' | 'advanced';
   recentEvents?: string[];
+  activeTab?: string;
+  activeGaugeMode?: string;
+  [key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------
