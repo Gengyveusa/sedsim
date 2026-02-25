@@ -34,12 +34,13 @@ const MOASS_LABEL: Record<number, string> = {
 };
 
 const GhostDosePreview: React.FC = () => {
-  const { pkStates, infusions, patient, vitals, fio2 } = useSimStore((s) => ({
+  const { pkStates, infusions, patient, vitals, fio2, interventions } = useSimStore((s) => ({
     pkStates: s.pkStates,
     infusions: s.infusions,
     patient: s.patient,
     vitals: s.vitals,
     fio2: s.fio2,
+    interventions: s.interventions,
   }));
 
   const [selectedDrug, setSelectedDrug] = useState('propofol');
@@ -68,7 +69,8 @@ const GhostDosePreview: React.FC = () => {
             fio2,
             vitals,
             [60, 180, 300],
-            { drugName: selectedDrug, dose }
+            { drugName: selectedDrug, dose },
+            interventions
           );
 
           const mapped: PredictionResult[] = snapshots.map((s) => ({
@@ -107,7 +109,7 @@ const GhostDosePreview: React.FC = () => {
         }
       }, 0);
     },
-    [pkStates, infusions, patient, fio2, vitals, selectedDrug, selectedDrug$]
+    [pkStates, infusions, patient, fio2, vitals, selectedDrug, selectedDrug$, interventions]
   );
 
   const handleCustomRun = () => {

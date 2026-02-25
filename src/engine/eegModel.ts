@@ -96,28 +96,16 @@ const generateRawSample = (
   return (signal + noise + emg) * burstMultiplier;
 };
 
-// Compute BIS-like index from effect-site concentrations
+// Compute BIS-like index — driven by combinedEff (accounts for drug synergy)
+// plus drug-specific modifiers for ketamine (raises BIS) and dexmedetomidine spindles
 const computeBISIndex = (
-  propCe: number,
-  dexCe: number,
+  combinedEff: number,
   ketCe: number,
-  midazCe: number,
-  fentCe: number
 ): number => {
-  // Sigmoid Emax model for BIS
-  // Fentanyl is an opioid (not hypnotic) — minimal direct BIS effect (weight ~3, not 200)
-  const totalEffect = propCe * 1.0 + midazCe * 10 + dexCe * 1.5 + fentCe * 3;
-  const ec50 = 3.5; // BIS EC50 for propofol-equivalent
-  const gamma = 2.5;
-  const emax = 100;
-
+  // combinedEff=0 → BIS=100 (fully awake), combinedEff=1 → BIS=0 (isoelectric)
   // Ketamine paradoxically increases BIS
   const ketEffect = ketCe > 0.5 ? Math.min(15, ketCe * 8) : 0;
-
-  const fractionalEffect = Math.pow(totalEffect, gamma) /
-    (Math.pow(ec50, gamma) + Math.pow(totalEffect, gamma));
-
-  return Math.round(Math.max(0, Math.min(100, emax * (1 - fractionalEffect) + ketEffect)));
+  return Math.round(Math.max(0, Math.min(100, 100 * (1 - combinedEff) + ketEffect)));
 };
 
 // Determine sedation state from BIS index
@@ -169,12 +157,13 @@ export const generateEEG = (
   dexCe: number,
   ketCe: number,
   midazCe: number,
-  fentCe: number,
+  _fentCe: number,  // kept for API compatibility; opioids have minimal direct cortical effect
   age: number,
   simTime: number,
+  combinedEff: number,  // NEW: combined drug effect from pdModel (accounts for synergy)
   previousState?: EEGState
 ): EEGState => {
-  const bisIndex = computeBISIndex(propCe, dexCe, ketCe, midazCe, fentCe);
+  const bisIndex = computeBISIndex(combinedEff, ketCe);
   const sedationState = getSedationState(bisIndex);
   // Propofol-equivalent combined Ce with age sensitivity (matches waveform generation)
   const ageSensitivity = age > 65 ? 1.2 : age < 18 ? 0.85 : 1.0;

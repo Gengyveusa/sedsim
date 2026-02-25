@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { PKState, Vitals, MOASSLevel, LogEntry, Patient, TrendPoint, DrugParams, InfusionState, InterventionType, AirwayDevice } from '../types';
+import { PKState, Vitals, MOASSLevel, LogEntry, Patient, TrendPoint, DrugParams, InfusionState, InterventionType, AirwayDevice, EmergencyState, EchoParams, FrankStarlingPoint, OxyHbPoint, AvatarState, WaveformParams } from '../types';
 import { DRUG_DATABASE } from '../engine/drugs';
 import { createInitialPKState, stepPK } from '../engine/pkModel';
 import { combinedEffect, effectToMOASS } from '../engine/pdModel';
-import { calculateVitals, checkAlarms, BASELINE_VITALS, PATIENT_ARCHETYPES } from '../engine/physiology';
+import { calculateVitals, checkAlarms, BASELINE_VITALS, PATIENT_ARCHETYPES, IVFluidContext } from '../engine/physiology';
 import { generateEEG, EEGState } from '../engine/eegModel';
 import { DigitalTwin, createDigitalTwin, updateTwin } from '../engine/digitalTwin';
 
@@ -100,6 +100,16 @@ interface SimState {
   // Digital Twin (risk predictions)
   digitalTwin: DigitalTwin | null;
 
+  // Emergency state (derived from alarms + rhythm)
+  emergencyState: EmergencyState;
+
+  // Derived visualization state (pre-computed in tick() for pure component consumption)
+  echoParams: EchoParams;
+  frankStarlingPoint: FrankStarlingPoint;
+  oxyHbPoint: OxyHbPoint;
+  avatarState: AvatarState;
+  waveformParams: WaveformParams;
+
   // IV Fluids
   ivFluids: IVFluidState;
 
@@ -134,6 +144,108 @@ function formatTime(seconds: number): string {
   const s = seconds % 60;
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
+
+/**
+ * Compute pre-derived visualization parameters from current sim state.
+ * Called once per tick so all components are pure consumers of store state.
+ */
+function computeVisualizationState(
+  vitals: Vitals,
+  pkStates: Record<string, PKState>,
+  patient: Patient,
+  moass: MOASSLevel,
+  combinedEff: number,
+  fio2: number,
+): { echoParams: EchoParams; frankStarlingPoint: FrankStarlingPoint; oxyHbPoint: OxyHbPoint; avatarState: AvatarState; waveformParams: WaveformParams } {
+  // ── Shared cardiac modifier computation (same as EchoSim & FrankStarlingCurve) ──
+  let ees = 2.5;
+  let edpScale = 1.0;
+  let vedv = 130;
+  let peakSys = vitals.sbp || 120;
+  const hr = vitals.hr || 75;
+
+  if (patient.age > 65) { ees -= 0.4; edpScale += 0.3; }
+  else if (patient.age > 50) { ees -= 0.2; edpScale += 0.15; }
+  if (patient.asa >= 3) { ees -= 0.3; edpScale += 0.2; }
+  else if (patient.asa >= 2) { ees -= 0.1; }
+  if (patient.copd) { vedv -= 5; }
+  if (patient.hepaticImpairment) { ees -= 0.2; }
+  if (patient.renalImpairment) { edpScale += 0.2; vedv += 10; }
+
+  const propCe = pkStates['propofol']?.ce || 0;
+  const midazCe = pkStates['midazolam']?.ce || 0;
+  const fentCe = pkStates['fentanyl']?.ce || 0;
+  const ketCe = pkStates['ketamine']?.ce || 0;
+
+  if (propCe > 0) { ees -= propCe * 0.15; peakSys -= propCe * 5; }
+  if (midazCe > 0) { ees -= midazCe * 0.05; }
+  if (fentCe > 0) { ees -= fentCe * 0.2; peakSys -= fentCe * 3; }
+  if (ketCe > 0) { ees += ketCe * 0.1; peakSys += ketCe * 4; }
+
+  if (moass >= 4) { ees -= 0.3; peakSys -= 15; }
+  else if (moass >= 2) { ees -= 0.15; peakSys -= 8; }
+  ees -= combinedEff * 0.08;
+
+  ees = Math.max(0.8, Math.min(4.0, ees));
+  edpScale = Math.max(0.5, Math.min(3.0, edpScale));
+  vedv = Math.max(90, Math.min(160, vedv));
+  peakSys = Math.max(60, Math.min(200, peakSys));
+
+  const vesv = Math.max(30, Math.min(vedv - 20, peakSys / ees + 5));
+  const sv = vedv - vesv;
+  const ef = (sv / vedv) * 100;
+  const pEdp = edpScale * Math.pow(Math.max(0, vedv - 10), 2) / 1000;
+
+  const echoParams: EchoParams = {
+    preload: Math.max(40, Math.min(200, vedv * edpScale * 0.92)),
+    afterload: Math.max(40, Math.min(200, peakSys * 0.6)),
+    contractility: Math.max(0.3, Math.min(2.0, ees / 2.5)),
+    heartRate: hr,
+  };
+
+  const frankStarlingPoint: FrankStarlingPoint = { vedv, vesv, sv, ef, pEdp, peakSys, ees, hr };
+
+  // ── OxyHb operating point ──
+  const etco2 = vitals.etco2 ?? 38;
+  const paco2 = etco2 + 5;
+  const pao2 = Math.max(0, fio2 * (760 - 47) - paco2 / 0.8);
+  const pH = 7.4 - (paco2 - 40) * 0.008;
+  let p50 = 26.6;
+  p50 *= Math.pow(10, 0.48 * (7.4 - pH));
+  p50 += (paco2 - 40) * 0.02;
+  p50 = Math.max(10, p50);
+
+  const oxyHbPoint: OxyHbPoint = { pao2, spo2: vitals.spo2, p50, paco2, pH };
+
+  // ── Avatar visual state ──
+  const skinTone: AvatarState['skinTone'] = vitals.spo2 < 90 ? 'cyanotic' : vitals.spo2 < 94 ? 'pale' : 'normal';
+  const avatarState: AvatarState = {
+    skinTone,
+    diaphoresis: vitals.hr > 120 || vitals.sbp < 80,
+    pupilDilated: moass <= 1,
+    chestRiseRate: vitals.rr,
+  };
+
+  // ── Waveform display parameters ──
+  const pulsePressure = (vitals.sbp - vitals.dbp) || 40;
+  const waveformParams: WaveformParams = {
+    plethAmplitude: Math.min(1.8, Math.max(0.1, pulsePressure / 40)),
+    capnoFlat: vitals.rr === 0,
+    rhythm: vitals.rhythm ?? 'normal_sinus',
+  };
+
+  return { echoParams, frankStarlingPoint, oxyHbPoint, avatarState, waveformParams };
+}
+
+/** Default derived visualization state (used for initial and reset state) */
+const DEFAULT_VIZ_STATE = computeVisualizationState(
+  { hr: 75, sbp: 120, dbp: 80, map: 93, rr: 14, spo2: 98, etco2: 38 },
+  {},
+  PATIENT_ARCHETYPES.healthy_adult,
+  5 as MOASSLevel,
+  0,
+  0.21,
+);
 
 const useSimStore = create<SimState>((set, get) => ({
   // Initial state
@@ -179,6 +291,15 @@ const useSimStore = create<SimState>((set, get) => ({
   eegState: null,
   digitalTwin: createDigitalTwin(PATIENT_ARCHETYPES.healthy_adult),
 
+  emergencyState: {
+    level: 'normal',
+    activeAlarms: [],
+    isArrest: false,
+    requiresImmediateIntervention: false,
+  },
+
+  ...DEFAULT_VIZ_STATE,
+
   ivFluids: {
     activeFluid: null,
     rate: 0,
@@ -221,7 +342,15 @@ const useSimStore = create<SimState>((set, get) => ({
 
     // Calculate new vitals using physiology engine
     const prevRhythm = prevVitals.rhythm ?? 'normal_sinus';
-    const newVitals = calculateVitals(newPkStates, patient, prevVitals, fio2, prevRhythm, state.elapsedSeconds);
+    const ivFluidContext: IVFluidContext = {
+      totalInfused: state.ivFluids.totalInfused,
+      isBolus: state.ivFluids.isBolus,
+      bolusVolume: state.ivFluids.bolusVolume,
+    };
+    const newVitals = calculateVitals(
+      newPkStates, patient, prevVitals, fio2, prevRhythm, state.elapsedSeconds,
+      state.interventions, ivFluidContext
+    );
 
     // Check for alarms
     const activeAlarms = checkAlarms(newVitals);
@@ -277,13 +406,13 @@ const useSimStore = create<SimState>((set, get) => ({
         severity: isLethal ? 'danger' : 'warning',
       });
     }
-    // Generate EEG state from effect-site concentrations
+    // Generate EEG state from combinedEff (accounts for drug synergies) + individual CEs for drug-specific features
     const propCe = newPkStates['propofol']?.ce || 0;
     const dexCe = newPkStates['dexmedetomidine']?.ce || 0;
     const ketCe = newPkStates['ketamine']?.ce || 0;
     const midazCe = newPkStates['midazolam']?.ce || 0;
     const fentCe = newPkStates['fentanyl']?.ce || 0;
-    const newEegState = generateEEG(propCe, dexCe, ketCe, midazCe, fentCe, patient.age, newTime, state.eegState ?? undefined);
+    const newEegState = generateEEG(propCe, dexCe, ketCe, midazCe, fentCe, patient.age, newTime, combinedEff, state.eegState ?? undefined);
 
     // Update digital twin with current PK states
     const newDigitalTwin = updateTwin(
@@ -302,6 +431,21 @@ const useSimStore = create<SimState>((set, get) => ({
       newIvFluids.totalInfused = state.ivFluids.totalInfused + state.ivFluids.rate / 3600;
     }
 
+    // Compute emergency state from alarms and rhythm
+    const arrestRhythms = ['ventricular_fibrillation', 'ventricular_tachycardia', 'polymorphic_vt', 'asystole', 'pea'];
+    const isArrest = arrestRhythms.includes(newRhythm);
+    const hasDanger = activeAlarms.some(a => a.severity === 'danger');
+    const hasWarning = activeAlarms.some(a => a.severity === 'warning');
+    const newEmergencyState: EmergencyState = {
+      level: isArrest ? 'arrest' : hasDanger ? 'critical' : hasWarning ? 'warning' : 'normal',
+      activeAlarms,
+      isArrest,
+      requiresImmediateIntervention: isArrest || hasDanger,
+    };
+
+    // Pre-compute derived visualization state (all components are pure consumers)
+    const vizState = computeVisualizationState(newVitals, newPkStates, patient, moass, combinedEff, fio2);
+
     set({
       elapsedSeconds: newTime,
       pkStates: newPkStates,
@@ -314,6 +458,8 @@ const useSimStore = create<SimState>((set, get) => ({
       eegState: newEegState,
       digitalTwin: newDigitalTwin,
       ivFluids: newIvFluids,
+      emergencyState: newEmergencyState,
+      ...vizState,
     });
   },
 
@@ -634,6 +780,13 @@ const useSimStore = create<SimState>((set, get) => ({
         isBolus: false,
         bolusVolume: 0,
       },
+      emergencyState: {
+        level: 'normal',
+        activeAlarms: [],
+        isArrest: false,
+        requiresImmediateIntervention: false,
+      },
+      ...DEFAULT_VIZ_STATE,
     });
   },
 }));

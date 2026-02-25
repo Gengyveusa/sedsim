@@ -1,5 +1,15 @@
-import { Vitals, Patient, PKState, CardiacRhythm } from '../types';
+import { Vitals, Patient, PKState, CardiacRhythm, InterventionType } from '../types';
 import { determineRhythm } from './cardiacRhythm';
+
+/** IV fluid state snapshot passed to physiology engine */
+export interface IVFluidContext {
+  totalInfused: number; // mL
+  isBolus: boolean;
+  bolusVolume: number;
+}
+
+/** Scenario overrides — parameter -> forced value */
+export type ScenarioOverrides = Partial<Vitals>;
 
 /**
  * Comprehensive Physiology Engine
@@ -312,6 +322,54 @@ export function checkAlarms(vitals: Vitals): { type: string; message: string; se
 }
 
 /**
+ * Compute the airway patency factor (0-1) and assisted RR from active interventions.
+ * Returns { patencyFactor, assistedRR }.
+ *  patencyFactor: multiplier applied to RR depression recovery (1 = full natural; higher = intervention helps)
+ *  assistedRR:    if bag-mask is active, override RR with assisted rate; null otherwise
+ */
+function computeInterventionAirwayEffects(
+  interventions: Set<InterventionType>,
+  baselineRR: number
+): { patencyBonus: number; assistedRR: number | null } {
+  let patencyBonus = 0;
+  let assistedRR: number | null = null;
+
+  if (interventions.has('bag_mask')) {
+    // BVM forces ventilation — override with assisted rate
+    assistedRR = baselineRR * 0.9; // near-normal assisted rate
+  }
+  if (interventions.has('jaw_thrust')) {
+    patencyBonus = Math.max(patencyBonus, 0.40); // restores ~40% of suppressed airway
+  }
+  if (interventions.has('chin_lift')) {
+    patencyBonus = Math.max(patencyBonus, 0.25); // slightly less effective
+  }
+  if (interventions.has('oral_airway')) {
+    patencyBonus = Math.max(patencyBonus, 0.30); // OPA maintains patency
+  }
+  if (interventions.has('nasal_airway')) {
+    patencyBonus = Math.max(patencyBonus, 0.25); // NPA maintains patency
+  }
+  if (interventions.has('suction')) {
+    patencyBonus = Math.max(patencyBonus, 0.15); // secretion clearance
+  }
+
+  return { patencyBonus, assistedRR };
+}
+
+/**
+ * Compute IV fluid effect on hemodynamics.
+ * Volume loading increases preload → MAP/SBP improve.
+ */
+function computeFluidHemodynamicBoost(ivFluids: IVFluidContext | undefined): number {
+  if (!ivFluids) return 0;
+  const totalMl = ivFluids.totalInfused;
+  // 250 mL bolus → ~10% MAP improvement, saturating at 1000 mL
+  // Simplified linear model capping at 15% MAP boost
+  return Math.min(0.15, totalMl / 6666);
+}
+
+/**
  * Main function to calculate all vitals based on PK state
  */
 export function calculateVitals(
@@ -320,7 +378,10 @@ export function calculateVitals(
   prevVitals: Vitals = BASELINE_VITALS,
   fio2: number = 0.21,
   prevRhythm: CardiacRhythm = 'normal_sinus',
-  elapsedSeconds: number = 0
+  elapsedSeconds: number = 0,
+  interventions: Set<InterventionType> = new Set(),
+  ivFluids?: IVFluidContext,
+  scenarioOverrides?: ScenarioOverrides
 ): Vitals {
   // Get patient-adjusted baseline
   const baseline = { ...BASELINE_VITALS };
@@ -332,7 +393,7 @@ export function calculateVitals(
   }
 
   // Calculate respiratory rate first (drives SpO2 and EtCO2)
-  const rr = computeRespiratoryRate(baseline.rr, pkStates, patient);
+  const rrRaw = computeRespiratoryRate(baseline.rr, pkStates, patient);
 
   // Cardiomyopathy adjustments
   const isHCM = (patient.drugSensitivity === 1.6 || patient.drugSensitivity === 1.8) &&
@@ -371,11 +432,38 @@ export function calculateVitals(
     baseline.etco2 = 42;
   }
 
+  // Apply airway intervention effects to RR
+  const { patencyBonus, assistedRR } = computeInterventionAirwayEffects(interventions, baseline.rr);
+  let rr: number;
+  if (assistedRR !== null) {
+    // Bag-mask ventilation overrides to assisted rate
+    rr = assistedRR;
+  } else if (patencyBonus > 0 && rrRaw < baseline.rr) {
+    // Airway intervention partially recovers suppressed RR
+    const depression = baseline.rr - rrRaw;
+    rr = rrRaw + depression * patencyBonus;
+  } else {
+    rr = rrRaw;
+  }
+
   // SpO2 depends on respiratory status
-  const spo2 = computeSpO2(rr, baseline.spo2, patient, fio2, prevVitals.spo2);
+  // If BVM active, SpO2 recovers faster (use higher FiO2 equivalent and better ventilation)
+  const effectiveFio2 = interventions.has('bag_mask') ? Math.max(fio2, 0.5) : fio2;
+  const spo2 = computeSpO2(rr, baseline.spo2, patient, effectiveFio2, prevVitals.spo2);
 
   // Hemodynamics
-  const hemodynamics = computeHemodynamics(baseline, pkStates, spo2, patient);
+  let hemodynamics = computeHemodynamics(baseline, pkStates, spo2, patient);
+
+  // IV fluid hemodynamic boost: volume loading increases preload → MAP/SBP improve
+  const fluidBoost = computeFluidHemodynamicBoost(ivFluids);
+  if (fluidBoost > 0) {
+    hemodynamics = {
+      hr: hemodynamics.hr,
+      sbp: clamp(hemodynamics.sbp * (1 + fluidBoost), 40, 220),
+      dbp: clamp(hemodynamics.dbp * (1 + fluidBoost * 0.5), 20, 140),
+      map: clamp(hemodynamics.map * (1 + fluidBoost * 0.8), 30, 160),
+    };
+  }
 
   // EtCO2
   const etco2 = computeEtCO2(rr, baseline.etco2);
@@ -409,5 +497,16 @@ export function calculateVitals(
     qtInterval: rhythmResult.qtInterval,
     _arrestStart: rhythmResult.arrestStartSeconds,
   };
+
+  // Apply scenario overrides last (force specific values if set)
+  if (scenarioOverrides) {
+    for (const [key, value] of Object.entries(scenarioOverrides)) {
+      if (value !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (result as any)[key] = value;
+      }
+    }
+  }
+
   return result;
 }

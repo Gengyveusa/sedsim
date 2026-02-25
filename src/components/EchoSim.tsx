@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef } from 'react';
+import useSimStore from '../store/useSimStore';
+import type { EchoParams } from '../types';
 
 interface HemoParams {
   preload: number; afterload: number; contractility: number; heartRate: number; compliance: number;
@@ -177,57 +179,22 @@ const imgData = ctx.createImageData(W, H); const px = imgData.data;
 }
 
 export interface EchoSimProps {
-  vitals: { hr: number; sbp: number; dbp: number; map: number; spo2: number; rr: number; etco2: number };
-  patient: { age: number; weight: number; height: number; sex: string; asa: number; copd?: boolean; hepaticImpairment?: boolean; renalImpairment?: boolean };
-  moass: number;
-  combinedEff: number;
-  pkStates: Record<string, { ce: number }>;
+  vitals?: { hr: number; sbp: number; dbp: number; map: number; spo2: number; rr: number; etco2: number };
+  patient?: { age: number; weight: number; height: number; sex: string; asa: number; copd?: boolean; hepaticImpairment?: boolean; renalImpairment?: boolean };
+  moass?: number;
+  combinedEff?: number;
+  pkStates?: Record<string, { ce: number }>;
 }
 
-export default function EchoSim({ vitals, patient, moass, combinedEff, pkStates }: EchoSimProps) {
-  let ees = 2.5;
-  let edpScale = 1.0;
-  let vedv = 130;
-  let peakSys = vitals.sbp || 120;
-  const hr = vitals.hr || 75;
-
-  // Age
-  if (patient.age > 65) { ees -= 0.4; edpScale += 0.3; }
-  else if (patient.age > 50) { ees -= 0.2; edpScale += 0.15; }
-  // ASA
-  if (patient.asa >= 3) { ees -= 0.3; edpScale += 0.2; }
-  else if (patient.asa >= 2) { ees -= 0.1; }
-  // Comorbidities
-  if (patient.copd) { vedv -= 5; }
-  if (patient.hepaticImpairment) { ees -= 0.2; }
-  if (patient.renalImpairment) { edpScale += 0.2; vedv += 10; }
-  // Drug effects
-  for (const [drug, state] of Object.entries(pkStates)) {
-    const ce = state.ce;
-    if (drug === 'propofol' && ce > 0) { ees -= ce * 0.15; peakSys -= ce * 5; }
-    if (drug === 'midazolam' && ce > 0) { ees -= ce * 0.05; }
-    if (drug === 'fentanyl' && ce > 0) { ees -= ce * 0.2; peakSys -= ce * 3; }
-    if (drug === 'ketamine' && ce > 0) { ees += ce * 0.1; peakSys += ce * 4; }
-  }
-  // MOASS
-  if (moass >= 4) { ees -= 0.3; peakSys -= 15; }
-  else if (moass >= 2) { ees -= 0.15; peakSys -= 8; }
-  ees -= combinedEff * 0.08;
-
-  // Clamp
-  ees = Math.max(0.8, Math.min(4.0, ees));
-  vedv = Math.max(80, Math.min(180, vedv));
-  peakSys = Math.max(70, Math.min(200, peakSys));
-
-  const contractility = ees / 2.5;
-  const afterload = peakSys * 0.6;
-  const preload = vedv * edpScale * 0.92;
+export default function EchoSim(_props: EchoSimProps) {
+  // Read pre-computed echo parameters from store (single source of truth)
+  const echoParams = useSimStore((s: { echoParams: EchoParams }) => s.echoParams);
 
   const hemo = computeHemodynamics({
-    preload: Math.max(40, Math.min(200, preload)),
-    afterload: Math.max(40, Math.min(200, afterload)),
-    contractility: Math.max(0.3, Math.min(2.0, contractility)),
-    heartRate: hr,
+    preload: echoParams.preload,
+    afterload: echoParams.afterload,
+    contractility: echoParams.contractility,
+    heartRate: echoParams.heartRate,
     compliance: 0.06,
   });
 

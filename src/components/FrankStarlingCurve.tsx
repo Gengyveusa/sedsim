@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Vitals, Patient, MOASSLevel } from '../types';
+import { Vitals, Patient, MOASSLevel, FrankStarlingPoint } from '../types';
+import useSimStore from '../store/useSimStore';
 
 interface FrankStarlingProps {
   vitals: Vitals;
@@ -36,53 +37,22 @@ function pvPoint(
   return [v, Math.max(0, p)];
 }
 
-export default function FrankStarlingCurve({ vitals, patient, moass, combinedEff, pkStates }: FrankStarlingProps) {
+export default function FrankStarlingCurve({ vitals: _vitals, patient: _patient, moass: _moass, combinedEff: _combinedEff, pkStates: _pkStates }: FrankStarlingProps) {
   const [phase, setPhase] = useState(0);
     const [speed, setSpeed] = useState(1);
   const animRef = useRef<number>(0);
   const lastTime = useRef<number>(0);
 
-  // === Contractility modifiers ===
-  let ees = 2.5;
-  let edpScale = 1.0;
-  let vedv = 130;
-  let peakSys = vitals.sbp || 120;
-  const hr = vitals.hr || 75;
-
-  // Age
-  if (patient.age > 65) { ees -= 0.4; edpScale += 0.3; }
-  else if (patient.age > 50) { ees -= 0.2; edpScale += 0.15; }
-  // ASA
-  if (patient.asa >= 3) { ees -= 0.3; edpScale += 0.2; }
-  else if (patient.asa >= 2) { ees -= 0.1; }
-  // Comorbidities
-  if (patient.copd) { vedv -= 5; }
-  if (patient.hepaticImpairment) { ees -= 0.2; }
-  if (patient.renalImpairment) { edpScale += 0.2; vedv += 10; }
-  // Drug effects
-  for (const [drug, state] of Object.entries(pkStates)) {
-    const ce = state.ce;
-    if (drug === 'propofol' && ce > 0) { ees -= ce * 0.15; peakSys -= ce * 5; }
-    if (drug === 'midazolam' && ce > 0) { ees -= ce * 0.05; }
-    if (drug === 'fentanyl' && ce > 0) { ees -= ce * 0.2; peakSys -= ce * 3; }
-    if (drug === 'ketamine' && ce > 0) { ees += ce * 0.1; peakSys += ce * 4; }
-  }
-  // MOASS
-  if (moass >= 4) { ees -= 0.3; peakSys -= 15; }
-  else if (moass >= 2) { ees -= 0.15; peakSys -= 8; }
-  ees -= combinedEff * 0.08;
-
-  // Clamp
-  ees = Math.max(0.8, Math.min(4.0, ees));
-  edpScale = Math.max(0.5, Math.min(3.0, edpScale));
-  vedv = Math.max(90, Math.min(160, vedv));
-  peakSys = Math.max(60, Math.min(200, peakSys));
-
-  const vesv = Math.max(30, Math.min(vedv - 20, peakSys / ees + 5));
-  const sv = vedv - vesv;
-  const ef = (sv / vedv) * 100;
-  const pEdp = edpScale * Math.pow(Math.max(0, vedv - 10), 2) / 1000;
-  const pEsv = Math.max(0, ees * (vesv - 5));
+  // Read pre-computed Frank-Starling operating point from store (single source of truth)
+  const fsp = useSimStore((s: { frankStarlingPoint: FrankStarlingPoint }) => s.frankStarlingPoint);
+  const vedv = fsp.vedv;
+  const vesv = fsp.vesv;
+  const sv = fsp.sv;
+  const ef = fsp.ef;
+  const pEdp = fsp.pEdp;
+  const peakSys = fsp.peakSys;
+  const ees = fsp.ees;
+  const hr = fsp.hr;
 
   // Animation: dot traces the loop at heart rate
   useEffect(() => {
@@ -100,6 +70,11 @@ export default function FrankStarlingCurve({ vitals, patient, moass, combinedEff
     animRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animRef.current);
     }, [hr, speed]);
+
+  // Derived values needed for visualization
+  const pEsv = Math.max(0, ees * (vesv - 5));
+  // Reconstruct edpScale from pEdp and vedv for EDPVR curve
+  const edpScale = vedv > 10 ? pEdp * 1000 / Math.pow(Math.max(0, vedv - 10), 2) : 1.0;
 
   // Generate full loop points (N=80 for smoothness)
   const N = 80;

@@ -1,4 +1,4 @@
-import { PKState, Vitals, Patient, MOASSLevel, DrugParams } from '../types';
+import { PKState, Vitals, Patient, MOASSLevel, DrugParams, InterventionType } from '../types';
 import { stepPK } from './pkModel';
 import { combinedEffect, effectToMOASS, hillEffect } from './pdModel';
 import { calculateVitals } from './physiology';
@@ -28,7 +28,8 @@ export function predictForward(
   fio2: number,
   prevVitals: Vitals,
   sampleTimes: number[] = [30, 60, 120, 300, 600],
-  ghostBolus?: { drugName: string; dose: number }
+  ghostBolus?: { drugName: string; dose: number },
+  interventions: Set<InterventionType> = new Set()
 ): PredictionSnapshot[] {
   const snapshots: PredictionSnapshot[] = [];
   const sortedTimes = [...sampleTimes].sort((a, b) => a - b);
@@ -79,7 +80,7 @@ export function predictForward(
 
       const comb = combinedEffect(drugEffects);
       // Only compute vitals every ~30s to save CPU (or at each sample point)
-      simVitals = calculateVitals(simPK, patient, simVitals, fio2);
+      simVitals = calculateVitals(simPK, patient, simVitals, fio2, simVitals.rhythm ?? 'normal_sinus', t, interventions);
 
       snapshots.push({
         secondsAhead: t,

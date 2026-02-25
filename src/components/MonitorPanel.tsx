@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Vitals, CardiacRhythm } from '../types';
+import { Vitals, CardiacRhythm, EmergencyState } from '../types';
 import { isPulselessRhythm, isLethalRhythm } from '../engine/cardiacRhythm';
 import {
   evaluateECG,
@@ -347,7 +347,8 @@ interface ScaleToast {
 }
 
 export default function MonitorPanel({ vitals, history: _history }: MonitorPanelProps) {
-  const isRunning = useSimStore(s => s.isRunning);
+  const isRunning = useSimStore((s: { isRunning: boolean }) => s.isRunning);
+  const emergencyState = useSimStore((s: { emergencyState: EmergencyState }) => s.emergencyState);
   const ecgCanvasRef = useRef<HTMLCanvasElement>(null);
   const plethCanvasRef = useRef<HTMLCanvasElement>(null);
   const capnoCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -435,13 +436,13 @@ export default function MonitorPanel({ vitals, history: _history }: MonitorPanel
 vfibOffsetRef.current += 0.012    }
   }, [vitals.etco2, showScaleToast]);
 
-  // Alarm flash toggle
+  // Alarm flash toggle — driven by canonical emergencyState from store (single source of truth)
   useEffect(() => {
-    const hasAlarm = vitals.spo2 < 90 || vitals.hr < 50 || vitals.hr > 120 || vitals.sbp < 80 || vitals.rr < 6;
+    const hasAlarm = emergencyState.level !== 'normal';
     if (!hasAlarm) { setAlarmFlash(false); return; }
     const iv = setInterval(() => setAlarmFlash((f: boolean) => !f), 500);
     return () => clearInterval(iv);
-  }, [vitals.spo2, vitals.hr, vitals.sbp, vitals.rr]);
+  }, [emergencyState.level]);
 
   // Audio: stop all audio when simulation stops
   useEffect(() => {
@@ -457,34 +458,20 @@ vfibOffsetRef.current += 0.012    }
     }
   }, [vitals.spo2, vitals.hr, isRunning]);
 
-  // Audio: alarm tones — trigger/clear based on vital thresholds
+  // Audio: alarm tones — driven by canonical emergencyState from store (single source of truth)
   useEffect(() => {
     if (!isRunning) {
       audioManager.stopAlarms();
       return;
     }
-    const isCritical =
-      vitals.spo2 < 90 ||
-      vitals.hr < 40 || vitals.hr > 150 ||
-      vitals.rr < 4 ||
-      vitals.etco2 > 60 || vitals.etco2 < 10 ||
-      vitals.sbp < 70;
-    const isWarning =
-      !isCritical && (
-        vitals.spo2 < 94 ||
-        vitals.hr < 50 || vitals.hr > 120 ||
-        vitals.rr < 8 ||
-        vitals.etco2 > 50 ||
-        vitals.sbp < 90
-      );
-    if (isCritical) {
+    if (emergencyState.level === 'arrest' || emergencyState.level === 'critical') {
       audioManager.playCriticalAlarm();
-    } else if (isWarning) {
+    } else if (emergencyState.level === 'warning') {
       audioManager.playWarningAlarm();
     } else {
       audioManager.stopAlarms();
     }
-  }, [vitals.spo2, vitals.hr, vitals.rr, vitals.etco2, vitals.sbp, isRunning]);
+  }, [emergencyState.level, isRunning]);
 
   // When HR scale changes, redraw scale column on ECG canvas and force re-init
   useEffect(() => {
@@ -693,7 +680,7 @@ const vfibOffset = vfibOffsetRef.current;
   const rrVal = Math.round(vitals.rr);
   const etco2Val = Math.round(vitals.etco2);
 
-  const isAlarmActive = vitals.spo2 < 90 || vitals.hr < 50 || vitals.hr > 120 || vitals.sbp < 80 || vitals.rr < 6;
+  const isAlarmActive = emergencyState.level !== 'normal';
 
   return (
     <div style={{ background: COLORS.background, borderRadius: 8, overflow: 'hidden', border: '1px solid #222', position: 'relative' }}>

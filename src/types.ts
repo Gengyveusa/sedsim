@@ -175,6 +175,58 @@ export interface GhostDose {
   isActive: boolean;
 }
 
+// Emergency state — derived from active alarms and cardiac rhythm
+export interface EmergencyState {
+  level: 'normal' | 'warning' | 'critical' | 'arrest';
+  activeAlarms: { type: string; message: string; severity: 'warning' | 'danger' }[];
+  isArrest: boolean; // VFib, VTach, asystole, PEA
+  requiresImmediateIntervention: boolean;
+}
+
+// Pre-computed inputs to EchoSim's hemodynamic model (derived from vitals+drugs+patient in tick())
+export interface EchoParams {
+  preload: number;
+  afterload: number;
+  contractility: number;
+  heartRate: number;
+}
+
+// Current operating point on the Frank-Starling / PV-loop (derived in tick())
+export interface FrankStarlingPoint {
+  vedv: number;
+  vesv: number;
+  sv: number;
+  ef: number;
+  pEdp: number;
+  peakSys: number;
+  ees: number;
+  hr: number;
+}
+
+// Current position on the O2-Hb dissociation curve (derived in tick())
+export interface OxyHbPoint {
+  pao2: number;
+  spo2: number;
+  p50: number;
+  paco2: number;
+  pH: number;
+}
+
+// Avatar visual state (derived from vitals + moass in tick())
+export interface AvatarState {
+  skinTone: 'normal' | 'pale' | 'cyanotic';
+  diaphoresis: boolean;
+  pupilDilated: boolean;
+  chestRiseRate: number;
+}
+
+// Waveform display parameters (derived from vitals in tick())
+export interface WaveformParams {
+  plethAmplitude: number;  // 0-1, scaled by pulse pressure
+  capnoFlat: boolean;      // true when rr === 0
+  rhythm: CardiacRhythm;   // ECG morphology selector
+}
+
 // Prediction result for ghost dose / forward simulation
 export interface PredictionResult {
   secondsAhead: number;

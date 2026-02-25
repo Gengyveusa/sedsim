@@ -69,25 +69,29 @@ function isCoveredByScenario(
   return false;
 }
 
+// Alarm entry type matching useSimStore activeAlarms shape
+interface AlarmEntry { type: string; message: string; severity: 'warning' | 'danger'; }
+
 export class VitalCoherenceMonitor {
-  private timerId: ReturnType<typeof setInterval> | null = null;
+  // Use Zustand store subscription instead of setInterval for unified alarm source
+  private unsubscribe: (() => void) | null = null;
   private cooldowns: Record<string, AlertCooldown> = {};
   private onCriticalAlert: (() => void) | null = null;
 
   start(onCriticalAlert?: () => void) {
-    if (this.timerId) return;
+    if (this.unsubscribe) return;
     this.cooldowns = {};
     // Callback invoked when a critical alert fires while a scenario question is pending.
-    // ScenarioEngine passes a function that clears its `awaitingAnswer` state so scenario
-    // progression can resume after the critical event overrides the stale question.
     this.onCriticalAlert = onCriticalAlert ?? null;
-    this.timerId = setInterval(() => this.tick(), 2000);
+    // Subscribe to store changes — fires on every tick so alarms are processed
+    // in lock-step with the simulation (no separate 2-second polling timer)
+    this.unsubscribe = useSimStore.subscribe((state: { activeAlarms: AlarmEntry[]; vitals: { hr: number; spo2: number; rr: number; etco2: number; sbp: number }; moass: number }) => this.tick(state.activeAlarms, state.vitals, state.moass));
   }
 
   stop() {
-    if (this.timerId) {
-      clearInterval(this.timerId);
-      this.timerId = null;
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
     }
     this.cooldowns = {};
     this.onCriticalAlert = null;
@@ -137,11 +141,15 @@ export class VitalCoherenceMonitor {
     }
   }
 
-  private tick() {
-    const { vitals, moass } = useSimStore.getState();
+  private tick(activeAlarms: AlarmEntry[], vitals: { hr: number; spo2: number; rr: number; etco2: number; sbp: number }, moass: number) {
+    // Use canonical activeAlarms from the store (computed by checkAlarms() in tick())
+    // instead of re-evaluating individual vital thresholds here.
+    // This ensures the VitalCoherenceMonitor and the main alarm system agree.
 
-    // SpO2 checks
-    if (vitals.spo2 < 85 && !isCoveredByScenario('spo2', vitals.spo2, '<')) {
+    // SpO2 alarms
+    const spo2DangerAlarm = activeAlarms.find((a: AlarmEntry) => a.type === 'spo2' && a.severity === 'danger');
+    const spo2WarnAlarm = activeAlarms.find((a: AlarmEntry) => a.type === 'spo2' && a.severity === 'warning');
+    if (spo2DangerAlarm && !isCoveredByScenario('spo2', vitals.spo2, '<')) {
       if (this.canAlert('spo2', 'critical')) {
         this.recordAlert('spo2', 'critical');
         this.alert(
@@ -149,7 +157,7 @@ export class VitalCoherenceMonitor {
           'critical', 'spo2'
         );
       }
-    } else if (vitals.spo2 < 90 && !isCoveredByScenario('spo2', vitals.spo2, '<')) {
+    } else if (spo2WarnAlarm && !isCoveredByScenario('spo2', vitals.spo2, '<')) {
       if (this.canAlert('spo2', 'warning')) {
         this.recordAlert('spo2', 'warning');
         this.alert(
@@ -159,29 +167,31 @@ export class VitalCoherenceMonitor {
       }
     }
 
-    // HR checks
-    if (vitals.hr < 40 && !isCoveredByScenario('hr', vitals.hr, '<')) {
-      if (this.canAlert('hr_low', 'critical')) {
-        this.recordAlert('hr_low', 'critical');
-        this.alert(
-          `CRITICAL: Severe bradycardia HR ${vitals.hr}. Consider atropine.`,
-          'critical', 'hr'
-        );
+    // HR alarms
+    const hrAlarm = activeAlarms.find((a: AlarmEntry) => a.type === 'hr');
+    if (hrAlarm) {
+      if (vitals.hr < 40 && !isCoveredByScenario('hr', vitals.hr, '<')) {
+        if (this.canAlert('hr_low', 'critical')) {
+          this.recordAlert('hr_low', 'critical');
+          this.alert(
+            `CRITICAL: Severe bradycardia HR ${vitals.hr}. Consider atropine.`,
+            'critical', 'hr'
+          );
+        }
+      } else if (vitals.hr > 150 && !isCoveredByScenario('hr', vitals.hr, '>')) {
+        if (this.canAlert('hr_high', 'critical')) {
+          this.recordAlert('hr_high', 'critical');
+          this.alert(
+            `CRITICAL: Tachycardia HR ${vitals.hr}. Assess for cause.`,
+            'critical', 'hr'
+          );
+        }
       }
     }
 
-    if (vitals.hr > 150 && !isCoveredByScenario('hr', vitals.hr, '>')) {
-      if (this.canAlert('hr_high', 'critical')) {
-        this.recordAlert('hr_high', 'critical');
-        this.alert(
-          `CRITICAL: Tachycardia HR ${vitals.hr}. Assess for cause.`,
-          'critical', 'hr'
-        );
-      }
-    }
-
-    // SBP check
-    if (vitals.sbp < 70 && !isCoveredByScenario('sbp', vitals.sbp, '<')) {
+    // BP alarm
+    const bpDangerAlarm = activeAlarms.find((a: AlarmEntry) => a.type === 'bp' && a.severity === 'danger');
+    if (bpDangerAlarm && vitals.sbp < 70 && !isCoveredByScenario('sbp', vitals.sbp, '<')) {
       if (this.canAlert('sbp', 'critical')) {
         this.recordAlert('sbp', 'critical');
         this.alert(
@@ -191,45 +201,51 @@ export class VitalCoherenceMonitor {
       }
     }
 
-    // RR checks
-    if (vitals.rr === 0 && !isCoveredByScenario('rr', vitals.rr, '<')) {
-      if (this.canAlert('rr', 'critical')) {
-        this.recordAlert('rr', 'critical');
-        this.alert(
-          `CRITICAL: APNEA detected. Bag-mask ventilate NOW.`,
-          'critical', 'rr'
-        );
-      }
-    } else if (vitals.rr < 4 && !isCoveredByScenario('rr', vitals.rr, '<')) {
-      if (this.canAlert('rr', 'critical')) {
-        this.recordAlert('rr', 'critical');
-        this.alert(
-          `CRITICAL: Near-apnea. RR ${vitals.rr}. Assist ventilation immediately.`,
-          'critical', 'rr'
-        );
-      }
-    }
-
-    // EtCO2 checks
-    if (vitals.etco2 > 80 && !isCoveredByScenario('etco2', vitals.etco2, '>')) {
-      if (this.canAlert('etco2', 'critical')) {
-        this.recordAlert('etco2', 'critical');
-        this.alert(
-          `CRITICAL: Severe hypercarbia EtCO2 ${vitals.etco2}. Patient in respiratory failure.`,
-          'critical', 'etco2'
-        );
-      }
-    } else if (vitals.etco2 > 60 && !isCoveredByScenario('etco2', vitals.etco2, '>')) {
-      if (this.canAlert('etco2', 'warning')) {
-        this.recordAlert('etco2', 'warning');
-        this.alert(
-          `WARNING: Hypercarbia EtCO2 ${vitals.etco2}. Ventilation inadequate.`,
-          'warning', 'etco2'
-        );
+    // RR alarms
+    const rrAlarm = activeAlarms.find((a: AlarmEntry) => a.type === 'rr');
+    if (rrAlarm && !isCoveredByScenario('rr', vitals.rr, '<')) {
+      if (vitals.rr === 0) {
+        if (this.canAlert('rr', 'critical')) {
+          this.recordAlert('rr', 'critical');
+          this.alert(
+            `CRITICAL: APNEA detected. Bag-mask ventilate NOW.`,
+            'critical', 'rr'
+          );
+        }
+      } else if (vitals.rr < 4) {
+        if (this.canAlert('rr', 'critical')) {
+          this.recordAlert('rr', 'critical');
+          this.alert(
+            `CRITICAL: Near-apnea. RR ${vitals.rr}. Assist ventilation immediately.`,
+            'critical', 'rr'
+          );
+        }
       }
     }
 
-    // MOASS check
+    // EtCO2 alarms
+    const etco2Alarm = activeAlarms.find((a: AlarmEntry) => a.type === 'etco2');
+    if (etco2Alarm && !isCoveredByScenario('etco2', vitals.etco2, '>')) {
+      if (vitals.etco2 > 80) {
+        if (this.canAlert('etco2', 'critical')) {
+          this.recordAlert('etco2', 'critical');
+          this.alert(
+            `CRITICAL: Severe hypercarbia EtCO2 ${vitals.etco2}. Patient in respiratory failure.`,
+            'critical', 'etco2'
+          );
+        }
+      } else if (vitals.etco2 > 60) {
+        if (this.canAlert('etco2', 'warning')) {
+          this.recordAlert('etco2', 'warning');
+          this.alert(
+            `WARNING: Hypercarbia EtCO2 ${vitals.etco2}. Ventilation inadequate.`,
+            'warning', 'etco2'
+          );
+        }
+      }
+    }
+
+    // MOASS check (not in activeAlarms — still evaluated independently)
     if (moass === 0 && !isCoveredByScenario('moass', moass, '<')) {
       if (this.canAlert('moass', 'critical')) {
         this.recordAlert('moass', 'critical');
@@ -240,8 +256,7 @@ export class VitalCoherenceMonitor {
       }
     }
 
-    // Emergency phase override for extreme values not covered by individual alert conditions
-    // (e.g. HR == 0 has no dedicated alert above but is still a catastrophic emergency)
+    // Emergency phase override for extreme values
     if (vitals.hr === 0) {
       useAIStore.getState().setCurrentScenarioPhase('complication');
     }
