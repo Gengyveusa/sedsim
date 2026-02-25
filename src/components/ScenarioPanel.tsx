@@ -40,6 +40,7 @@ export const ScenarioPanel: React.FC = () => {
 
   const handlePlayScenario = (scenario: InteractiveScenario) => {
     scenarioEngine.loadScenario(scenario);
+    useAIStore.getState().setActiveAITab('mentor');
     scenarioEngine.start();
   };
 
