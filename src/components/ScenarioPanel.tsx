@@ -7,7 +7,7 @@ import { useConductor } from '../hooks/useConductor';
 import { EASY_COLONOSCOPY_BEATS } from '../engine/scenarios/easyColonoscopyBeats';
 
 /** Feature flag — set to false to fall back to the legacy ScenarioEngine. */
-const USE_CONDUCTOR = true;
+const USE_CONDUCTOR = false;
 
 const DIFFICULTY_COLORS: Record<InteractiveScenario['difficulty'], string> = {
   easy: 'bg-green-900 text-green-300',
@@ -46,31 +46,18 @@ export const ScenarioPanel: React.FC = () => {
 
 
     const handlePlayScenario = (scenario: InteractiveScenario) => {
-    const addDebug = (msg: string) => useAIStore.getState().addMentorMessage('mentor', '[DEBUG] ' + msg);
-    try {
-      addDebug('handlePlayScenario called for: ' + scenario.id + ' USE_CONDUCTOR=' + USE_CONDUCTOR);
-      if (USE_CONDUCTOR) {
-        if (scenario.id === 'easy_colonoscopy') {
-          addDebug('Loading EASY_COLONOSCOPY_BEATS...');
-          conductor.loadScenario(EASY_COLONOSCOPY_BEATS);
-        } else {
-          addDebug('Loading legacy scenario: ' + scenario.id);
-          conductor.loadLegacyScenario(scenario);
-        }
-        addDebug('Setting active AI tab to mentor...');
-        useAIStore.getState().setActiveAITab('mentor');
-        addDebug('Calling conductor.start()...');
-        conductor.start();
-        addDebug('conductor.start() completed. isScenarioRunning=' + useAIStore.getState().isScenarioRunning);
+        if (USE_CONDUCTOR) {
+      if (scenario.id === 'easy_colonoscopy') {
+        conductor.loadScenario(EASY_COLONOSCOPY_BEATS);
       } else {
-        scenarioEngine.loadScenario(scenario);
-        useAIStore.getState().setActiveAITab('mentor');
-        scenarioEngine.start();
+        conductor.loadLegacyScenario(scenario);
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[ScenarioPanel] handlePlayScenario error:', err);
-      useAIStore.getState().addMentorMessage('mentor', '[DEBUG] Scenario play error: ' + msg);
+      useAIStore.getState().setActiveAITab('mentor');
+      conductor.start();
+    } else {
+      scenarioEngine.loadScenario(scenario);
+      useAIStore.getState().setActiveAITab('mentor');
+      scenarioEngine.start();
     }
   };
   
