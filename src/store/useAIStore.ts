@@ -99,6 +99,10 @@ interface AIState {
   switchGaugeMode: (mode: string) => void;
   clearTabRequest: () => void;
   clearGaugeModeRequest: () => void;
+  addStructuredMessage: (msg: StructuredMessage) => void;
+  clearStructuredMessages: () => void;
+  addVitalAnnotation: (ann: VitalAnnotation) => void;
+  clearVitalAnnotations: () => void;
   addStructuredMessage: (message: StructuredMessage) => void;
   setVitalAnnotations: (annotations: VitalAnnotation[]) => void;
   clearStructuredMessages: () => void;
@@ -295,6 +299,22 @@ const useAIStore = create<AIState>((set, get) => ({
     set({ requestGaugeMode: null });
   },
 
+  addStructuredMessage: (msg) => {
+    const { structuredMessages } = get();
+    set({ structuredMessages: [...structuredMessages, msg].slice(-200) });
+  },
+
+  clearStructuredMessages: () => {
+    set({ structuredMessages: [] });
+  },
+
+  addVitalAnnotation: (ann) => {
+    const { vitalAnnotations } = get();
+    set({ vitalAnnotations: [...vitalAnnotations, ann].slice(-20) });
+  },
+
+  clearVitalAnnotations: () => {
+    set({ vitalAnnotations: [] });
   addStructuredMessage: (message) => {
     const { structuredMessages } = get();
     set({ structuredMessages: [...structuredMessages, message].slice(-100) });

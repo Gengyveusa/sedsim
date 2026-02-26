@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import EEGPanel from './EEGPanel';
-import MentorChat from './MentorChat';
+import MillieChat from './MillieChat';
 import OxyHbCurve from './OxyHbCurve';
 import FrankStarlingCurve from './FrankStarlingCurve';
 import EchoSim from './EchoSim';
 import ScenarioCallout from './ScenarioCallout';
+import VitalAnnotations from './VitalAnnotations';
 import { LearningPanelContent } from './LearningPanel';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
@@ -416,7 +417,7 @@ export const Dashboard: React.FC = () => {
                 </>
               )}
               {activeTab === 'mentor' && (
-                <MentorChat
+                <MillieChat
                   vitals={simState.vitals}
                   moass={simState.moass}
                   eegState={simState.eegState}
@@ -494,6 +495,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
       <ScenarioCallout />
+      <VitalAnnotations />
     </>
   );
 };

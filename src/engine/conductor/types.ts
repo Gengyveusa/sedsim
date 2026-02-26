@@ -126,11 +126,37 @@ export interface ConductorScenario {
 
 // ─── Structured Message (Millie Chat) ────────────────────────────────────────
 
+/** Visual rendering type for a Millie chat message. */
+export type MillieMessageType =
+  | 'narration'       // Millie avatar + text bubble with emotion indicator
+  | 'callout_link'    // Clickable message that highlights a UI element when clicked
+  | 'vital_badge'     // Inline vital sign display with value and annotation
+  | 'question'        // Embedded Q&A card with input field and submit button
+  | 'feedback'        // Green (correct) or red (incorrect) feedback card
+  | 'teaching_point'  // Distinct card with book icon and blue-ish accent
+  | 'phase_change'    // Horizontal divider with phase name
+  | 'debrief';        // Score summary card
+
+/** Emotion state for Millie avatar. */
+export type MillieEmotion = 'neutral' | 'concerned' | 'urgent' | 'encouraging' | 'thinking';
+
 /** A single message in the Millie chat feed. */
 export interface StructuredMessage {
   id: string;
   role: 'millie' | 'user' | 'system';
+  /** Visual rendering type; defaults to 'narration' for millie messages. */
+  messageType?: MillieMessageType;
   content: string;
+  /** Emotion state for the Millie avatar shown with this message. */
+  emotion?: MillieEmotion;
+  /** Whether this message is currently being typed (show typing indicator). */
+  typing?: boolean;
+  /** For 'feedback' messages: whether the answer was correct. */
+  isCorrect?: boolean;
+  /** For 'phase_change' messages: the phase label. */
+  phaseLabel?: string;
+  /** For 'debrief' messages: score out of 100. */
+  score?: number;
   /** Optional callout data to attach to this message. */
   callout?: {
     targetId: string;
