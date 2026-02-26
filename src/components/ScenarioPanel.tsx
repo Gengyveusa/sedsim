@@ -44,23 +44,28 @@ export const ScenarioPanel: React.FC = () => {
     try { localStorage.setItem('sedsim_completed_scenarios', JSON.stringify(updated)); } catch { /* ignore */ }
   };
 
-  const handlePlayScenario = (scenario: InteractiveScenario) => {
-    if (USE_CONDUCTOR) {
-      // Use the hand-crafted beat scenario for the easy colonoscopy;
-      // fall back to the legacy adapter for all other scenarios.
-      if (scenario.id === 'easy_colonoscopy') {
-        conductor.loadScenario(EASY_COLONOSCOPY_BEATS);
+
+    const handlePlayScenario = (scenario: InteractiveScenario) => {
+    try {
+      if (USE_CONDUCTOR) {
+        if (scenario.id === 'easy_colonoscopy') {
+          conductor.loadScenario(EASY_COLONOSCOPY_BEATS);
+        } else {
+          conductor.loadLegacyScenario(scenario);
+        }
+        useAIStore.getState().setActiveAITab('mentor');
+        conductor.start();
       } else {
-        conductor.loadLegacyScenario(scenario);
+        scenarioEngine.loadScenario(scenario);
+        useAIStore.getState().setActiveAITab('mentor');
+        scenarioEngine.start();
       }
-      useAIStore.getState().setActiveAITab('mentor');
-      conductor.start();
-    } else {
-      // Legacy ScenarioEngine fallback
-      scenarioEngine.loadScenario(scenario);
-      useAIStore.getState().setActiveAITab('mentor');
-      scenarioEngine.start();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[ScenarioPanel] handlePlayScenario error:', err);
+      useAIStore.getState().addMentorMessage('mentor', '[DEBUG] Scenario play error: ' + msg);
     }
+  };
   };
 
   const handleStopScenario = () => {
