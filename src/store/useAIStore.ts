@@ -103,9 +103,7 @@ interface AIState {
   clearStructuredMessages: () => void;
   addVitalAnnotation: (ann: VitalAnnotation) => void;
   clearVitalAnnotations: () => void;
-  addStructuredMessage: (message: StructuredMessage) => void;
   setVitalAnnotations: (annotations: VitalAnnotation[]) => void;
-  clearStructuredMessages: () => void;
   setMillieEmotion: (emotion: string) => void;
 }
 
@@ -315,17 +313,10 @@ const useAIStore = create<AIState>((set, get) => ({
 
   clearVitalAnnotations: () => {
     set({ vitalAnnotations: [] });
-  addStructuredMessage: (message) => {
-    const { structuredMessages } = get();
-    set({ structuredMessages: [...structuredMessages, message].slice(-100) });
   },
 
   setVitalAnnotations: (annotations) => {
     set({ vitalAnnotations: annotations });
-  },
-
-  clearStructuredMessages: () => {
-    set({ structuredMessages: [] });
   },
 
   setMillieEmotion: (emotion) => {

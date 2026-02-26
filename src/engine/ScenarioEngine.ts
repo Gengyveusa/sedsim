@@ -574,7 +574,7 @@ export class ScenarioEngine {
     // fired step to prevent rapid progression. on_physiology safety triggers are exempt.
     // on_step_complete uses a shorter 2s cooldown for natural sequential flow.
     const cooldownSeconds = 5;
-    const cooldownActive = this.scenarioTimeSeconds - this.lastStepFiredAt < cooldownSeconds;
+    void (this.scenarioTimeSeconds - this.lastStepFiredAt < cooldownSeconds); // cooldown reserved for future use
 
     const sim = useSimStore.getState();
     const vitals = sim.vitals;

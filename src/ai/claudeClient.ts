@@ -29,7 +29,7 @@ export interface ClaudeContext {
     weight: number;
     sex: string;
     asa: number;
-    comorbidities: string[];
+    comorbidities?: string[];
     mallampati?: number;
     osa?: boolean;
     drugSensitivity?: number;

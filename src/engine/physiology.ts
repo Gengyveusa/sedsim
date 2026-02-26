@@ -322,10 +322,8 @@ export function checkAlarms(vitals: Vitals): { type: string; message: string; se
 }
 
 /**
- * Compute the airway patency factor (0-1) and assisted RR from active interventions.
- * Returns { patencyFactor, assistedRR }.
- *  patencyFactor: multiplier applied to RR depression recovery (1 = full natural; higher = intervention helps)
- *  assistedRR:    if bag-mask is active, override RR with assisted rate; null otherwise
+ * Compute airway intervention effects (patency bonus and assisted RR from BVM).
+ * Also computes pharmacological reversal / hemodynamic effects.
  */
 function computeInterventionAirwayEffects(
   interventions: Set<InterventionType>,
@@ -353,8 +351,42 @@ function computeInterventionAirwayEffects(
   if (interventions.has('suction')) {
     patencyBonus = Math.max(patencyBonus, 0.15); // secretion clearance
   }
+  // Naloxone reverses opioid respiratory depression — large RR patency recovery
+  if (interventions.has('naloxone')) {
+    patencyBonus = Math.max(patencyBonus, 0.85); // near-complete opioid reversal
+  }
+  // Flumazenil reverses benzodiazepine contribution to airway/RR depression
+  if (interventions.has('flumazenil')) {
+    patencyBonus = Math.max(patencyBonus, 0.50); // partial reversal (benzo component)
+  }
 
   return { patencyBonus, assistedRR };
+}
+
+/**
+ * Compute pharmacological hemodynamic intervention effects.
+ * Returns a multiplier to apply to MAP/SBP and HR adjustments.
+ */
+function computePharmacologicalHemodynamicEffects(
+  interventions: Set<InterventionType>
+): { bpBoost: number; hrBoost: number } {
+  let bpBoost = 0;
+  let hrBoost = 0;
+
+  if (interventions.has('vasopressors')) {
+    // Vasopressors (e.g. norepinephrine) → SVR increase → MAP/SBP rise ~25%
+    bpBoost = Math.max(bpBoost, 0.25);
+  }
+  if (interventions.has('iv_fluid_bolus')) {
+    // Fluid bolus → preload → MAP/SBP improvement ~10%
+    bpBoost = Math.max(bpBoost, 0.10);
+  }
+  if (interventions.has('atropine')) {
+    // Atropine blocks vagal tone → HR increase
+    hrBoost = Math.max(hrBoost, 20); // +20 bpm
+  }
+
+  return { bpBoost, hrBoost };
 }
 
 /**
@@ -462,6 +494,17 @@ export function calculateVitals(
       sbp: clamp(hemodynamics.sbp * (1 + fluidBoost), 40, 220),
       dbp: clamp(hemodynamics.dbp * (1 + fluidBoost * 0.5), 20, 140),
       map: clamp(hemodynamics.map * (1 + fluidBoost * 0.8), 30, 160),
+    };
+  }
+
+  // Pharmacological hemodynamic intervention effects (vasopressors, atropine, etc.)
+  const { bpBoost, hrBoost } = computePharmacologicalHemodynamicEffects(interventions);
+  if (bpBoost > 0 || hrBoost > 0) {
+    hemodynamics = {
+      hr: clamp(hemodynamics.hr + hrBoost, 20, 180),
+      sbp: clamp(hemodynamics.sbp * (1 + bpBoost), 40, 220),
+      dbp: clamp(hemodynamics.dbp * (1 + bpBoost * 0.6), 20, 140),
+      map: clamp(hemodynamics.map * (1 + bpBoost), 30, 160),
     };
   }
 

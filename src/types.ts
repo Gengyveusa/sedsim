@@ -145,7 +145,14 @@ export type InterventionType =
   | 'increase_fio2'
   // legacy device types kept for backward compatibility
   | 'oral_airway'
-  | 'nasal_airway';
+  | 'nasal_airway'
+  // pharmacological reversal agents
+  | 'naloxone'
+  | 'flumazenil'
+  | 'atropine'
+  // hemodynamic support
+  | 'iv_fluid_bolus'
+  | 'vasopressors';
 
 // Alarm configuration
 export interface AlarmConfig {

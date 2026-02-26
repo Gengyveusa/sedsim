@@ -63,7 +63,7 @@ function buildMillieContextString(ctx: ClaudeContext): string {
     if (p.osa) lines.push('OSA: YES');
     if (p.drugSensitivity && p.drugSensitivity !== 1.0)
       lines.push(`Drug sensitivity: ${p.drugSensitivity.toFixed(2)}x`);
-    if (p.comorbidities.length)
+    if (p.comorbidities?.length)
       lines.push(`Comorbidities: ${p.comorbidities.join(', ')}`);
   }
   lines.push(

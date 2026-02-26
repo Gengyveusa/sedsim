@@ -51,6 +51,7 @@ export interface SimStoreAccessor {
 
 export interface AIStoreAccessor {
   addMentorMessage: (role: 'user' | 'mentor', content: string) => void;
+  addVitalAnnotation: (ann: import('./types').VitalAnnotation) => void;
   setActiveHighlights: (
     highlights:
       | { targetId: string; text: string; vitalLabel?: string; vitalValue?: number; severity?: 'normal' | 'warning' | 'danger' }[]
@@ -139,8 +140,8 @@ export class Conductor {
           },
         ]);
       },
-      onVitalBadge: (_badge, _beatId) => {
-        // VitalBadge rendering is handled by the UI layer consuming EventBus 'beat' events.
+      onVitalBadge: (badge, _beatId) => {
+        this.ai.addVitalAnnotation(badge);
       },
       onSimAction: (action, _beatId) => {
         // SimActions are delegated to the physiology store via the bus so the

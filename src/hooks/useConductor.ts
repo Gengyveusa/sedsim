@@ -53,6 +53,9 @@ export function useConductor() {
         addMentorMessage: (role: 'user' | 'mentor', content: string) => {
           useAIStore.getState().addMentorMessage(role, content);
         },
+        addVitalAnnotation: (ann: import('../engine/conductor/types').VitalAnnotation) => {
+          useAIStore.getState().addVitalAnnotation(ann);
+        },
         setActiveHighlights: (
           highlights:
             | { targetId: string; text: string; vitalLabel?: string; vitalValue?: number; severity?: 'normal' | 'warning' | 'danger' }[]
