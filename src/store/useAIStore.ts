@@ -6,6 +6,7 @@ import { Scenario } from '../ai/scenarioGenerator';
 import { GhostDose, TutorialState } from '../types';
 import type { ScenarioQuestion } from '../engine/ScenarioEngine';
 import type { SimMasterAnnotation } from '../ai/simMaster';
+import type { StructuredMessage, VitalAnnotation } from '../engine/conductor/types';
 
 interface AIState {
   // Orchestrator
@@ -63,6 +64,12 @@ interface AIState {
   requestOpenTab: string | null;
   requestGaugeMode: string | null;
 
+  // Conductor beat system
+  structuredMessages: StructuredMessage[];
+  vitalAnnotations: VitalAnnotation[];
+  conductorPhase: string | null;
+  millieEmotion: string;
+
   // Actions
   initializeAI: () => void;
   startAI: () => void;
@@ -92,6 +99,10 @@ interface AIState {
   switchGaugeMode: (mode: string) => void;
   clearTabRequest: () => void;
   clearGaugeModeRequest: () => void;
+  addStructuredMessage: (message: StructuredMessage) => void;
+  setVitalAnnotations: (annotations: VitalAnnotation[]) => void;
+  clearStructuredMessages: () => void;
+  setMillieEmotion: (emotion: string) => void;
 }
 
 const useAIStore = create<AIState>((set, get) => ({
@@ -121,6 +132,10 @@ const useAIStore = create<AIState>((set, get) => ({
   simMasterAnnotation: null,
   requestOpenTab: null,
   requestGaugeMode: null,
+  structuredMessages: [],
+  vitalAnnotations: [],
+  conductorPhase: null,
+  millieEmotion: 'encouraging',
 
   initializeAI: () => {
     const orchestrator = new MultiAgentOrchestrator();
@@ -278,6 +293,23 @@ const useAIStore = create<AIState>((set, get) => ({
 
   clearGaugeModeRequest: () => {
     set({ requestGaugeMode: null });
+  },
+
+  addStructuredMessage: (message) => {
+    const { structuredMessages } = get();
+    set({ structuredMessages: [...structuredMessages, message].slice(-100) });
+  },
+
+  setVitalAnnotations: (annotations) => {
+    set({ vitalAnnotations: annotations });
+  },
+
+  clearStructuredMessages: () => {
+    set({ structuredMessages: [] });
+  },
+
+  setMillieEmotion: (emotion) => {
+    set({ millieEmotion: emotion });
   },
 }));
 
