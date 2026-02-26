@@ -261,7 +261,7 @@ export async function streamClaude(
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 512,
+      max_tokens: 1024,
       stream: true,
       system: ctx._systemOverride || buildMillieSystemPrompt(ctx),
       messages: [{ role: 'user', content: query }],
@@ -279,13 +279,16 @@ export async function streamClaude(
 
   const decoder = new TextDecoder();
   let fullText = '';
+  let lineBuffer = '';
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split('\n');
+            const rawLines = (lineBuffer + chunk).split('\n');
+      lineBuffer = rawLines.pop() || '';
+      const lines = rawLines;
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;
       const data = line.slice(6).trim();
