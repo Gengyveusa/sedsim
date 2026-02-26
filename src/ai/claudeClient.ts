@@ -286,7 +286,8 @@ export async function streamClaude(
     const { done, value } = await reader.read();
     if (done) break;
     const chunk = decoder.decode(value, { stream: true });
-            const rawLines = (lineBuffer + chunk).split('\n');
+                  const NL = String.fromCharCode(10);
+          const rawLines = (lineBuffer + chunk).split(NL);
       lineBuffer = rawLines.pop() || '';
       const lines = rawLines;
     for (const line of lines) {
