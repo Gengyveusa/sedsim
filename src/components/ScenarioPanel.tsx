@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { INTERACTIVE_SCENARIOS } from '../engine/interactiveScenarios';
 import { InteractiveScenario } from '../engine/ScenarioEngine';
 import useAIStore from '../store/useAIStore';
+import useSimStore from '../store/useSimStore';
 import { useConductor } from '../hooks/useConductor';
 
 const DIFFICULTY_COLORS: Record<InteractiveScenario['difficulty'], string> = {
@@ -41,13 +42,64 @@ export const ScenarioPanel: React.FC = () => {
 
 
     const handlePlayScenario = (scenario: InteractiveScenario) => {
+      // ── 1. Reset simulator and load the scenario's patient archetype ──
+      const sim = useSimStore.getState();
+      sim.reset();
+      sim.selectPatient(scenario.patientArchetype);
+      sim.setTrueNorthLocked(true);
+      sim.setScenarioDrugProtocols(scenario.drugProtocols);
+      sim.setScenarioActive(true);
+
+      // ── 2. Prepare AI store ──
+      const ai = useAIStore.getState();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ai.setActiveScenario(scenario as any);
+      ai.setCurrentQuestion(null);
+      ai.setPendingContinue(null);
+      ai.setActiveAITab('mentor');
+
+      // ── 3. Inject "scenario loaded" mentor message ──
+      ai.addMentorMessage(
+        'mentor',
+        `🎓 Scenario loaded: **${scenario.title}** (${scenario.difficulty.toUpperCase()})\n\n${scenario.description}`
+      );
+
+      // ── 4. Inject pre-op vignette presentation ──
+      const v = scenario.preopVignette;
+      const vignetteLines: string[] = [
+        `👩‍⚕️ **Millie the Mentor** — Let's begin your scenario!\n`,
+        `**📋 Pre-op Vignette: ${scenario.title}**\n`,
+        `**Indication:** ${v.indication}\n**Setting:** ${v.setting}`,
+        `**History:**\n${v.history.map((h: string) => `• ${h}`).join('\n')}`,
+        `**Exam:**\n${v.exam.map((e: string) => `• ${e}`).join('\n')}`,
+      ];
+      if (v.labs?.length) {
+        vignetteLines.push(`**Labs:**\n${v.labs.map((l: string) => `• ${l}`).join('\n')}`);
+      }
+      vignetteLines.push(
+        `**Baseline Monitors:** ${v.baselineMonitors.join(', ')}`,
+        `**Target Sedation Goal:** ${v.targetSedationGoal}`,
+        `\n**Learning Objectives:**\n${scenario.learningObjectives.map((o: string) => `• ${o}`).join('\n')}`
+      );
+      ai.addMentorMessage('mentor', vignetteLines.join('\n\n'));
+
+      // ── 5. Load into Conductor and start ──
       conductor.loadLegacyScenario(scenario);
-      useAIStore.getState().setActiveAITab('mentor');
       conductor.start();
+
+      // ── 6. Ensure sim clock is ticking ──
+      const simNow = useSimStore.getState();
+      if (!simNow.isRunning) simNow.toggleRunning();
   };
   
   const handleStopScenario = () => {
     conductor.stop();
+    // Clean up scenario state
+    const sim = useSimStore.getState();
+    sim.setTrueNorthLocked(false);
+    sim.setScenarioActive(false);
+    sim.setScenarioDrugProtocols(null);
+    useAIStore.getState().setActiveScenario(null);
     if (currentScenario) markComplete(currentScenario.id);
   };
 
