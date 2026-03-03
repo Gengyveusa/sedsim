@@ -68,14 +68,14 @@ export interface AIStoreAccessor {
   setPendingContinue: (pending: { stepId: string; stepLabel: string } | null) => void;
 }
 
-// ─── Conductor Config ─────────────────────────────────────────────────────────────────
+// ─── Conductor Config ─────────────────────────────────────────────────────────
 
 export interface ConductorConfig {
   /** Interval between Conductor ticks in milliseconds (default: 1000). */
   tickIntervalMs?: number;
 }
 
-// ─── Condition evaluation helper ────────────────────────────────────────────────────
+// ─── Condition evaluation helper ──────────────────────────────────────────────
 
 function evaluateCondition(
   condition: NonNullable<ConductorStep['triggerCondition']>,
@@ -103,7 +103,7 @@ function evaluateCondition(
   }
 }
 
-// ─── Conductor ──────────────────────────────────────────────────────────────────────
+// ─── Conductor ────────────────────────────────────────────────────────────────
 
 export class Conductor {
   readonly bus: EventBus = new EventBus();
@@ -176,7 +176,7 @@ export class Conductor {
     this.beatPlayer = new BeatPlayer(dispatcher, this.bus);
   }
 
-  // ── Public API ─────────────────────────────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────────
 
   /**
    * Load a ConductorScenario and prepare the Conductor for playback.
@@ -298,7 +298,7 @@ export class Conductor {
     this.bus.emit({ type: 'step_completed', stepId });
   }
 
-  // ── Tick ───────────────────────────────────────────────────────────────────────
+  // ── Tick ───────────────────────────────────────────────────────────────────
 
   /** Called once per second by the internal interval. */
   tick(): void {
@@ -309,10 +309,16 @@ export class Conductor {
     this.checkVitalCoherence();
   }
 
-  // ── Private: Step Trigger Evaluation ──────────────────────────────────────────
+  // ── Private: Step Trigger Evaluation ──────────────────────────────────────
 
   private evaluateStepTriggers(): void {
     if (!this.scenario) return;
+
+    // ── CRITICAL GUARD: never fire a new step while one is already active ─────
+    // Steps advance sequentially: fire → complete → evaluate next.
+    // Physiology safety events (desaturation, bradycardia, etc.) are handled
+    // separately by detectPhysioEventsAndInject() and bypass this gate.
+    if (this.activeStepId !== null) return;
 
     const elapsed = this.sim.getElapsedSeconds();
     const vitals = this.sim.getVitals();
@@ -320,7 +326,6 @@ export class Conductor {
 
     for (const step of this.scenario.steps) {
       if (this.completedStepIds.has(step.id)) continue;
-      if (this.activeStepId === step.id) continue;
 
       if (this.shouldFireStep(step, elapsed, vitals, moass)) {
         this.fireStep(step);
@@ -338,7 +343,9 @@ export class Conductor {
   ): boolean {
     switch (step.triggerType) {
       case 'on_start':
-        return elapsed === 0 || this.completedStepIds.size === 0;
+        // Fire only at the very beginning — once any step has ever been
+        // activated or completed, the on_start window is closed.
+        return this.completedStepIds.size === 0 && !this.activeStepId;
 
       case 'on_time':
         return (
@@ -431,7 +438,7 @@ export class Conductor {
     // setPendingContinue → user clicks Next Step → continuePendingStep().
   }
 
-  // ── Private: Physio Event Injection ───────────────────────────────────────────
+  // ── Private: Physio Event Injection ───────────────────────────────────────
 
   private detectPhysioEventsAndInject(): void {
     const vitals = this.sim.getVitals();
@@ -451,7 +458,7 @@ export class Conductor {
     }
   }
 
-  // ── Private: Vital Coherence ───────────────────────────────────────────────────
+  // ── Private: Vital Coherence ───────────────────────────────────────────────
 
   private checkVitalCoherence(): void {
     if (!this.currentVitalTargets) return;
@@ -478,7 +485,7 @@ export class Conductor {
     }
   }
 
-  // ── Private: Utilities ────────────────────────────────────────────────────────
+  // ── Private: Utilities ────────────────────────────────────────────────────
 
   private findStep(stepId: string): ConductorStep | undefined {
     return this.scenario?.steps.find((s) => s.id === stepId);
