@@ -68,14 +68,14 @@ export interface AIStoreAccessor {
   setPendingContinue: (pending: { stepId: string; stepLabel: string } | null) => void;
 }
 
-// ─── Conductor Config ─────────────────────────────────────────────────────────
+// ─── Conductor Config ─────────────────────────────────────────────────────────────────
 
 export interface ConductorConfig {
   /** Interval between Conductor ticks in milliseconds (default: 1000). */
   tickIntervalMs?: number;
 }
 
-// ─── Condition evaluation helper ──────────────────────────────────────────────
+// ─── Condition evaluation helper ────────────────────────────────────────────────────
 
 function evaluateCondition(
   condition: NonNullable<ConductorStep['triggerCondition']>,
@@ -103,7 +103,7 @@ function evaluateCondition(
   }
 }
 
-// ─── Conductor ────────────────────────────────────────────────────────────────
+// ─── Conductor ──────────────────────────────────────────────────────────────────────
 
 export class Conductor {
   readonly bus: EventBus = new EventBus();
@@ -113,6 +113,9 @@ export class Conductor {
   private activeStepId: string | null = null;
   private currentVitalTargets: StepVitalTargets | null = null;
   private pendingQuestion: { stepId: string; question: import('../ScenarioEngine').ScenarioQuestion } | null = null;
+
+  /** Timer for auto-advancing non-question steps after beats finish. */
+  private autoAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Seconds a physiology trigger condition has been continuously met, keyed by stepId. */
   private conditionDurationSecs: Map<string, number> = new Map();
@@ -173,7 +176,7 @@ export class Conductor {
     this.beatPlayer = new BeatPlayer(dispatcher, this.bus);
   }
 
-  // ── Public API ─────────────────────────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────────────
 
   /**
    * Load a ConductorScenario and prepare the Conductor for playback.
@@ -217,6 +220,10 @@ export class Conductor {
     if (this.tickTimer !== null) {
       clearInterval(this.tickTimer);
       this.tickTimer = null;
+    }
+    if (this.autoAdvanceTimer !== null) {
+      clearTimeout(this.autoAdvanceTimer);
+      this.autoAdvanceTimer = null;
     }
     this.beatPlayer.stop();
     this.pendingQuestion = null;
@@ -273,6 +280,10 @@ export class Conductor {
    * Called when the learner clicks "Next Step".
    */
   continuePendingStep(): void {
+    if (this.autoAdvanceTimer !== null) {
+      clearTimeout(this.autoAdvanceTimer);
+      this.autoAdvanceTimer = null;
+    }
     this.ai.setPendingContinue(null);
     this.completeCurrentStep();
   }
@@ -287,7 +298,7 @@ export class Conductor {
     this.bus.emit({ type: 'step_completed', stepId });
   }
 
-  // ── Tick ───────────────────────────────────────────────────────────────────
+  // ── Tick ───────────────────────────────────────────────────────────────────────
 
   /** Called once per second by the internal interval. */
   tick(): void {
@@ -298,7 +309,7 @@ export class Conductor {
     this.checkVitalCoherence();
   }
 
-  // ── Private: Step Trigger Evaluation ──────────────────────────────────────
+  // ── Private: Step Trigger Evaluation ──────────────────────────────────────────
 
   private evaluateStepTriggers(): void {
     if (!this.scenario) return;
@@ -374,9 +385,53 @@ export class Conductor {
 
     // Start beat playback.
     this.beatPlayer.play(step.beats, step.id);
+
+    // Determine whether this step has a question beat.
+    const hasQuestion = step.beats.some(b => b.type === 'question');
+
+    if (!hasQuestion) {
+      // No question — schedule teaching points + auto-advance after beats finish.
+      // Calculate the time when the last beat will have played.
+      const maxBeatDelay = step.beats.reduce(
+        (max, b) => Math.max(max, b.delayMs),
+        0
+      );
+      // Teaching points appear after beats, then pending-continue + auto-advance.
+      const teachingDelay = maxBeatDelay + 1000;
+      const continueDelay = teachingDelay + (step.teachingPoints?.length ? 1500 : 0);
+      const autoAdvanceDelay = continueDelay + 8000; // 8s auto-advance like legacy engine
+
+      // Inject teaching points after dialogue completes.
+      if (step.teachingPoints?.length) {
+        setTimeout(() => {
+          if (this.activeStepId !== step.id) return;
+          this.ai.addMentorMessage(
+            'mentor',
+            '📚 **Teaching Points:**\n' + step.teachingPoints!.map(tp => `• ${tp}`).join('\n')
+          );
+        }, teachingDelay);
+      }
+
+      // Show the "Next Step" button so learner can advance early.
+      setTimeout(() => {
+        if (this.activeStepId !== step.id) return;
+        this.ai.setPendingContinue({ stepId: step.id, stepLabel: step.id });
+      }, continueDelay);
+
+      // Auto-advance after 8 seconds if the learner doesn't click.
+      this.autoAdvanceTimer = setTimeout(() => {
+        this.autoAdvanceTimer = null;
+        if (this.activeStepId !== step.id) return;
+        this.ai.setPendingContinue(null);
+        this.completeCurrentStep();
+      }, autoAdvanceDelay);
+    }
+    // For steps with questions: the question beat fires the onQuestion callback,
+    // which sets pendingQuestion. User answers → answerQuestion() → feedback →
+    // setPendingContinue → user clicks Next Step → continuePendingStep().
   }
 
-  // ── Private: Physio Event Injection ───────────────────────────────────────
+  // ── Private: Physio Event Injection ───────────────────────────────────────────
 
   private detectPhysioEventsAndInject(): void {
     const vitals = this.sim.getVitals();
@@ -396,7 +451,7 @@ export class Conductor {
     }
   }
 
-  // ── Private: Vital Coherence ───────────────────────────────────────────────
+  // ── Private: Vital Coherence ───────────────────────────────────────────────────
 
   private checkVitalCoherence(): void {
     if (!this.currentVitalTargets) return;
@@ -423,7 +478,7 @@ export class Conductor {
     }
   }
 
-  // ── Private: Utilities ────────────────────────────────────────────────────
+  // ── Private: Utilities ────────────────────────────────────────────────────────
 
   private findStep(stepId: string): ConductorStep | undefined {
     return this.scenario?.steps.find((s) => s.id === stepId);
