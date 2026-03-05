@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import useSimStore from '../store/useSimStore';
 import type { AirwayDevice, InterventionType } from '../types';
+import PrecordialStethoscope from './PrecordialStethoscope';
 
 interface AirwayDeviceInfo {
   key: AirwayDevice;
@@ -194,6 +195,11 @@ export default function InterventionPanel() {
           </div>
         </div>
       )}
+
+      {/* Precordial Stethoscope & TcCO₂ */}
+      <div className="mt-3 pt-3 border-t border-gray-700">
+        <PrecordialStethoscope />
+      </div>
     </div>
   );
 }
