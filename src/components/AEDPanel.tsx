@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import useSimStore from '../store/useSimStore';
 import type { CardiacRhythm } from '../types';
+import { audioManager } from '../utils/audio';
 
 /* ─────────────────────────────────────────────────────────
    Types & Constants
@@ -256,6 +257,8 @@ export default function AEDPanel() {
       if (analyzeTimerRef.current) clearTimeout(analyzeTimerRef.current);
       if (cprIntervalRef.current) clearInterval(cprIntervalRef.current);
       if (cprPromptIntervalRef.current) clearInterval(cprPromptIntervalRef.current);
+      audioManager.stopCprMetronome();
+      audioManager.stopAedChargeTone();
     };
   }, []);
 
@@ -274,9 +277,15 @@ export default function AEDPanel() {
           // Timer expired — prompt re-analysis
           if (cprIntervalRef.current) clearInterval(cprIntervalRef.current);
           if (cprPromptIntervalRef.current) clearInterval(cprPromptIntervalRef.current);
+          audioManager.stopCprMetronome();
+          audioManager.playAedPromptTone();
           setAedState('PADS_ATTACHED');
           useSimStore.getState().logEvent('AED: CPR cycle complete. Analyze rhythm.', 'intervention', 'info');
           return 0;
+        }
+        // Play warning beeps at 10 seconds remaining
+        if (prev === 11) {
+          audioManager.playAedTimerWarning();
         }
         return prev - 1;
       });
@@ -299,6 +308,7 @@ export default function AEDPanel() {
   /* ── Auto-transition: pads attaching → pads attached ── */
   useEffect(() => {
     if (aedState === 'PADS_ATTACHING' && rightPad && leftPad) {
+      audioManager.playAedPromptTone();
       useSimStore.getState().logEvent('AED: Pads attached.', 'intervention', 'info');
       setAedState('PADS_ATTACHED');
     }
@@ -307,11 +317,14 @@ export default function AEDPanel() {
   /* ── Handlers ── */
 
   const handlePowerOn = () => {
+    audioManager.init(); // Must be called from user gesture (browser autoplay policy)
     setAedState('POWERED_ON');
+    audioManager.playAedPowerOn();
     useSimStore.getState().logEvent('AED: Powered on.', 'intervention', 'info');
   };
 
   const handleAttachPads = () => {
+    audioManager.playAedPromptTone();
     setAedState('PADS_ATTACHING');
   };
 
@@ -319,6 +332,8 @@ export default function AEDPanel() {
     setAedState('ANALYZING');
     setAnalyzeProgress(0);
     stopCprTimer();
+    audioManager.stopCprMetronome();
+    audioManager.playAedAnalyzing();
 
     useSimStore.getState().logEvent('AED: Analyzing rhythm…', 'intervention', 'info');
 
@@ -340,6 +355,9 @@ export default function AEDPanel() {
 
       if (currentRhythm && SHOCKABLE_RHYTHMS.includes(currentRhythm)) {
         setAedState('SHOCK_ADVISED');
+        audioManager.playAedShockAdvised();
+        // Start the charging whine after the alarm beeps finish (~1.8s)
+        setTimeout(() => audioManager.playAedChargeTone(), 1800);
         useSimStore.getState().logEvent(
           `AED: Shockable rhythm detected — ${rhythmLabel(currentRhythm)}. Shock advised.`,
           'alert',
@@ -347,12 +365,14 @@ export default function AEDPanel() {
         );
       } else {
         setAedState('NO_SHOCK_ADVISED');
+        audioManager.playAedNoShock();
         useSimStore.getState().logEvent(
           `AED: Non-shockable rhythm — ${rhythmLabel(currentRhythm)}. No shock advised.`,
           'alert',
           'warning',
         );
         startCprTimer();
+        audioManager.startCprMetronome();
       }
     }, 3000);
   };
@@ -365,6 +385,8 @@ export default function AEDPanel() {
     setAedState('SHOCKING');
     setShowShockFlash(true);
     setShockCount(nextShock);
+    audioManager.stopAedChargeTone();
+    audioManager.playAedShockDischarge();
 
     useSimStore.getState().logEvent(
       `AED: Shock #${nextShock} delivered at ${energy}J`,
@@ -398,6 +420,7 @@ export default function AEDPanel() {
           },
         }));
 
+        audioManager.playAedRosc();
         useSimStore.getState().logEvent(
           `AED: Rhythm converted to Normal Sinus after shock #${nextShock}!`,
           'alert',
@@ -407,11 +430,14 @@ export default function AEDPanel() {
 
       setAedState('POST_SHOCK');
       startCprTimer();
+      audioManager.startCprMetronome();
     }, 800);
   };
 
   const handleReset = () => {
     stopCprTimer();
+    audioManager.stopCprMetronome();
+    audioManager.stopAedChargeTone();
     if (analyzeTimerRef.current) clearTimeout(analyzeTimerRef.current);
     setAedState('OFF');
     setRightPad(false);
