@@ -19,6 +19,8 @@ import SedationGauge from './components/SedationGauge';
 import AEDPanel from './components/AEDPanel';
 import SimMasterOverlay from './components/SimMasterOverlay';
 import { Dashboard } from './components/Dashboard';
+import OfflineBanner from './components/OfflineBanner';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import LMSPanel from './components/LMSPanel';
 import { usePerformanceObserver } from './hooks/usePerformanceObserver';
 
@@ -66,6 +68,8 @@ export default function App() {
       <a href="#sim-main" className="skip-link">Skip to main content</a>
 
       <div className="h-screen flex flex-col bg-sim-bg text-white">
+        {/* Offline Banner */}
+        <OfflineBanner />
         {/* Top Banner */}
         <PatientBanner />
 
@@ -222,6 +226,7 @@ export default function App() {
         <Dashboard />
       </div>
       <SimMasterOverlay enabled={simMasterEnabled} />
+      <PWAInstallPrompt />
     </>
   );
 }
