@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import { PKState, LogEntry, TrendPoint, EmergencyState, AirwayDevice } from '../../types';
+import { PKState, LogEntry, TrendPoint, EmergencyState, AirwayDevice, InterventionType } from '../../types';
 import { DrugParams } from '../../types';
 import { DRUG_DATABASE } from '../../engine/drugs';
 import { stepPK } from '../../engine/pkModel';
@@ -7,6 +7,7 @@ import { combinedEffect, effectToMOASS } from '../../engine/pdModel';
 import { calculateVitals, checkAlarms, BASELINE_VITALS, IVFluidContext } from '../../engine/physiology';
 import { generateEEG } from '../../engine/eegModel';
 import { createDigitalTwin, updateTwin } from '../../engine/digitalTwin';
+import { sessionRecorderInstance } from '../../engine/sessionRecorderInstance';
 import { computeVisualizationState, DEFAULT_VIZ_STATE } from './vitalsSlice';
 import { INITIAL_PK_STATES } from './drugSlice';
 import type { SimStore } from '../storeTypes';
@@ -185,6 +186,20 @@ export const createUiSlice: StateCreator<SimStore, [], [], UiSlice> = (set, get)
 
     const newUserIdleSeconds = state.userIdleSeconds + dt;
 
+    // Record snapshot for session playback
+    sessionRecorderInstance.record({
+      t: newTime,
+      vitals: newVitals,
+      pkStates: newPkStates,
+      moass,
+      combinedEff,
+      interventions: [...state.interventions] as InterventionType[],
+      airwayDevice: state.airwayDevice,
+      fio2,
+      newEvents: newLogs,
+      millieMessages: [],
+    });
+
     set({
       elapsedSeconds: newTime,
       pkStates: newPkStates,
@@ -224,6 +239,8 @@ export const createUiSlice: StateCreator<SimStore, [], [], UiSlice> = (set, get)
   },
 
   reset: () => {
+    // Clear the session recorder so a new recording starts fresh
+    sessionRecorderInstance.clear();
     const state = get();
     const patient = state.patient;
     set({

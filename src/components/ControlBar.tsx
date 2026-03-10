@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import useSimStore from '../store/useSimStore';
 import { conductorInstance } from '../engine/conductor/conductorInstance';
 import { audioManager } from '../utils/audio';
+import SessionPlaybackPanel from './SessionPlaybackPanel';
 const SPEED_OPTIONS = [0.5, 1, 2, 5, 10];
 
 export default  function ControlBar() {
@@ -164,6 +165,10 @@ export default  function ControlBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-4 text-sm">
+        {/* Session recording/playback controls */}
+        <div className="relative flex items-center">
+          <SessionPlaybackPanel />
+        </div>
         <div className="text-gray-300">
           <span className="text-gray-500">Elapsed: </span>
           <span className="font-mono text-lg">{formatTime(elapsedSeconds)}</span>
