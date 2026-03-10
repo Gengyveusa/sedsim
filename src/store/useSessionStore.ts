@@ -80,11 +80,11 @@ const useSessionStore = create<SessionStoreState>((set, get) => ({
   },
 
   stopRecording: () => {
-    set(state => ({
+    set({
       isRecording: false,
       frameCount: sessionRecorderInstance.frameCount,
-      estimatedBytes: state.isRecording ? sessionRecorderInstance.estimatedSizeBytes() : state.estimatedBytes,
-    }));
+      estimatedBytes: sessionRecorderInstance.estimatedSizeBytes(),
+    });
   },
 
   downloadRecording: () => {

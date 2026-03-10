@@ -437,10 +437,17 @@ function compactToPK(c: CompactPK): PKState {
   return { c1: c.c1, c2: c.c2, c3: c.c3, ce: c.ce };
 }
 
+const VALID_LOG_TYPES = new Set<LogEntry['type']>([
+  'bolus', 'infusion_start', 'infusion_stop', 'infusion_change', 'alert', 'vitals', 'intervention',
+]);
+
 function storedEventToLogEntry(e: StoredEvent): LogEntry {
+  const type: LogEntry['type'] = VALID_LOG_TYPES.has(e.tp as LogEntry['type'])
+    ? (e.tp as LogEntry['type'])
+    : 'alert';
   return {
     time: e.t,
-    type: (e.tp ?? 'alert') as LogEntry['type'],
+    type,
     message: e.msg,
     ...(e.sev ? { severity: e.sev as LogEntry['severity'] } : { severity: 'info' }),
   };
