@@ -132,7 +132,7 @@ const imgData = ctx.createImageData(W, H); const px = imgData.data;
           const raDst = Math.pow((hx - raCX) / raRX, 2) + Math.pow((hy - raCY) / raRY, 2);
           const sepX = (lvCX + lvRX + rvCX - rvRX) / 2;
           const sepIn = Math.abs(hx - sepX) < wallT / 2 && hy > Math.min(lvCY - lvRY, rvCY - rvRY) * 0.8 && hy < Math.max(lvCY + lvRY, rvCY + rvRY) * 0.7;
-          let br = 0; let cav = false;
+          let br: number; let cav = false;
           if (lvDst < 0.85) { br = sv * 8 * att; cav = true; }
           else if (rvDst < 0.82) { br = sv * 10 * att; cav = true; }
           else if (laDst < 0.80) { br = sv * 9 * att; cav = true; }
@@ -168,7 +168,7 @@ const imgData = ctx.createImageData(W, H); const px = imgData.data;
         else if (ep2 > 0.17 && ep2 < 0.19) ev = 0.9;
         else if (ep2 > 0.19 && ep2 < 0.21) ev = -0.2;
         else if (ep2 > 0.25 && ep2 < 0.35) ev = 0.2 * Math.sin((ep2 - 0.25) / 0.1 * Math.PI);
-        x === 0 ? ctx.moveTo(x, ecgY2 - ev * 14) : ctx.lineTo(x, ecgY2 - ev * 14);
+        if (x === 0) ctx.moveTo(x, ecgY2 - ev * 14); else ctx.lineTo(x, ecgY2 - ev * 14);
       }
       ctx.stroke();
       animId = requestAnimationFrame(draw);

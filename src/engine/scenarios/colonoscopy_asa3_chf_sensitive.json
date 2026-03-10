@@ -2,8 +2,17 @@
   "id": "colonoscopy_asa3_chf_sensitive",
   "title": "Colonoscopy - ASA III CHF, Sensitive",
   "description": "High-complexity colonoscopy sedation for an ASA III patient with CHF, reduced ejection fraction, and elevated PK/PD sensitivity. Emphasizes cautious dose titration, hemodynamic monitoring, and early complication management.",
-  "tags": ["colonoscopy", "ASA III", "CHF", "high sensitivity", "moderate sedation", "hard"],
-  "patient": { "archetypeId": "chf_patient" },
+  "tags": [
+    "colonoscopy",
+    "ASA III",
+    "CHF",
+    "high sensitivity",
+    "moderate sedation",
+    "hard"
+  ],
+  "patient": {
+    "archetypeId": "chf_patient"
+  },
   "learningObjectives": [
     "Recognise how CHF alters drug distribution and sensitivity",
     "Apply conservative dosing strategies for ASA III patients",
@@ -13,12 +22,36 @@
   ],
   "estimatedDurationSec": 600,
   "phases": [
-    { "id": "pre",          "label": "Pre-Procedure",  "order": 1 },
-    { "id": "induction",    "label": "Induction",       "order": 2 },
-    { "id": "maintenance",  "label": "Maintenance",     "order": 3 },
-    { "id": "complication", "label": "Complication",    "order": 4 },
-    { "id": "recovery",     "label": "Recovery",        "order": 5 },
-    { "id": "debrief",      "label": "Debrief",         "order": 6 }
+    {
+      "id": "pre",
+      "label": "Pre-Procedure",
+      "order": 1
+    },
+    {
+      "id": "induction",
+      "label": "Induction",
+      "order": 2
+    },
+    {
+      "id": "maintenance",
+      "label": "Maintenance",
+      "order": 3
+    },
+    {
+      "id": "complication",
+      "label": "Complication",
+      "order": 4
+    },
+    {
+      "id": "recovery",
+      "label": "Recovery",
+      "order": 5
+    },
+    {
+      "id": "debrief",
+      "label": "Debrief",
+      "order": 6
+    }
   ],
   "states": [
     {
@@ -27,25 +60,56 @@
       "type": "question",
       "prompt": "Your patient is a 68-year-old male with CHF (EF 35%), NYHA Class II, on metoprolol, furosemide, and lisinopril. Mild dyspnoea on exertion. Baseline BP 108/62, HR 58, SpO2 95% on room air. Airway: Mallampati II, limited jaw opening. Presenting for surveillance colonoscopy. What ASA class would you assign?",
       "options": [
-        { "id": "asa1", "label": "ASA I",  "isCorrect": false },
-        { "id": "asa2", "label": "ASA II", "isCorrect": false },
-        { "id": "asa3", "label": "ASA III","isCorrect": true  },
-        { "id": "asa4", "label": "ASA IV", "isCorrect": false }
+        {
+          "id": "asa1",
+          "label": "ASA I",
+          "isCorrect": false
+        },
+        {
+          "id": "asa2",
+          "label": "ASA II",
+          "isCorrect": false
+        },
+        {
+          "id": "asa3",
+          "label": "ASA III",
+          "isCorrect": true
+        },
+        {
+          "id": "asa4",
+          "label": "ASA IV",
+          "isCorrect": false
+        }
       ],
       "explanations": [
-        "Incorrect — this patient has significant systemic disease.",
-        "Incorrect — CHF with reduced EF and NYHA Class II symptoms is more than mild disease.",
-        "Correct! CHF with EF 35% and NYHA Class II is ASA III — severe systemic disease without constant threat to life.",
+        "Incorrect \u2014 this patient has significant systemic disease.",
+        "Incorrect \u2014 CHF with reduced EF and NYHA Class II symptoms is more than mild disease.",
+        "Correct! CHF with EF 35% and NYHA Class II is ASA III \u2014 severe systemic disease without constant threat to life.",
         "ASA IV is reserved for a constant threat to life. This patient is functional at rest."
       ],
       "simActions": [
-        { "type": "change_oxygen", "payload": { "device": "nasal_cannula", "fio2": 0.32 } }
+        {
+          "type": "change_oxygen",
+          "payload": {
+            "device": "nasal_cannula",
+            "fio2": 0.32
+          }
+        }
       ],
       "exitConditions": [
-        { "id": "ec_continue", "type": "on_continue" }
+        {
+          "id": "ec_continue",
+          "type": "on_continue"
+        }
       ],
       "transitions": [
-        { "fromStateId": "state_asa_class", "toStateId": "state_sensitivity_check", "viaConditions": ["ec_continue"] }
+        {
+          "fromStateId": "state_asa_class",
+          "toStateId": "state_sensitivity_check",
+          "viaConditions": [
+            "ec_continue"
+          ]
+        }
       ],
       "scoring": {
         "maxScore": 10,
@@ -65,22 +129,47 @@
       "type": "question",
       "prompt": "CHF with reduced ejection fraction alters drug pharmacokinetics. Which of the following BEST describes why this patient requires lower initial benzodiazepine doses?",
       "options": [
-        { "id": "sens_vd",   "label": "Reduced volume of distribution → higher peak plasma concentrations", "isCorrect": true  },
-        { "id": "sens_rena", "label": "Increased renal clearance → faster drug elimination",                "isCorrect": false },
-        { "id": "sens_prot", "label": "Increased plasma protein binding → more free drug available",       "isCorrect": false },
-        { "id": "sens_gi",   "label": "Increased GI absorption → higher bioavailability of oral pre-meds", "isCorrect": false }
+        {
+          "id": "sens_vd",
+          "label": "Reduced volume of distribution \u2192 higher peak plasma concentrations",
+          "isCorrect": true
+        },
+        {
+          "id": "sens_rena",
+          "label": "Increased renal clearance \u2192 faster drug elimination",
+          "isCorrect": false
+        },
+        {
+          "id": "sens_prot",
+          "label": "Increased plasma protein binding \u2192 more free drug available",
+          "isCorrect": false
+        },
+        {
+          "id": "sens_gi",
+          "label": "Increased GI absorption \u2192 higher bioavailability of oral pre-meds",
+          "isCorrect": false
+        }
       ],
       "explanations": [
         "Correct! Reduced cardiac output decreases Vd for lipophilic drugs, producing higher peak concentrations from a given IV dose.",
-        "Incorrect — renal clearance is typically reduced or unchanged; hepatic clearance is reduced due to low cardiac output.",
-        "Incorrect — protein binding is often reduced in CHF (hypoalbuminemia), which can actually increase free drug, but the dominant PK effect is reduced Vd.",
-        "Incorrect — this scenario concerns IV drugs; GI absorption is irrelevant here."
+        "Incorrect \u2014 renal clearance is typically reduced or unchanged; hepatic clearance is reduced due to low cardiac output.",
+        "Incorrect \u2014 protein binding is often reduced in CHF (hypoalbuminemia), which can actually increase free drug, but the dominant PK effect is reduced Vd.",
+        "Incorrect \u2014 this scenario concerns IV drugs; GI absorption is irrelevant here."
       ],
       "exitConditions": [
-        { "id": "ec_continue", "type": "on_continue" }
+        {
+          "id": "ec_continue",
+          "type": "on_continue"
+        }
       ],
       "transitions": [
-        { "fromStateId": "state_sensitivity_check", "toStateId": "state_midazolam_dose", "viaConditions": ["ec_continue"] }
+        {
+          "fromStateId": "state_sensitivity_check",
+          "toStateId": "state_midazolam_dose",
+          "viaConditions": [
+            "ec_continue"
+          ]
+        }
       ],
       "scoring": {
         "maxScore": 10,
@@ -100,25 +189,57 @@
       "type": "question",
       "prompt": "It is time to begin sedation. Given the patient's CHF and baseline BP 108/62, what initial midazolam dose would be most appropriate?",
       "options": [
-        { "id": "mdz_0.5",  "label": "0.5 mg IV", "isCorrect": true  },
-        { "id": "mdz_1",    "label": "1 mg IV",   "isCorrect": false },
-        { "id": "mdz_2",    "label": "2 mg IV",   "isCorrect": false },
-        { "id": "mdz_0.25", "label": "0.25 mg IV","isCorrect": false }
+        {
+          "id": "mdz_0.5",
+          "label": "0.5 mg IV",
+          "isCorrect": true
+        },
+        {
+          "id": "mdz_1",
+          "label": "1 mg IV",
+          "isCorrect": false
+        },
+        {
+          "id": "mdz_2",
+          "label": "2 mg IV",
+          "isCorrect": false
+        },
+        {
+          "id": "mdz_0.25",
+          "label": "0.25 mg IV",
+          "isCorrect": false
+        }
       ],
       "explanations": [
-        "Correct! Start low (0.5 mg) in ASA III/CHF patients — their PK sensitivity means even low doses can overshoot.",
+        "Correct! Start low (0.5 mg) in ASA III/CHF patients \u2014 their PK sensitivity means even low doses can overshoot.",
         "1 mg is appropriate for healthy adults but may produce over-sedation and hypotension in this CHF patient.",
         "2 mg is excessive and risks hemodynamic collapse in a patient with borderline BP.",
         "0.25 mg is subtherapeutic in most adults; 0.5 mg is the better conservative starting point."
       ],
       "simActions": [
-        { "type": "give_drug", "payload": { "drug": "midazolam", "doseMg": 0.5, "route": "iv_bolus" } }
+        {
+          "type": "give_drug",
+          "payload": {
+            "drug": "midazolam",
+            "doseMg": 0.5,
+            "route": "iv_bolus"
+          }
+        }
       ],
       "exitConditions": [
-        { "id": "ec_continue", "type": "on_continue" }
+        {
+          "id": "ec_continue",
+          "type": "on_continue"
+        }
       ],
       "transitions": [
-        { "fromStateId": "state_midazolam_dose", "toStateId": "state_fentanyl_dose", "viaConditions": ["ec_continue"] }
+        {
+          "fromStateId": "state_midazolam_dose",
+          "toStateId": "state_fentanyl_dose",
+          "viaConditions": [
+            "ec_continue"
+          ]
+        }
       ],
       "scoring": {
         "maxScore": 15,
@@ -136,27 +257,59 @@
       "id": "state_fentanyl_dose",
       "phaseId": "induction",
       "type": "question",
-      "prompt": "Mild sedation achieved. The endoscope is being introduced — the patient grimaces. What fentanyl dose is appropriate given his CHF and borderline BP?",
+      "prompt": "Mild sedation achieved. The endoscope is being introduced \u2014 the patient grimaces. What fentanyl dose is appropriate given his CHF and borderline BP?",
       "options": [
-        { "id": "fen_25",  "label": "25 mcg IV", "isCorrect": true  },
-        { "id": "fen_50",  "label": "50 mcg IV", "isCorrect": false },
-        { "id": "fen_100", "label": "100 mcg IV","isCorrect": false },
-        { "id": "fen_0",   "label": "Hold — no opioid in CHF patients", "isCorrect": false }
+        {
+          "id": "fen_25",
+          "label": "25 mcg IV",
+          "isCorrect": true
+        },
+        {
+          "id": "fen_50",
+          "label": "50 mcg IV",
+          "isCorrect": false
+        },
+        {
+          "id": "fen_100",
+          "label": "100 mcg IV",
+          "isCorrect": false
+        },
+        {
+          "id": "fen_0",
+          "label": "Hold \u2014 no opioid in CHF patients",
+          "isCorrect": false
+        }
       ],
       "explanations": [
-        "Correct! 25 mcg is the conservative and appropriate starting dose for an opioid-naïve CHF patient.",
+        "Correct! 25 mcg is the conservative and appropriate starting dose for an opioid-na\u00efve CHF patient.",
         "50 mcg risks significant respiratory depression and vasodilation in a borderline-BP patient.",
-        "100 mcg is dangerously high for an opioid-naïve ASA III patient with reduced cardiac reserve.",
-        "Opioids are not contraindicated in CHF — adequate analgesia prevents sympathetic surges that worsen hemodynamics."
+        "100 mcg is dangerously high for an opioid-na\u00efve ASA III patient with reduced cardiac reserve.",
+        "Opioids are not contraindicated in CHF \u2014 adequate analgesia prevents sympathetic surges that worsen hemodynamics."
       ],
       "simActions": [
-        { "type": "give_drug", "payload": { "drug": "fentanyl", "doseMg": 0.025, "route": "iv_bolus" } }
+        {
+          "type": "give_drug",
+          "payload": {
+            "drug": "fentanyl",
+            "doseMg": 0.025,
+            "route": "iv_bolus"
+          }
+        }
       ],
       "exitConditions": [
-        { "id": "ec_continue", "type": "on_continue" }
+        {
+          "id": "ec_continue",
+          "type": "on_continue"
+        }
       ],
       "transitions": [
-        { "fromStateId": "state_fentanyl_dose", "toStateId": "state_maintenance_info", "viaConditions": ["ec_continue"] }
+        {
+          "fromStateId": "state_fentanyl_dose",
+          "toStateId": "state_maintenance_info",
+          "viaConditions": [
+            "ec_continue"
+          ]
+        }
       ],
       "scoring": {
         "maxScore": 15,
@@ -174,12 +327,21 @@
       "id": "state_maintenance_info",
       "phaseId": "maintenance",
       "type": "info",
-      "prompt": "Sedation achieved. The colonoscopy is underway. Continue close hemodynamic monitoring.\n\n📚 Teaching Point: In patients with CHF, even mild hypotension (MAP < 60 mmHg) can precipitate cardiogenic shock. Trending BP is as important as SpO2 monitoring.",
+      "prompt": "Sedation achieved. The colonoscopy is underway. Continue close hemodynamic monitoring.\n\n\ud83d\udcda Teaching Point: In patients with CHF, even mild hypotension (MAP < 60 mmHg) can precipitate cardiogenic shock. Trending BP is as important as SpO2 monitoring.",
       "exitConditions": [
-        { "id": "ec_continue", "type": "on_continue" }
+        {
+          "id": "ec_continue",
+          "type": "on_continue"
+        }
       ],
       "transitions": [
-        { "fromStateId": "state_maintenance_info", "toStateId": "state_hypotension_response", "viaConditions": ["ec_continue"] }
+        {
+          "fromStateId": "state_maintenance_info",
+          "toStateId": "state_hypotension_response",
+          "viaConditions": [
+            "ec_continue"
+          ]
+        }
       ],
       "scoring": null
     },
@@ -189,25 +351,56 @@
       "type": "question",
       "prompt": "ALERT: BP has dropped to 82/50 (MAP 61 mmHg). HR is 52 (metoprolol effect). SpO2 is 93%. The patient is drowsy but arousable. What is your PRIORITY intervention?",
       "options": [
-        { "id": "hyp_fluid",     "label": "Give a 250 mL isotonic fluid bolus and reduce FiO2",           "isCorrect": false },
-        { "id": "hyp_fluid_o2", "label": "Give 250–500 mL isotonic fluid bolus AND increase FiO2 to 40%", "isCorrect": true  },
-        { "id": "hyp_epi",      "label": "Administer epinephrine 1 mg IV",                                "isCorrect": false },
-        { "id": "hyp_naloxone", "label": "Administer naloxone 0.4 mg IV",                                 "isCorrect": false }
+        {
+          "id": "hyp_fluid",
+          "label": "Give a 250 mL isotonic fluid bolus and reduce FiO2",
+          "isCorrect": false
+        },
+        {
+          "id": "hyp_fluid_o2",
+          "label": "Give 250\u2013500 mL isotonic fluid bolus AND increase FiO2 to 40%",
+          "isCorrect": true
+        },
+        {
+          "id": "hyp_epi",
+          "label": "Administer epinephrine 1 mg IV",
+          "isCorrect": false
+        },
+        {
+          "id": "hyp_naloxone",
+          "label": "Administer naloxone 0.4 mg IV",
+          "isCorrect": false
+        }
       ],
       "explanations": [
-        "Fluid bolus is correct, but reducing FiO2 when SpO2 is 93% is wrong — supplemental O2 should be increased.",
+        "Fluid bolus is correct, but reducing FiO2 when SpO2 is 93% is wrong \u2014 supplemental O2 should be increased.",
         "Correct! Fluid challenge addresses sedation-induced vasodilation. Increasing FiO2 addresses the concurrent mild hypoxaemia.",
-        "Epinephrine is for anaphylaxis or cardiac arrest — this is hemodynamic sedation-related hypotension.",
+        "Epinephrine is for anaphylaxis or cardiac arrest \u2014 this is hemodynamic sedation-related hypotension.",
         "Naloxone may reverse analgesia and trigger sympathetic surge; it is not indicated when hemodynamic compromise is from vasodilation."
       ],
       "simActions": [
-        { "type": "change_oxygen", "payload": { "device": "nasal_cannula", "fio2": 0.40 } }
+        {
+          "type": "change_oxygen",
+          "payload": {
+            "device": "nasal_cannula",
+            "fio2": 0.4
+          }
+        }
       ],
       "exitConditions": [
-        { "id": "ec_continue", "type": "on_continue" }
+        {
+          "id": "ec_continue",
+          "type": "on_continue"
+        }
       ],
       "transitions": [
-        { "fromStateId": "state_hypotension_response", "toStateId": "state_recovery_check", "viaConditions": ["ec_continue"] }
+        {
+          "fromStateId": "state_hypotension_response",
+          "toStateId": "state_recovery_check",
+          "viaConditions": [
+            "ec_continue"
+          ]
+        }
       ],
       "scoring": {
         "maxScore": 20,
@@ -227,22 +420,47 @@
       "type": "question",
       "prompt": "The procedure is complete. BP is recovering to 100/62. SpO2 is 96% on 4 L/min NC. The patient is responsive but drowsy. Which parameter is MOST important to trend before considering discharge to PACU?",
       "options": [
-        { "id": "rec_bp",    "label": "Trend BP every 5 min — ensure MAP ≥ 70 mmHg for 15 min", "isCorrect": true  },
-        { "id": "rec_temp",  "label": "Confirm core temperature ≥ 36.5°C",                       "isCorrect": false },
-        { "id": "rec_urine", "label": "Check urine output > 0.5 mL/kg/hr",                       "isCorrect": false },
-        { "id": "rec_moass", "label": "MOASS ≥ 3 only — BP is less important in recovery",       "isCorrect": false }
+        {
+          "id": "rec_bp",
+          "label": "Trend BP every 5 min \u2014 ensure MAP \u2265 70 mmHg for 15 min",
+          "isCorrect": true
+        },
+        {
+          "id": "rec_temp",
+          "label": "Confirm core temperature \u2265 36.5\u00b0C",
+          "isCorrect": false
+        },
+        {
+          "id": "rec_urine",
+          "label": "Check urine output > 0.5 mL/kg/hr",
+          "isCorrect": false
+        },
+        {
+          "id": "rec_moass",
+          "label": "MOASS \u2265 3 only \u2014 BP is less important in recovery",
+          "isCorrect": false
+        }
       ],
       "explanations": [
-        "Correct! Hemodynamic stability (sustained MAP ≥ 70 mmHg) is the critical discharge criterion for a CHF patient.",
-        "Temperature is a valid discharge criterion but not the primary concern here — BP stability is.",
+        "Correct! Hemodynamic stability (sustained MAP \u2265 70 mmHg) is the critical discharge criterion for a CHF patient.",
+        "Temperature is a valid discharge criterion but not the primary concern here \u2014 BP stability is.",
         "Urine output monitoring is appropriate for prolonged procedures, not brief endoscopy recovery.",
-        "MOASS ≥ 3 is necessary but not sufficient — hemodynamic stability is equally critical for this ASA III patient."
+        "MOASS \u2265 3 is necessary but not sufficient \u2014 hemodynamic stability is equally critical for this ASA III patient."
       ],
       "exitConditions": [
-        { "id": "ec_continue", "type": "on_continue" }
+        {
+          "id": "ec_continue",
+          "type": "on_continue"
+        }
       ],
       "transitions": [
-        { "fromStateId": "state_recovery_check", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+        {
+          "fromStateId": "state_recovery_check",
+          "toStateId": "state_debrief_end",
+          "viaConditions": [
+            "ec_continue"
+          ]
+        }
       ],
       "scoring": {
         "maxScore": 10,
@@ -265,5 +483,42 @@
       "transitions": [],
       "scoring": null
     }
-  ]
+  ],
+  "rubric": {
+    "passThreshold": 65,
+    "weights": {
+      "timing": 0.15,
+      "appropriateness": 0.35,
+      "safety": 0.3,
+      "completeness": 0.2
+    },
+    "criteria": {
+      "timing": {
+        "targetDurationSec": 600,
+        "toleranceSec": 90
+      },
+      "appropriateness": {
+        "drugRanges": [
+          {
+            "drug": "midazolam",
+            "minDose": 0.25,
+            "maxDose": 1.0
+          },
+          {
+            "drug": "fentanyl",
+            "minDose": 12.5,
+            "maxDose": 50
+          }
+        ]
+      },
+      "safety": {
+        "spo2DangerThreshold": 90,
+        "moassMinAllowed": 1,
+        "maxDangerSeconds": 20
+      },
+      "completeness": {
+        "requiredStepFraction": 0.8
+      }
+    }
+  }
 }

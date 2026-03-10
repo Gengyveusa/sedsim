@@ -28,6 +28,9 @@ import {
 } from './vitalTargets';
 import { convertLegacySteps } from './legacyAdapter';
 import type { InteractiveScenario } from '../ScenarioEngine';
+import { scoreScenario, defaultRubric } from '../scoringEngine';
+import type { ScoringSummary, ScoringSession } from '../scoringEngine';
+import type { LogEntry, TrendPoint } from '../../types';
 
 // ─── Store accessor types (lightweight interface so we don't import the full
 //     Zustand stores directly — avoids circular deps and keeps Conductor testable) ─
@@ -48,6 +51,8 @@ export interface SimStoreAccessor {
   getPkPdSensitivity: () => number;
   overrideVital: (parameter: string, value: number) => void;
   administerBolus: (drug: string, dose: number) => void;
+  getEventLog: () => LogEntry[];
+  getTrendData: () => TrendPoint[];
 }
 
 export interface AIStoreAccessor {
@@ -66,6 +71,7 @@ export interface AIStoreAccessor {
   ) => void;
   setScenarioRunning: (running: boolean) => void;
   setPendingContinue: (pending: { stepId: string; stepLabel: string } | null) => void;
+  setLastScenarioScore: (score: ScoringSummary | null) => void;
 }
 
 // ─── Conductor Config ─────────────────────────────────────────────────────────
@@ -204,6 +210,7 @@ export class Conductor {
       patientArchetype: legacy.patientArchetype,
       steps: convertLegacySteps(legacy.steps),
       debrief: legacy.debrief,
+      scoringRubric: legacy.scoringRubric,
     };
     this.loadScenario(conductor);
   }
@@ -230,6 +237,45 @@ export class Conductor {
     this.ai.setCurrentQuestion(null);
     this.ai.setPendingContinue(null);
     this.ai.setScenarioRunning(false);
+    this.runDebrief();
+  }
+
+  /** Run end-of-scenario debrief: compute and store a ScoringSummary. */
+  private runDebrief(): void {
+    if (!this.scenario) return;
+    const rubric = this.scenario.scoringRubric ?? defaultRubric(this.scenario.difficulty);
+    const session: ScoringSession = {
+      elapsedSeconds: this.sim.getElapsedSeconds(),
+      eventLog: this.sim.getEventLog(),
+      trendData: this.sim.getTrendData(),
+      completedStepIds: Array.from(this.completedStepIds),
+      totalStepCount: this.scenario.steps.length,
+    };
+    const summary = scoreScenario(rubric, session);
+    this.ai.setLastScenarioScore(summary);
+    // Persist to localStorage for cross-session review
+    try {
+      const key = `sedsim_score_${this.scenario.id}`;
+      localStorage.setItem(key, JSON.stringify({ ...summary, scenarioId: this.scenario.id, scenarioTitle: this.scenario.title, completedAt: Date.now() }));
+    } catch { /* ignore storage errors */ }
+    // Post debrief message in Millie chat
+    const { discussionQuestions, keyTakeaways } = this.scenario.debrief;
+    const passBadge = summary.passed ? '✅ PASS' : '❌ FAIL';
+    const lines: string[] = [
+      `🎓 **Scenario Debrief — ${this.scenario.title}**\n`,
+      `📊 **${passBadge} — Score: ${summary.percentScore}% (${summary.grade}) — Pass ≥ ${summary.passThreshold}%**\n` +
+        `• ⏱ Timing:           ${summary.dimensions.timing.score}/${summary.dimensions.timing.maxScore} pts (${summary.dimensions.timing.percent}%)\n` +
+        `• 💊 Appropriateness:  ${summary.dimensions.appropriateness.score}/${summary.dimensions.appropriateness.maxScore} pts (${summary.dimensions.appropriateness.percent}%)\n` +
+        `• 🛡 Safety:           ${summary.dimensions.safety.score}/${summary.dimensions.safety.maxScore} pts (${summary.dimensions.safety.percent}%)\n` +
+        `• ✔ Completeness:     ${summary.dimensions.completeness.score}/${summary.dimensions.completeness.maxScore} pts (${summary.dimensions.completeness.percent}%)`,
+    ];
+    if (discussionQuestions.length) {
+      lines.push(`💬 **Discussion Questions:**\n${discussionQuestions.map(q => `• ${q}`).join('\n')}`);
+    }
+    if (keyTakeaways.length) {
+      lines.push(`🔑 **Key Takeaways:**\n${keyTakeaways.map(t => `• ${t}`).join('\n')}`);
+    }
+    this.ai.addMentorMessage('mentor', lines.join('\n\n'));
   }
 
   /**

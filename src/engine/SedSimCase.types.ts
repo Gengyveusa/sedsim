@@ -1,6 +1,9 @@
 // src/engine/SedSimCase.types.ts
 // SedSim-Case: Scenario/Assessment Engine interface definitions
 
+import type { ScoringRubric } from './scoringEngine';
+export type { ScoringRubric };
+
 export interface SedSimScenario {
   id: string;
   title: string;
@@ -11,6 +14,8 @@ export interface SedSimScenario {
   estimatedDurationSec: number;
   phases: ScenarioPhase[];
   states: ScenarioState[];
+  /** Optional scenario-level scoring rubric for the four-dimension engine. */
+  rubric?: ScoringRubric;
 }
 
 export type PhaseId = "pre" | "induction" | "maintenance" | "complication" | "recovery" | "debrief";

@@ -15,6 +15,7 @@ import GhostDosePreview from './GhostDosePreview';
 import { ScenarioPanel } from './ScenarioPanel';
 import ScenarioTimeline from './ScenarioTimeline';
 import MillieAvatar from './MillieAvatar';
+import ScoreBreakdown from './ScoreBreakdown';
 import type { StructuredMessage, MillieEmotion } from '../engine/conductor/types';
 
 interface MillieChatProps {
@@ -456,6 +457,9 @@ const MillieChat: React.FC<MillieChatProps> = ({
 
       {/* Scenario Timeline (shown while scenario is running) */}
       {isScenarioRunning && <ScenarioTimeline />}
+
+      {/* Score Breakdown (shown after scenario completes) */}
+      {!isScenarioRunning && <ScoreBreakdown />}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">

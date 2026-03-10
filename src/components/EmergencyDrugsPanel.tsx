@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import useSimStore from '../store/useSimStore';
 
 interface EmergencyDrug {
@@ -105,6 +106,7 @@ const EMERGENCY_DRUGS: EmergencyDrug[] = [
 ];
 
 export default function EmergencyDrugsPanel() {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(true);
   const { administerBolus, logEvent } = useSimStore();
 
@@ -152,7 +154,7 @@ export default function EmergencyDrugsPanel() {
       >
         <div className="flex items-center gap-2">
           <span className="text-red-400 text-base">🚨</span>
-          <span className="text-xs font-bold text-red-300 uppercase tracking-wider">Emergency Drugs</span>
+          <span className="text-xs font-bold text-red-300 uppercase tracking-wider">{t('emergencyDrugs.title')}</span>
         </div>
         <span className="text-gray-500 text-xs">{collapsed ? '▶' : '▼'}</span>
       </button>
@@ -167,9 +169,9 @@ export default function EmergencyDrugsPanel() {
             >
               <div className="flex items-center px-2 py-1">
                 <span className="font-bold text-xs" style={{ color: drug.color, minWidth: 72 }}>
-                  {drug.name}
+                  {t(`emergencyDrugs.drugs.${drug.key}.name`, { defaultValue: drug.name })}
                 </span>
-                <span className="text-xs text-gray-600 ml-1 truncate">{drug.indication}</span>
+                <span className="text-xs text-gray-600 ml-1 truncate">{t(`emergencyDrugs.drugs.${drug.key}.indication`, { defaultValue: drug.indication })}</span>
               </div>
               <div className="flex gap-1 px-2 pb-1 flex-wrap">
                 {drug.doses.map(d => (

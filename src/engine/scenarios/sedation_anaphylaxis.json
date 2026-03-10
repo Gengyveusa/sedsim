@@ -1,0 +1,220 @@
+{
+  "id": "sedation_anaphylaxis",
+  "title": "Sedation Emergency – Anaphylaxis",
+  "description": "A patient develops anaphylaxis during procedural sedation after propofol administration. Practise recognising anaphylaxis, delivering epinephrine as first-line treatment, and managing refractory anaphylactic shock.",
+  "tags": ["sedation", "anaphylaxis", "epinephrine", "shock", "emergency", "allergy", "hard"],
+  "patient": { "archetypeId": "healthy_adult" },
+  "learningObjectives": [
+    "Recognise the signs and grading of anaphylaxis in a sedated patient",
+    "Administer intramuscular epinephrine as the first-line treatment",
+    "Understand why antihistamines and steroids are NOT first-line in anaphylaxis",
+    "Manage refractory anaphylactic shock with IV epinephrine infusion",
+    "Identify likely causative agents in procedural sedation anaphylaxis"
+  ],
+  "estimatedDurationSec": 540,
+  "phases": [
+    { "id": "pre",          "label": "Pre-Procedure",    "order": 1 },
+    { "id": "induction",    "label": "Drug Administration","order": 2 },
+    { "id": "maintenance",  "label": "Recognition",      "order": 3 },
+    { "id": "complication", "label": "Anaphylaxis Crisis","order": 4 },
+    { "id": "recovery",     "label": "Stabilisation",    "order": 5 },
+    { "id": "debrief",      "label": "Debrief",          "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_recognition",
+      "phaseId": "maintenance",
+      "type": "question",
+      "prompt": "Ninety seconds after propofol induction (200 mg), the patient develops: diffuse urticaria and flushing, BP drops from 128/76 to 72/40, HR rises from 72 to 128, SpO2 falls to 91% (bronchospasm audible). The patient received no other new medications. What is the most likely diagnosis?",
+      "options": [
+        { "id": "dx_anaphylaxis", "label": "Anaphylaxis – IgE or non-IgE mediated severe hypersensitivity reaction", "isCorrect": true  },
+        { "id": "dx_vasovagal",   "label": "Vasovagal reaction",                                                       "isCorrect": false },
+        { "id": "dx_propofol",    "label": "Propofol infusion syndrome",                                               "isCorrect": false },
+        { "id": "dx_oversed",     "label": "Oversedation with hypotension",                                            "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Urticaria + hypotension + bronchospasm within 90 seconds of drug administration meets Sampson's criteria for Grade III–IV anaphylaxis.",
+        "Vasovagal reactions do not cause urticaria, bronchospasm, or this degree of haemodynamic collapse.",
+        "Propofol infusion syndrome occurs after prolonged infusion (>48 hrs) in ICU — not minutes after a bolus dose.",
+        "Oversedation causes respiratory depression and hypotension but NOT urticaria or bronchospasm."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_recognition", "toStateId": "state_first_line", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_anaphylaxis_dx",
+            "description": "Correctly identifies anaphylaxis from clinical triad",
+            "weight": 15,
+            "evaluationHint": "Patient selected dx_anaphylaxis option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_first_line",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Anaphylaxis confirmed. The patient is hypotensive (BP 72/40) and in bronchospasm (SpO2 91%). What is the ABSOLUTE FIRST-LINE treatment?",
+      "options": [
+        { "id": "tx_epi",       "label": "Epinephrine 0.5 mg IM (anterolateral thigh) IMMEDIATELY",       "isCorrect": true  },
+        { "id": "tx_antihistamine","label": "IV diphenhydramine 50 mg (antihistamine) first-line",        "isCorrect": false },
+        { "id": "tx_steroid",   "label": "IV hydrocortisone 200 mg to reduce late-phase reaction",        "isCorrect": false },
+        { "id": "tx_fluid",     "label": "1 L normal saline bolus to treat the hypotension first",       "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Epinephrine 0.5 mg IM (1:1000 concentration, anterolateral thigh) is the ONLY first-line treatment for anaphylaxis. Delays in epinephrine are the primary cause of anaphylaxis deaths.",
+        "Antihistamines treat urticaria but do NOT reverse hypotension, bronchospasm, or angioedema. They are adjunctive (2nd line) only.",
+        "Steroids prevent biphasic reactions but have NO effect for 4–6 hours. They are adjunctive (2nd line) only.",
+        "IV fluids support BP but do not treat anaphylaxis. Epinephrine FIRST, then fluids as adjunct for refractory hypotension."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "epinephrine", "doseMg": 0.5, "route": "im" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_first_line", "toStateId": "state_adjunct", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_epi_first",
+            "description": "Correctly identifies epinephrine IM as first-line treatment",
+            "weight": 20,
+            "evaluationHint": "Patient selected tx_epi option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_adjunct",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Epinephrine 0.5 mg IM given. BP improving to 90/55. SpO2 95% on 15 L/min O2 via NRB mask. Urticaria persists. What ADJUNCT therapies are appropriate NOW?",
+      "options": [
+        { "id": "adj_all",      "label": "IV fluid 1 L NS + IV diphenhydramine 50 mg + IV hydrocortisone 200 mg",      "isCorrect": true  },
+        { "id": "adj_antionly", "label": "IV diphenhydramine 50 mg only (antihistamine monotherapy)",                   "isCorrect": false },
+        { "id": "adj_epi2",     "label": "Repeat epinephrine 0.5 mg IM again immediately (before assessing response)", "isCorrect": false },
+        { "id": "adj_bicarb",   "label": "Sodium bicarbonate IV to correct anaphylaxis-induced metabolic acidosis",    "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! After epinephrine, adjunctive therapy includes IV fluids (volume expansion), H1 antihistamine (urticaria), and steroids (biphasic prevention). All three are appropriate together.",
+        "Antihistamine alone is insufficient adjunct therapy. Fluids and steroids are also needed.",
+        "Repeat epinephrine should be given if there is no response or deterioration at 5–15 minutes. Do not repeat before assessing the first dose response.",
+        "Sodium bicarbonate is not indicated for anaphylaxis without confirmed severe metabolic acidosis with haemodynamic impact."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "diphenhydramine", "doseMg": 50, "route": "iv_bolus" } },
+        { "type": "give_drug", "payload": { "drug": "hydrocortisone",   "doseMg": 200, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_adjunct", "toStateId": "state_refractory", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_adjunct_correct",
+            "description": "Correctly administers fluids, antihistamine, and steroids as adjuncts",
+            "weight": 15,
+            "evaluationHint": "Patient selected adj_all option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_refractory",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Despite two IM epinephrine doses (5 min apart), BP remains 68/38. The patient is on IV fluids. This is refractory anaphylactic shock. What is the next step?",
+      "options": [
+        { "id": "ref_epi_iv",  "label": "Epinephrine IV infusion (1–10 mcg/min titrated) or slow IV push 0.1–0.2 mg of 1:10,000 solution", "isCorrect": true  },
+        { "id": "ref_more_im", "label": "A third dose of epinephrine 0.5 mg IM in the thigh",                                               "isCorrect": false },
+        { "id": "ref_norepi",  "label": "Start norepinephrine infusion as it is safer than IV epinephrine",                                 "isCorrect": false },
+        { "id": "ref_steroids","label": "Increase steroid dose to methylprednisolone 1 g IV",                                               "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Refractory anaphylaxis with IV access requires IV epinephrine titration (infusion or careful slow IV push of diluted solution). IM absorption is unreliable in shock states.",
+        "IM absorption is unreliable in profound shock (vasoconstriction). Switch to IV route in refractory cases.",
+        "Norepinephrine lacks epinephrine's β2 bronchodilatory effect and is second-line. Epinephrine IV is the preferred agent for refractory anaphylaxis.",
+        "Steroids will not reverse refractory shock for hours. IV epinephrine is the immediate solution."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "epinephrine", "doseMg": 0.1, "route": "iv_slow_push" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_refractory", "toStateId": "state_stabilisation", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_iv_epinephrine",
+            "description": "Escalates to IV epinephrine for refractory anaphylactic shock",
+            "weight": 20,
+            "evaluationHint": "Patient selected ref_epi_iv option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_stabilisation",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "BP stabilises to 105/65 after IV epinephrine. Bronchospasm resolved. The patient is drowsy but arousable. How long should this patient be monitored for biphasic anaphylaxis?",
+      "options": [
+        { "id": "mon_4",   "label": "Minimum 4–6 hours in monitored setting; 12–24 hrs for severe or refractory reactions", "isCorrect": true  },
+        { "id": "mon_1",   "label": "1 hour is sufficient once BP normalises",                                               "isCorrect": false },
+        { "id": "mon_none","label": "No additional monitoring – epinephrine half-life covers the risk window",              "isCorrect": false },
+        { "id": "mon_week","label": "Admit for 1 week for allergy workup before discharge",                                 "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Biphasic anaphylaxis (recurrence without re-exposure) occurs in 1–23% of cases, typically within 4–12 hours. Minimum 4–6 hours monitoring; 12–24 hours for severe/refractory cases.",
+        "1 hour is insufficient — biphasic reactions are well-documented up to 12 hours after the initial event.",
+        "Epinephrine's short half-life (minutes) means the patient is unprotected long before the biphasic risk window closes.",
+        "Allergy workup is important but can be arranged as an outpatient. 1-week inpatient admission is not standard of care."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_stabilisation", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_biphasic_monitoring",
+            "description": "Correctly identifies 4–6 hour minimum monitoring for biphasic anaphylaxis",
+            "weight": 15,
+            "evaluationHint": "Patient selected mon_4 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• Anaphylaxis triad: urticaria + hypotension + bronchospasm after drug exposure\n• Epinephrine IM 0.5 mg is THE first-line treatment – no delay\n• Antihistamines and steroids are adjunctive only; they do NOT treat shock\n• Refractory anaphylaxis: switch to IV epinephrine infusion\n• Monitor ≥4–6 hours for biphasic reaction",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}
