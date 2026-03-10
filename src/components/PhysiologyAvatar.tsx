@@ -170,11 +170,11 @@ function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: numb
   else if (map > 110) laP = 14;
   else if (combinedEff > 0.5) laP = 6;
 
-  let lvSys = sbp;
-  let lvDia = laP;
+  const lvSys = sbp;
+  const lvDia = laP;
   const pcwp = laP;
-  let paSys = rvSys;
-  let paDia = Math.max(laP, rvDia + 2);
+  const paSys = rvSys;
+  const paDia = Math.max(laP, rvDia + 2);
   const paMean = (paSys + 2 * paDia) / 3;
 
   let pulmonaryEdema: 'none' | 'mild' | 'moderate' | 'flash' = 'none';
@@ -193,7 +193,7 @@ function computeCardioState(vitals: Vitals, _patient: Patient, combinedEff: numb
   const capOncotic = 25;
   const netFiltration = capHydrostatic - capOncotic;
 
-  let cbf = 1.0;
+  let cbf: number;
   if (map < 50) cbf = 0.3;
   else if (map < 60) cbf = 0.5 + (map - 50) * 0.05;
   else if (map > 150) cbf = 1.2;

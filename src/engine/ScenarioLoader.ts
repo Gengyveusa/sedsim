@@ -8,6 +8,7 @@ import {
   ScenarioPhase,
   PhaseId,
 } from './SedSimCase.types';
+import { SedSimScenarioSchema } from './scenarios/schema';
 
 export interface LoadedScenario {
   raw: SedSimScenario;
@@ -18,57 +19,17 @@ export interface LoadedScenario {
   firstStateId: string;
 }
 
-// ─── Validation helpers ──────────────────────────────────────────────────────
-
-function assertString(value: unknown, path: string): asserts value is string {
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new Error(`ScenarioLoader: "${path}" must be a non-empty string`);
-  }
-}
-
-function assertArray(value: unknown, path: string): asserts value is unknown[] {
-  if (!Array.isArray(value)) {
-    throw new Error(`ScenarioLoader: "${path}" must be an array`);
-  }
-}
+// ─── Validation ───────────────────────────────────────────────────────────────
 
 function validateScenario(data: unknown): asserts data is SedSimScenario {
-  if (typeof data !== 'object' || data === null) {
-    throw new Error('ScenarioLoader: scenario must be a non-null object');
-  }
-  const s = data as Record<string, unknown>;
-  assertString(s['id'], 'id');
-  assertString(s['title'], 'title');
-  assertString(s['description'], 'description');
-  assertArray(s['phases'], 'phases');
-  assertArray(s['states'], 'states');
-
-  if (typeof s['patient'] !== 'object' || s['patient'] === null) {
-    throw new Error('ScenarioLoader: "patient" must be an object');
-  }
-  const patient = s['patient'] as Record<string, unknown>;
-  assertString(patient['archetypeId'], 'patient.archetypeId');
-
-  // Validate each phase
-  for (const phase of s['phases'] as Record<string, unknown>[]) {
-    assertString(phase['id'], 'phase.id');
-    assertString(phase['label'], 'phase.label');
-    if (typeof phase['order'] !== 'number') {
-      throw new Error(`ScenarioLoader: phase "${phase['id']}" must have a numeric "order"`);
-    }
-  }
-
-  // Validate each state
-  for (const state of s['states'] as Record<string, unknown>[]) {
-    assertString(state['id'], 'state.id');
-    assertString(state['phaseId'], 'state.phaseId');
-    assertString(state['type'], 'state.type');
-    if (!Array.isArray(state['exitConditions'])) {
-      throw new Error(`ScenarioLoader: state "${state['id']}" must have an "exitConditions" array`);
-    }
-    if (!Array.isArray(state['transitions'])) {
-      throw new Error(`ScenarioLoader: state "${state['id']}" must have a "transitions" array`);
-    }
+  const result = SedSimScenarioSchema.safeParse(data);
+  if (!result.success) {
+    const messages = result.error.issues
+      .map((issue) => `  • ${issue.path.join('.')} — ${issue.message}`)
+      .join('\n');
+    throw new Error(
+      `ScenarioLoader: scenario failed validation:\n${messages}`
+    );
   }
 }
 

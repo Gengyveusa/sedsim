@@ -251,9 +251,9 @@ function computeHemodynamics(
 
   // Calculate BP first (for baroreflex)
   const sensitivity = patient.drugSensitivity ?? 1.0;
-  let sbp = baseline.sbp * (1 + (propofolBPEffect + ketamineBPEffect) * sensitivity);
-  let dbp = baseline.dbp * (1 + (propofolBPEffect * 0.7 + ketamineBPEffect * 0.7) * sensitivity);
-  let map = (sbp + 2 * dbp) / 3;
+  const sbp = baseline.sbp * (1 + (propofolBPEffect + ketamineBPEffect) * sensitivity);
+  const dbp = baseline.dbp * (1 + (propofolBPEffect * 0.7 + ketamineBPEffect * 0.7) * sensitivity);
+  const map = (sbp + 2 * dbp) / 3;
 
   // Baroreceptor reflex: hypotension -> compensatory tachycardia
   // CHF patients have blunted baroreflex (50% reduction in gain)
