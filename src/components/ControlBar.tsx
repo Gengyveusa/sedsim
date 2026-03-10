@@ -77,6 +77,8 @@ export default  function ControlBar() {
         <button
           data-sim-id="play-button"
           onClick={handlePlayPause}
+          aria-label={isRunning ? 'Pause simulation' : 'Play simulation'}
+          aria-pressed={isRunning}
           className={`px-4 py-1.5 rounded font-medium text-sm ${
             isRunning
               ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
@@ -88,6 +90,7 @@ export default  function ControlBar() {
         <button
           data-sim-id="reset-button"
           onClick={handleReset}
+          aria-label="Reset simulation"
           className="px-4 py-1.5 rounded font-medium text-sm bg-red-600 hover:bg-red-700 text-white"
         >
           Reset
@@ -95,12 +98,14 @@ export default  function ControlBar() {
       </div>
 
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-gray-400">Speed:</span>
+        <span className="text-gray-400" id="speed-label">Speed:</span>
         {SPEED_OPTIONS.map((s) => (
           <button
             key={s}
             data-sim-id={`speed-${s}x`}
             onClick={() => setSpeed(s)}
+            aria-label={`Set simulation speed to ${s}x`}
+            aria-pressed={speedMultiplier === s}
             className={`px-2 py-1 rounded text-xs ${
               speedMultiplier === s
                 ? 'bg-blue-600 text-white'
@@ -118,49 +123,57 @@ export default  function ControlBar() {
           data-sim-id="mute-button"
           onClick={handleMuteToggle}
           title={isMuted ? 'Unmute audio' : 'Mute audio'}
+          aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
+          aria-pressed={isMuted}
           className={`px-2 py-1.5 rounded text-sm font-medium transition-colors ${
             isMuted
               ? 'bg-gray-700 text-gray-400 hover:bg-gray-600'
               : 'bg-gray-700 text-white hover:bg-gray-600'
           }`}
         >
-          {isMuted ? '🔇' : '🔊'}
+          <span aria-hidden="true">{isMuted ? '🔇' : '🔊'}</span>
         </button>
         <button
           data-sim-id="silence-alarms-button"
           onClick={handleSilenceAlarms}
           title="Silence alarms for 60 seconds"
+          aria-label={silenceRemaining > 0 ? `Alarms silenced, ${silenceRemaining} seconds remaining` : 'Silence alarms for 60 seconds'}
+          aria-pressed={silenceRemaining > 0}
           className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
             silenceRemaining > 0
               ? 'bg-amber-700 text-amber-200'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
         >
-          {silenceRemaining > 0 ? `🔕 ${silenceRemaining}s` : '🔕'}
+          <span aria-hidden="true">{silenceRemaining > 0 ? `🔕 ${silenceRemaining}s` : '🔕'}</span>
         </button>
         <button
           data-sim-id="breath-sounds-button"
           onClick={handleBreathToggle}
           title={breathEnabled ? 'Disable breath sounds' : 'Enable breath sounds (off by default)'}
+          aria-label={breathEnabled ? 'Disable breath sounds' : 'Enable breath sounds'}
+          aria-pressed={breathEnabled}
           className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
             breathEnabled
               ? 'bg-teal-700 text-teal-200 hover:bg-teal-600'
               : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
           }`}
         >
-          🫁
+          <span aria-hidden="true">🫁</span>
         </button>
         <button
           data-sim-id="heart-sounds-button"
           onClick={handleHeartToggle}
           title={heartEnabled ? 'Disable heart sounds' : 'Enable heart sounds (off by default)'}
+          aria-label={heartEnabled ? 'Disable heart sounds' : 'Enable heart sounds'}
+          aria-pressed={heartEnabled}
           className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
             heartEnabled
               ? 'bg-rose-700 text-rose-200 hover:bg-rose-600'
               : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
           }`}
         >
-          ❤️
+          <span aria-hidden="true">❤️</span>
         </button>
       </div>
 
@@ -171,9 +184,13 @@ export default  function ControlBar() {
         </div>
         <div className="text-gray-300">
           <span className="text-gray-500">Elapsed: </span>
-          <span className="font-mono text-lg">{formatTime(elapsedSeconds)}</span>
+          <span className="font-mono text-lg" aria-live="off">{formatTime(elapsedSeconds)}</span>
         </div>
-        <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+        <div
+          className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`}
+          role="status"
+          aria-label={isRunning ? 'Simulation running' : 'Simulation paused'}
+        />
       </div>
     </div>
   );

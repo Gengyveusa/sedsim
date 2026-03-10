@@ -152,7 +152,7 @@ function BodyAvatar({
   onPlaceLeft: () => void;
 }) {
   return (
-    <div className="relative w-32 mx-auto select-none" style={{ height: 140 }}>
+    <div className="relative w-32 mx-auto select-none" style={{ height: 140 }} role="group" aria-label="AED pad placement diagram">
       {/* Torso outline */}
       <svg
         viewBox="0 0 120 130"
@@ -160,6 +160,7 @@ function BodyAvatar({
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
+        aria-hidden="true"
       >
         {/* Head */}
         <circle cx="60" cy="14" r="12" className="text-gray-500" />
@@ -188,6 +189,8 @@ function BodyAvatar({
           }`}
         style={{ top: 28, right: 18, width: 32, height: 22 }}
         title="Right infraclavicular"
+        aria-label={rightPadPlaced ? 'Right AED pad placed at right infraclavicular position' : 'Place right AED pad at right infraclavicular position'}
+        aria-pressed={rightPadPlaced}
       >
         {rightPadPlaced ? '✓' : 'R'}
       </button>
@@ -203,6 +206,8 @@ function BodyAvatar({
           }`}
         style={{ top: 60, left: 10, width: 22, height: 32 }}
         title="Left mid-axillary"
+        aria-label={leftPadPlaced ? 'Left AED pad placed at left mid-axillary position' : 'Place left AED pad at left mid-axillary position'}
+        aria-pressed={leftPadPlaced}
       >
         {leftPadPlaced ? '✓' : 'L'}
       </button>
@@ -498,6 +503,7 @@ export default function AEDPanel() {
             onClick={handleReset}
             className="text-[10px] text-gray-400 hover:text-red-400 transition-colors px-1.5 py-0.5 rounded hover:bg-gray-700"
             title="Power off / Reset"
+            aria-label="Power off and reset AED"
           >
             RESET
           </button>
@@ -507,7 +513,11 @@ export default function AEDPanel() {
       {/* ── Voice prompt bar ── */}
       {aedState !== 'OFF' && (
         <div className="px-3 py-1.5 bg-cyan-950/40 border-b border-cyan-900/50">
-          <p className="text-[11px] text-cyan-300 font-medium tracking-wide leading-tight"
+          <p
+            className="text-[11px] text-cyan-300 font-medium tracking-wide leading-tight"
+            role="status"
+            aria-live="assertive"
+            aria-atomic="true"
             style={
               (aedState === 'SHOCK_ADVISED')
                 ? { animation: 'aed-pulse 0.8s ease-in-out infinite' }
@@ -521,9 +531,9 @@ export default function AEDPanel() {
 
       {/* ── Status bar (rhythm + stats) ── */}
       {aedState !== 'OFF' && (
-        <div className="grid grid-cols-3 gap-0 text-center border-b border-gray-700">
-          <div className="px-1 py-1.5 border-r border-gray-700">
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider">Rhythm</div>
+        <div className="grid grid-cols-3 gap-0 text-center border-b border-gray-700" role="status" aria-live="polite" aria-label={`AED status: rhythm ${rhythmLabel(rhythm)}, shocks delivered ${shockCount}, total CPR time ${fmt(totalCprSeconds)}`}>
+          <div className="px-1 py-1.5 border-r border-gray-700" aria-hidden="true">
+            <div className="text-[9px] text-gray-400 uppercase tracking-wider">Rhythm</div>
             <div className={`text-[11px] font-semibold truncate ${
               isShockable ? 'text-red-400' :
               isArrestRhythm ? 'text-yellow-400' :
@@ -532,12 +542,12 @@ export default function AEDPanel() {
               {rhythmLabel(rhythm)}
             </div>
           </div>
-          <div className="px-1 py-1.5 border-r border-gray-700">
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider">Shocks</div>
+          <div className="px-1 py-1.5 border-r border-gray-700" aria-hidden="true">
+            <div className="text-[9px] text-gray-400 uppercase tracking-wider">Shocks</div>
             <div className="text-[11px] font-semibold text-orange-400">{shockCount}</div>
           </div>
-          <div className="px-1 py-1.5">
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider">CPR</div>
+          <div className="px-1 py-1.5" aria-hidden="true">
+            <div className="text-[9px] text-gray-400 uppercase tracking-wider">CPR</div>
             <div className="text-[11px] font-semibold text-blue-400">{fmt(totalCprSeconds)}</div>
           </div>
         </div>
@@ -564,6 +574,7 @@ export default function AEDPanel() {
                   : 'border-gray-600 hover:border-green-500 hover:bg-gray-700'
               }`}
               title="Power On"
+              aria-label="Power on AED"
             >
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
@@ -592,6 +603,7 @@ export default function AEDPanel() {
               onClick={handleAttachPads}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded transition-colors"
               style={{ animation: 'aed-pulse 2s ease-in-out infinite' }}
+              aria-label="Attach defibrillator pads to patient"
             >
               Attach Pads
             </button>
@@ -641,6 +653,7 @@ export default function AEDPanel() {
             <button
               onClick={handleAnalyze}
               className="w-full px-4 py-2.5 bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-bold rounded transition-colors tracking-wide"
+              aria-label="Analyze cardiac rhythm with AED"
             >
               ⚡ ANALYZE RHYTHM
             </button>
@@ -686,6 +699,7 @@ export default function AEDPanel() {
               onClick={handleShock}
               className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded text-base tracking-wider transition-colors"
               style={{ animation: 'aed-shock-btn 1s ease-in-out infinite' }}
+              aria-label={`Deliver ${currentEnergy} joule shock, shock number ${shockCount + 1}`}
             >
               ⚡ SHOCK — {currentEnergy}J
             </button>

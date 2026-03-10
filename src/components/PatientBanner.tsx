@@ -19,14 +19,14 @@ export default function PatientBanner() {
   };
 
   return (
-    <div className="bg-sim-panel border-b border-gray-700 px-4 py-2 flex items-center justify-between">
+    <header className="bg-sim-panel border-b border-gray-700 px-4 py-2 flex items-center justify-between" role="banner" aria-label="Patient information banner">
       <div className="flex items-center gap-6">
         <h1 className="text-lg font-bold text-sim-accent">SedSim</h1>
-        <div className="text-sm text-gray-300">
+        <div className="text-sm text-gray-300" aria-label={`Patient: ${patient.age} year old ${patient.sex}, ${patient.weight}kg / ${patient.height}cm, ASA ${patient.asa}`}>
           <span className="font-medium">{patient.age}yo {patient.sex}</span>
-          <span className="mx-2">|</span>
+          <span className="mx-2" aria-hidden="true">|</span>
           <span>{patient.weight}kg / {patient.height}cm</span>
-          <span className="mx-2">|</span>
+          <span className="mx-2" aria-hidden="true">|</span>
           <span>ASA {patient.asa}</span>
           {trueNorth.isLocked && (
             <span className="ml-2 text-xs text-cyan-400 font-semibold">🔒 {trueNorth.label}</span>
@@ -36,18 +36,31 @@ export default function PatientBanner() {
 
       <div className="flex items-center gap-6">
         {/* MOASS Badge */}
-        <div className={`px-3 py-1 rounded-full text-sm font-bold ${moassColors[moass]}`}>
+        <div
+          className={`px-3 py-1 rounded-full text-sm font-bold ${moassColors[moass]}`}
+          role="status"
+          aria-live="polite"
+          aria-label={`Sedation depth: MOASS level ${moass}, ${moassLabel(moass)}`}
+        >
           MOASS {moass} - {moassLabel(moass)}
         </div>
 
         {/* Timer */}
-        <div className="text-2xl font-mono font-bold">
+        <div
+          className="text-2xl font-mono font-bold"
+          aria-label={`Elapsed simulation time: ${timeStr}`}
+          aria-live="off"
+        >
           {timeStr}
         </div>
 
         {/* Status indicator */}
-        <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+        <div
+          className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`}
+          role="status"
+          aria-label={isRunning ? 'Simulation running' : 'Simulation paused'}
+        />
       </div>
-    </div>
+    </header>
   );
 }

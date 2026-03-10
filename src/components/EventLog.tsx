@@ -23,8 +23,14 @@ export default function EventLog() {
 
   return (
     <div data-region="eventlog" className="flex-1 bg-sim-panel overflow-hidden flex flex-col">
-      <h3 className="text-xs text-gray-400 uppercase mb-2 px-3 pt-3">Event Log</h3>
-      <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
+      <h3 className="text-xs text-gray-400 uppercase mb-2 px-3 pt-3" id="eventlog-label">Event Log</h3>
+      <div
+        className="flex-1 overflow-y-auto px-3 pb-3 space-y-1"
+        role="log"
+        aria-labelledby="eventlog-label"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
         {eventLog.length === 0 ? (
           <p className="text-gray-500 text-sm">No events yet</p>
         ) : (

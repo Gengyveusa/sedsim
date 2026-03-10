@@ -85,6 +85,8 @@ export default function InterventionPanel() {
                 data-sim-id={`airway-${key}`}
                 onClick={() => handleDeviceSelect(key)}
                 disabled={isScenarioActive}
+                aria-pressed={isActive}
+                aria-label={`${label}, FiO₂ range ${fio2Range}${isActive ? ', currently active' : ''}`}
                 className={`w-full px-2 py-1.5 rounded text-xs font-medium transition-colors text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed ${
                   isActive
                     ? 'bg-cyan-700/70 text-cyan-100 border border-cyan-500'
@@ -106,16 +108,21 @@ export default function InterventionPanel() {
       {/* Nasal Cannula Flow Rate Slider */}
       {airwayDevice === 'nasal_cannula' && (
         <div className="mb-3 pb-3 border-b border-gray-700">
-          <label className="block text-xs text-gray-400 mb-1">
+          <label htmlFor="o2-flow-rate" className="block text-xs text-gray-400 mb-1">
             O₂ Flow: <span className="text-cyan-400 font-bold">{o2FlowRate} L/min</span>
           </label>
           <input
+            id="o2-flow-rate"
             type="range"
             min={1}
             max={6}
             step={1}
             value={o2FlowRate}
             disabled={isScenarioActive}
+            aria-label={`Oxygen flow rate: ${o2FlowRate} litres per minute`}
+            aria-valuemin={1}
+            aria-valuemax={6}
+            aria-valuenow={o2FlowRate}
             onChange={e => {
               const rate = Number(e.target.value);
               setO2FlowRate(rate);
@@ -123,7 +130,7 @@ export default function InterventionPanel() {
             }}
             className="w-full accent-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
-          <div className="flex justify-between text-xs text-gray-600 mt-0.5">
+          <div className="flex justify-between text-xs text-gray-400 mt-0.5" aria-hidden="true">
             <span>1 L</span><span>6 L</span>
           </div>
         </div>
@@ -131,11 +138,12 @@ export default function InterventionPanel() {
 
       {/* FiO2 Manual Input */}
       <div className="mb-3 pb-3 border-b border-gray-700">
-        <label className="block text-xs text-gray-400 mb-1">
-          FiO₂ (%) <span className="text-gray-600">max {Math.round(currentDeviceInfo.maxFio2 * 100)}%</span>
+        <label htmlFor="fio2-input" className="block text-xs text-gray-400 mb-1">
+          FiO₂ (%) <span className="text-gray-400">max {Math.round(currentDeviceInfo.maxFio2 * 100)}%</span>
         </label>
         <div className="flex gap-2">
           <input
+            id="fio2-input"
             data-sim-id="fio2-slider"
             type="number"
             min="21"
@@ -145,9 +153,10 @@ export default function InterventionPanel() {
             onChange={e => setFio2Input(e.target.value)}
             onBlur={handleFio2Change}
             onKeyDown={e => e.key === 'Enter' && handleFio2Change()}
+            aria-label={`FiO₂ percentage, minimum 21, maximum ${Math.round(currentDeviceInfo.maxFio2 * 100)}`}
             className="flex-1 px-2 py-1 bg-gray-800 text-gray-100 rounded border border-gray-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           />
-          <div className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm font-mono border border-blue-600/50">
+          <div className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm font-mono border border-blue-600/50" aria-live="polite" aria-label={`Current FiO₂: ${Math.round(fio2 * 100)} percent`}>
             {Math.round(fio2 * 100)}%
           </div>
         </div>
@@ -164,6 +173,8 @@ export default function InterventionPanel() {
                 key={value}
                 onClick={() => handleToggle(value)}
                 disabled={isScenarioActive}
+                aria-pressed={isActive}
+                aria-label={`${label}${isActive ? ', active' : ''}`}
                 className={`w-full px-3 py-1.5 rounded text-xs font-medium transition-colors text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed ${
                   isActive
                     ? 'bg-green-700/60 text-green-100 border border-green-500'

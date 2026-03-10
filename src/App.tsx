@@ -36,14 +36,17 @@ export default function App() {
 
   return (
     <>
+      {/* Skip navigation for keyboard users */}
+      <a href="#sim-main" className="skip-link">Skip to main content</a>
+
       <div className="h-screen flex flex-col bg-sim-bg text-white">
         {/* Top Banner */}
         <PatientBanner />
 
         {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden">
+        <div id="sim-main" className="flex-1 flex overflow-hidden" role="main" aria-label="Sedation simulator workspace">
           {/* Left Panel - Drug Controls */}
-          <div className="w-80 border-r border-gray-700 overflow-y-auto p-2 space-y-2">
+          <div className="w-80 border-r border-gray-700 overflow-y-auto p-2 space-y-2" role="complementary" aria-label="Drug and intervention controls">
             <PatientSelector />
             <DrugPanel />
             <LocalAnesthPanel />
@@ -64,6 +67,8 @@ export default function App() {
                   const store = useAIStore.getState();
                   store.setSimMasterEnabled(!store.simMasterEnabled);
                 }}
+                aria-label={simMasterEnabled ? 'Disable SimMaster AI observer' : 'Enable SimMaster AI observer'}
+                aria-pressed={simMasterEnabled}
                 className={`px-4 py-2 rounded text-white text-sm font-bold transition-colors w-full ${
                   simMasterEnabled
                     ? 'bg-red-600 hover:bg-red-500'
@@ -81,7 +86,7 @@ export default function App() {
           </div>
 
           {/* Center - Hero Gauge + Monitor */}
-          <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div className="flex-1 flex flex-col overflow-hidden relative" role="region" aria-label="Patient monitor and sedation gauge">
             {/* Compact vitals monitor strip at top */}
             <MonitorPanel vitals={useSimStore.getState().vitals} history={trendData.map(t => t.vitals)} />
             {/* HERO: Giant Sedation Gauge - takes up most of center */}
@@ -100,19 +105,25 @@ export default function App() {
               <button
                 onClick={() => setAirwayExpanded(true)}
                 className="h-full w-10 flex items-center justify-center bg-gray-800/60 hover:bg-gray-700/80 transition-colors group"
-                title="Show Airway & O\u2082"
+                title="Show Airway & O₂"
+                aria-label="Show Airway and O₂ controls"
+                aria-expanded={false}
+                aria-controls="airway-panel"
               >
                 <span className="text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase" style={{ writingMode: 'vertical-rl' as const, textOrientation: 'mixed' as const }}>Airway</span>
               </button>
             )}
             {airwayExpanded && (
-              <div className="flex flex-col h-full bg-sim-panel">
+              <div id="airway-panel" className="flex flex-col h-full bg-sim-panel" role="region" aria-label="Airway and O₂ controls">
                 <div className="flex items-center justify-between px-2 py-1 border-b border-gray-700">
-                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Airway & O\u2082</span>
+                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Airway & O₂</span>
                   <button
                     onClick={() => setAirwayExpanded(false)}
                     className="text-gray-400 hover:text-white text-sm px-1"
                     title="Collapse Airway"
+                    aria-label="Collapse Airway and O₂ panel"
+                    aria-expanded={true}
+                    aria-controls="airway-panel"
                   >
                     &laquo;
                   </button>
@@ -125,7 +136,7 @@ export default function App() {
           </div>
 
           {/* Right side: Event Log + Collapsible Trends */}
-          <div className="flex flex-row">
+          <div className="flex flex-row" role="complementary" aria-label="Trends and event log">
             {/* Trends Panel - collapsible side drawer */}
             <div
               className={`transition-all duration-300 ease-in-out border-l border-gray-700 overflow-hidden flex flex-col ${
@@ -138,19 +149,25 @@ export default function App() {
                   onClick={() => setTrendsExpanded(true)}
                   className="h-full w-10 flex items-center justify-center bg-gray-800/60 hover:bg-gray-700/80 transition-colors group"
                   title="Show Trend Graphs"
+                  aria-label="Show Trend Graphs panel"
+                  aria-expanded={false}
+                  aria-controls="trends-panel"
                 >
                   <span className="text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase" style={{ writingMode: 'vertical-rl' as const, textOrientation: 'mixed' as const }}>Trends</span>
                 </button>
               )}
               {/* Expanded: full trend panel */}
               {trendsExpanded && (
-                <div className="flex flex-col h-full bg-sim-panel">
+                <div id="trends-panel" className="flex flex-col h-full bg-sim-panel" role="region" aria-label="Trend graphs">
                   <div className="flex items-center justify-between px-2 py-1 border-b border-gray-700">
                     <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Trend Graphs</span>
                     <button
                       onClick={() => setTrendsExpanded(false)}
                       className="text-gray-400 hover:text-white text-sm px-1"
                       title="Collapse Trends"
+                      aria-label="Collapse Trend Graphs panel"
+                      aria-expanded={true}
+                      aria-controls="trends-panel"
                     >
                       &raquo;
                     </button>

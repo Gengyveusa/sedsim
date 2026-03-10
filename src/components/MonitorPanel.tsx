@@ -751,21 +751,44 @@ const vfibOffset = vfibOffsetRef.current;
               </span>
             ) : null;
           })()}
-          <canvas ref={ecgCanvasRef} width={500} height={80} style={{ width: '100%', height: 80 }} />
+          <canvas
+            ref={ecgCanvasRef}
+            width={500}
+            height={80}
+            style={{ width: '100%', height: 80 }}
+            role="img"
+            aria-label={`ECG waveform, Lead II, rhythm: ${rhythm.replace(/_/g, ' ')}, heart rate ${hrVal} bpm`}
+          />
         </div>
 
         {/* HR Numeric */}
-        <div data-region="hr" data-sim-id="hr" style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
-          <div style={{ fontSize: 10, color: getHRColor(hrVal), fontWeight: 700, opacity: 0.8 }}>HR <span style={{ float: 'right', fontWeight: 400 }}>bpm</span></div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: getHRColor(hrVal), fontFamily: 'monospace', lineHeight: 1, opacity: isAlarmActive && alarmFlash && (hrVal < 50 || hrVal > 120) ? 0.3 : 1 }}>
+        <div
+          data-region="hr"
+          data-sim-id="hr"
+          role="status"
+          aria-label={`Heart rate: ${hrVal} beats per minute${hrVal < 50 || hrVal > 120 ? ' — ALARM' : ''}`}
+          aria-live={hrVal < 50 || hrVal > 120 ? 'assertive' : 'polite'}
+          aria-atomic="true"
+          style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}
+        >
+          <div style={{ fontSize: 10, color: getHRColor(hrVal), fontWeight: 700, opacity: 0.8 }} aria-hidden="true">HR <span style={{ float: 'right', fontWeight: 400 }}>bpm</span></div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: getHRColor(hrVal), fontFamily: 'monospace', lineHeight: 1, opacity: isAlarmActive && alarmFlash && (hrVal < 50 || hrVal > 120) ? 0.3 : 1 }} aria-hidden="true">
             {hrVal}
           </div>
         </div>
 
         {/* SpO2 Numeric */}
-        <div data-region="spo2" data-sim-id="spo2" style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
-          <div style={{ fontSize: 10, color: getSpO2Color(spo2Val), fontWeight: 700, opacity: 0.8 }}>{'SpO\u2082'} <span style={{ float: 'right', fontWeight: 400 }}>%</span></div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: getSpO2Color(spo2Val), fontFamily: 'monospace', lineHeight: 1, opacity: isAlarmActive && alarmFlash && spo2Val < 90 ? 0.3 : 1 }}>
+        <div
+          data-region="spo2"
+          data-sim-id="spo2"
+          role="status"
+          aria-label={`SpO2: ${spo2Val} percent${spo2Val < 90 ? ' — ALARM' : ''}`}
+          aria-live={spo2Val < 90 ? 'assertive' : 'polite'}
+          aria-atomic="true"
+          style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}
+        >
+          <div style={{ fontSize: 10, color: getSpO2Color(spo2Val), fontWeight: 700, opacity: 0.8 }} aria-hidden="true">{'SpO\u2082'} <span style={{ float: 'right', fontWeight: 400 }}>%</span></div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: getSpO2Color(spo2Val), fontFamily: 'monospace', lineHeight: 1, opacity: isAlarmActive && alarmFlash && spo2Val < 90 ? 0.3 : 1 }} aria-hidden="true">
             {spo2Val}
           </div>
         </div>
@@ -777,20 +800,38 @@ const vfibOffset = vfibOffsetRef.current;
           onClick={() => setShowPleth(!showPleth)}
           className="flex items-center gap-1 px-2 py-0.5 hover:opacity-80"
           style={{ color: COLORS.spo2, fontSize: '10px', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+          aria-label={`${showPleth ? 'Hide' : 'Show'} Pleth waveform`}
+          aria-expanded={showPleth}
+          aria-controls="pleth-waveform"
         >
           {showPleth ? '\u25BC' : '\u25B6'} Pleth
         </button>
         {showPleth && (
           <div className="flex">
-            <div className="flex-1" data-region="pleth">
-              <canvas ref={plethCanvasRef} width={500} height={55} style={{ width: '100%', height: 55 }} />
+            <div id="pleth-waveform" className="flex-1" data-region="pleth">
+              <canvas
+                ref={plethCanvasRef}
+                width={500}
+                height={55}
+                style={{ width: '100%', height: 55 }}
+                role="img"
+                aria-label={`Pleth waveform, SpO2 ${spo2Val} percent`}
+              />
             </div>
-            <div data-region="bp" data-sim-id="sbp" style={{ width: 200, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
-              <div style={{ fontSize: 10, color: getBPColor(sbpVal), fontWeight: 700, opacity: 0.8 }}>BP <span style={{ float: 'right', fontWeight: 400 }}>mmHg</span></div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: getBPColor(sbpVal), fontFamily: 'monospace', lineHeight: 1 }}>
+            <div
+              data-region="bp"
+              data-sim-id="sbp"
+              role="status"
+              aria-label={`Blood pressure: ${sbpVal} over ${dbpVal} mmHg, MAP ${mapVal}${sbpVal < 80 ? ' — ALARM' : ''}`}
+              aria-live={sbpVal < 80 ? 'assertive' : 'polite'}
+              aria-atomic="true"
+              style={{ width: 200, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}
+            >
+              <div style={{ fontSize: 10, color: getBPColor(sbpVal), fontWeight: 700, opacity: 0.8 }} aria-hidden="true">BP <span style={{ float: 'right', fontWeight: 400 }}>mmHg</span></div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: getBPColor(sbpVal), fontFamily: 'monospace', lineHeight: 1 }} aria-hidden="true">
                 {sbpVal}/{dbpVal}
               </div>
-              <div style={{ fontSize: 11, color: getBPColor(sbpVal), fontFamily: 'monospace', opacity: 0.7 }}>MAP {mapVal}</div>
+              <div style={{ fontSize: 11, color: getBPColor(sbpVal), fontFamily: 'monospace', opacity: 0.7 }} aria-hidden="true">MAP {mapVal}</div>
             </div>
           </div>
         )}
@@ -802,23 +843,49 @@ const vfibOffset = vfibOffsetRef.current;
           onClick={() => setShowCapno(!showCapno)}
           className="flex items-center gap-1 px-2 py-0.5 hover:opacity-80"
           style={{ color: COLORS.capno, fontSize: '10px', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+          aria-label={`${showCapno ? 'Hide' : 'Show'} Capnography waveform`}
+          aria-expanded={showCapno}
+          aria-controls="capno-waveform"
         >
           {showCapno ? '\u25BC' : '\u25B6'} {'CO\u2082'}
         </button>
         {showCapno && (
           <div className="flex">
-            <div className="flex-1" data-region="co2">
-              <canvas ref={capnoCanvasRef} width={500} height={55} style={{ width: '100%', height: 55 }} />
+            <div id="capno-waveform" className="flex-1" data-region="co2">
+              <canvas
+                ref={capnoCanvasRef}
+                width={500}
+                height={55}
+                style={{ width: '100%', height: 55 }}
+                role="img"
+                aria-label={`Capnography waveform, EtCO2 ${etco2Val} mmHg, respiratory rate ${rrVal} per minute`}
+              />
             </div>
-            <div data-region="rr" data-sim-id="rr" style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
-              <div style={{ fontSize: 10, color: getRRColor(rrVal), fontWeight: 700, opacity: 0.8 }}>RR <span style={{ float: 'right', fontWeight: 400 }}>/min</span></div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: getRRColor(rrVal), fontFamily: 'monospace', lineHeight: 1 }}>
+            <div
+              data-region="rr"
+              data-sim-id="rr"
+              role="status"
+              aria-label={`Respiratory rate: ${rrVal} breaths per minute${rrVal < 6 ? ' — ALARM' : ''}`}
+              aria-live={rrVal < 6 ? 'assertive' : 'polite'}
+              aria-atomic="true"
+              style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}
+            >
+              <div style={{ fontSize: 10, color: getRRColor(rrVal), fontWeight: 700, opacity: 0.8 }} aria-hidden="true">RR <span style={{ float: 'right', fontWeight: 400 }}>/min</span></div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: getRRColor(rrVal), fontFamily: 'monospace', lineHeight: 1 }} aria-hidden="true">
                 {rrVal}
               </div>
             </div>
-            <div data-region="etco2" data-sim-id="etco2" style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}>
-              <div style={{ fontSize: 10, color: getEtCO2Color(etco2Val), fontWeight: 700, opacity: 0.8 }}>{'EtCO\u2082'}</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: getEtCO2Color(etco2Val), fontFamily: 'monospace', lineHeight: 1 }}>
+            <div
+              data-region="etco2"
+              data-sim-id="etco2"
+              role="status"
+              aria-label={`End-tidal CO2: ${etco2Val} mmHg${etco2Val > 55 ? ' — ALARM' : ''}`}
+              aria-live={etco2Val > 55 ? 'assertive' : 'polite'}
+              aria-atomic="true"
+              style={{ width: 100, padding: '4px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #1a1a2e' }}
+            >
+              <div style={{ fontSize: 10, color: getEtCO2Color(etco2Val), fontWeight: 700, opacity: 0.8 }} aria-hidden="true">{'EtCO\u2082'}</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: getEtCO2Color(etco2Val), fontFamily: 'monospace', lineHeight: 1 }} aria-hidden="true">
                 {etco2Val}
               </div>
             </div>

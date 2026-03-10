@@ -9,7 +9,9 @@ export default function PatientSelector() {
       <h3 className="text-sm font-bold text-gray-300 mb-2">PATIENT</h3>
       
       <div className="space-y-2">
+        <label htmlFor="patient-select" className="sr-only">Select patient archetype</label>
         <select
+          id="patient-select"
           data-sim-id="patient-select"
           value={selectedArchetypeKey}
           onChange={(e) => selectPatient(e.target.value)}

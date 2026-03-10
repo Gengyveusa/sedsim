@@ -401,6 +401,7 @@ export const Dashboard: React.FC = () => {
                 onClick={() => setActiveTab(null)}
                 className="text-gray-400 hover:text-white text-sm px-1"
                 title="Close"
+                aria-label={`Close ${tabs.find(t => t.id === activeTab)?.label ?? ''} panel`}
               >
                 &#x00d7;
               </button>
@@ -535,11 +536,15 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
         {/* Vertical tab buttons on the right edge */}
-        <div className="pointer-events-auto flex flex-col bg-gray-900/90 border-l border-gray-700">
+        <div className="pointer-events-auto flex flex-col bg-gray-900/90 border-l border-gray-700" role="tablist" aria-label="AI tools and analysis panels" aria-orientation="vertical">
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              role="tab"
               onClick={() => handleTabClick(tab.id)}
+              aria-selected={activeTab === tab.id}
+              aria-label={`${tab.label} panel${activeTab === tab.id ? ', open' : ''}`}
+              aria-expanded={activeTab === tab.id}
               className={`flex flex-col items-center justify-center px-1.5 py-3 transition-colors border-b border-gray-700 ${
                 activeTab === tab.id
                   ? 'bg-blue-900/60 text-blue-400 border-l-2 border-l-blue-400'
@@ -547,7 +552,7 @@ export const Dashboard: React.FC = () => {
               }`}
               title={tab.label}
             >
-              <span className="text-base">{tab.icon}</span>
+              <span className="text-base" aria-hidden="true">{tab.icon}</span>
               <span className="text-[9px] mt-0.5 leading-tight whitespace-nowrap">{tab.label}</span>
             </button>
           ))}
