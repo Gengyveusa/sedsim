@@ -22,7 +22,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: node --version && npm --version
-      - run: npm install
+      - run: npm install --legacy-peer-deps
       - run: npm run typecheck
 
   lint:
@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm install
+      - run: npm install --legacy-peer-deps
       - run: npm run lint
 
   test:
@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm install
+      - run: npm install --legacy-peer-deps
       - run: npm test
 
   build:
@@ -58,5 +58,5 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm install
+      - run: npm install --legacy-peer-deps
       - run: npm run build
