@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';

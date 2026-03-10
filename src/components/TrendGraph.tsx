@@ -130,17 +130,6 @@ export default function TrendGraph() {
     )
   ), [displayData]);
 
-  if (displayData.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-gray-500 bg-sim-panel p-4">
-        <div className="text-center text-xs">
-          <p>Start the simulation</p>
-          <p className="text-gray-600 mt-1">Trends will appear here</p>
-        </div>
-      </div>
-    );
-  }
-
   // Pre-compute per-vital chart data (depends only on displayData, not on vitals)
   const vitalChartData = useMemo(() =>
     Object.fromEntries(
@@ -153,6 +142,17 @@ export default function TrendGraph() {
       ])
     ) as Record<string, { time: string; value: number }[]>,
   [displayData]);
+
+  if (displayData.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-500 bg-sim-panel p-4">
+        <div className="text-center text-xs">
+          <p>Start the simulation</p>
+          <p className="text-gray-600 mt-1">Trends will appear here</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-sim-panel overflow-auto">

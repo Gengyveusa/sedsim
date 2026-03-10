@@ -943,9 +943,9 @@ export class ScenarioEngine {
     }
 
     // JSON scenario checklist scoring summary
-    let percentScore = 0;
-    let rawScore = 0;
-    let maxScore = 100;
+    let percentScore: number;
+    let rawScore: number;
+    let maxScore: number;
     if (this.jsonScenario) {
       const jsonScore = evaluateJsonScore(this.jsonScenario, this.jsonAnswers);
       percentScore = jsonScore.percentScore;
