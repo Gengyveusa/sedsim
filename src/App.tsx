@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import useSimStore from './store/useSimStore';
 import useAIStore from './store/useAIStore';
+import useLMSStore from './store/useLMSStore';
 import PatientBanner from './components/PatientBanner';
 import PatientSelector from './components/PatientSelector';
 import DrugPanel from './components/DrugPanel';
@@ -18,6 +19,7 @@ import SedationGauge from './components/SedationGauge';
 import AEDPanel from './components/AEDPanel';
 import SimMasterOverlay from './components/SimMasterOverlay';
 import { Dashboard } from './components/Dashboard';
+import LMSPanel from './components/LMSPanel';
 import { usePerformanceObserver } from './hooks/usePerformanceObserver';
 
 export default function App() {
@@ -35,6 +37,14 @@ export default function App() {
   const [trendsExpanded, setTrendsExpanded] = useState(false);
   const [airwayExpanded, setAirwayExpanded] = useState(false);
   const simMasterEnabled = useAIStore(s => s.simMasterEnabled);
+  const { initScorm, terminateScorm } = useLMSStore();
+
+  // Initialise SCORM session on mount; terminate on unmount
+  useEffect(() => {
+    initScorm();
+    return () => terminateScorm();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Memoize the vitals history array so MonitorPanel's memo check stays stable.
   const vitalsHistory = useMemo(() => trendData.map(t => t.vitals), [trendData]);
@@ -151,8 +161,10 @@ export default function App() {
             )}
           </div>
 
-          {/* Right side: Event Log + Collapsible Trends */}
+          {/* Right side: LMS Panel + Event Log + Collapsible Trends */}
           <div className="flex flex-row" role="complementary" aria-label="Trends and event log">
+            {/* LMS / xAPI / SCORM Panel */}
+            <LMSPanel />
             {/* Trends Panel - collapsible side drawer */}
             <div
               className={`transition-all duration-300 ease-in-out border-l border-gray-700 overflow-hidden flex flex-col ${

@@ -943,8 +943,14 @@ export class ScenarioEngine {
     }
 
     // JSON scenario checklist scoring summary
+    let percentScore = 0;
+    let rawScore = 0;
+    let maxScore = 100;
     if (this.jsonScenario) {
       const jsonScore = evaluateJsonScore(this.jsonScenario, this.jsonAnswers);
+      percentScore = jsonScore.percentScore;
+      rawScore = jsonScore.totalScore;
+      maxScore = jsonScore.maxScore > 0 ? jsonScore.maxScore : 100;
       debriefLines.push(
         `\n📋 **Checklist Score — ${this.jsonScenario.title}**\n` +
           `**Total: ${jsonScore.totalScore} / ${jsonScore.maxScore} (${jsonScore.percentScore}%)**`
@@ -955,6 +961,14 @@ export class ScenarioEngine {
       if (itemLines.length > 0) {
         debriefLines.push(`**Checklist:**\n${itemLines.join('\n')}`);
       }
+    } else {
+      // Derive a composite score from the debrief grades
+      const avg = Math.round(
+        (score.titrationAccuracy + score.eegInterpretation + score.complicationResponse) / 3
+      );
+      percentScore = avg;
+      rawScore = avg;
+      maxScore = 100;
     }
 
     if (enhanced?.keyQuestions?.length) {
@@ -972,6 +986,18 @@ export class ScenarioEngine {
     );
 
     this.speakAsMillie(debriefLines);
+
+    // ── Report to LMS (xAPI + SCORM) ─────────────────────────────────────────
+    const scenarioId = this.scenario.id;
+    const elapsed = this.scenarioTimeSeconds;
+    const passed = percentScore >= 70;
+    import('../store/useLMSStore').then(m => {
+      const lms = m.default.getState();
+      lms.emitCompleted(scenarioId, elapsed, passed);
+      lms.emitScored(scenarioId, rawScore, maxScore, elapsed);
+      lms.reportScormScore(rawScore, 0, maxScore);
+      lms.reportScormComplete(passed, elapsed);
+    });
   }
 
   private isOptimalAnswer(q: ScenarioQuestion, a: string | number): boolean {
