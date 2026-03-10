@@ -95,6 +95,7 @@ function CollapsibleTrend({ label, unit, color, currentValue, data, yMin, yMax, 
 export default function TrendGraph() {
   const { trendData, vitals } = useSimStore();
   const [pkExpanded, setPkExpanded] = useState(false);
+  const [riskExpanded, setRiskExpanded] = useState(false);
 
   // Show last 120 data points (10 minutes at 5s intervals)
   const displayData = trendData.slice(-120).map(point => ({
@@ -105,6 +106,7 @@ export default function TrendGraph() {
     spo2: point.vitals.spo2,
     rr: point.vitals.rr,
     etco2: point.vitals.etco2 ?? 0,
+    riskScore: point.riskScore ?? 0,
     ...Object.fromEntries(
       Object.entries(point.cp || {}).map(([k, v]) => [`cp_${k}`, v])
     ),
@@ -112,6 +114,11 @@ export default function TrendGraph() {
       Object.entries(point.ce || {}).map(([k, v]) => [`ce_${k}`, v])
     ),
   }));
+
+  // Current composite risk from latest trendData point
+  const currentRiskScore = displayData.length > 0 ? displayData[displayData.length - 1].riskScore : 0;
+  const riskIsAlarm = currentRiskScore >= 50;
+  const riskColor = currentRiskScore >= 75 ? '#f87171' : currentRiskScore >= 50 ? '#fb923c' : currentRiskScore >= 25 ? '#facc15' : '#4ade80';
 
   // Check if any drug has non-zero concentration
   const hasConcentrations = displayData.some(d =>
@@ -162,6 +169,58 @@ export default function TrendGraph() {
           />
         );
       })}
+
+      {/* Composite Risk Score – collapsible */}
+      <div className="border-b border-gray-700/50">
+        <button
+          onClick={() => setRiskExpanded(prev => !prev)}
+          className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-800/60 transition-colors text-left"
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold w-12 shrink-0" style={{ color: riskColor }}>Risk</span>
+            <span
+              className={`text-xl font-mono font-bold leading-none${riskIsAlarm ? ' animate-pulse' : ''}`}
+              style={{ color: riskColor }}
+            >
+              {Math.round(currentRiskScore)}
+            </span>
+            <span className="text-xs text-gray-500">%</span>
+          </div>
+          <span className="text-gray-500 text-xs ml-2">{riskExpanded ? '▲' : '▼'}</span>
+        </button>
+
+        <div
+          style={{
+            overflow: 'hidden',
+            maxHeight: riskExpanded ? '120px' : '0',
+            transition: 'max-height 0.25s ease-in-out',
+          }}
+        >
+          <div className="px-2 pb-2" style={{ height: 110 }}>
+            <ResponsiveContainer width="100%" height={106}>
+              <LineChart data={displayData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 4" stroke="#1f2937" />
+                <XAxis dataKey="time" stroke="#4b5563" tick={{ fontSize: 8 }} interval="preserveStartEnd" />
+                <YAxis stroke="#4b5563" tick={{ fontSize: 8 }} domain={[0, 100]} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #374151', fontSize: 10 }}
+                  labelStyle={{ color: '#9ca3af' }}
+                  formatter={(value: number) => [`${value}%`, 'Composite Risk']}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="riskScore"
+                  stroke={riskColor}
+                  dot={false}
+                  strokeWidth={1.5}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
 
       {/* PK Concentrations – collapsible */}
       <div className="border-b border-gray-700/50">

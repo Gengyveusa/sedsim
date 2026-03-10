@@ -115,6 +115,7 @@ export interface TrendPoint {
   vitals: Vitals;
   ce: Record<string, number>;  // effect-site by drug name
   moass: MOASSLevel;
+  riskScore?: number;          // composite risk score (0-100)
 }
 
 // Airway state

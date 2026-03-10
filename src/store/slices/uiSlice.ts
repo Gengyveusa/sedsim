@@ -90,8 +90,22 @@ export const createUiSlice: StateCreator<SimStore, [], [], UiSlice> = (set, get)
     // Check for alarms
     const activeAlarms = checkAlarms(newVitals);
 
-    // Update trend data
+    // Derive rhythm early (needed by updateTwin and log processing)
+    const newRhythm = newVitals.rhythm ?? 'normal_sinus';
     const newTime = state.elapsedSeconds + dt;
+
+    // Update digital twin before trendPoint so compositeRisk is available
+    const newDigitalTwin = updateTwin(
+      state.digitalTwin || createDigitalTwin(patient),
+      newPkStates,
+      newVitals.hr,
+      newVitals.spo2,
+      dt,
+      newRhythm,
+      newVitals.sbp
+    );
+
+    // Update trend data
     const newTrendPoint: TrendPoint = {
       time: newTime,
       vitals: newVitals,
@@ -100,6 +114,7 @@ export const createUiSlice: StateCreator<SimStore, [], [], UiSlice> = (set, get)
         Object.entries(newPkStates).map(([name, s]) => [name, s.ce])
       ),
       moass,
+      riskScore: newDigitalTwin.predictedOutcome.compositeRisk,
     };
 
     const trendData = [...state.trendData, newTrendPoint];
@@ -124,7 +139,6 @@ export const createUiSlice: StateCreator<SimStore, [], [], UiSlice> = (set, get)
     });
 
     // Log rhythm changes
-    const newRhythm = newVitals.rhythm ?? 'normal_sinus';
     if (newRhythm !== prevRhythm) {
       const isLethal = [
         'ventricular_fibrillation', 'ventricular_tachycardia', 'polymorphic_vt',
@@ -147,17 +161,6 @@ export const createUiSlice: StateCreator<SimStore, [], [], UiSlice> = (set, get)
     const midazCe = newPkStates['midazolam']?.ce || 0;
     const fentCe = newPkStates['fentanyl']?.ce || 0;
     const newEegState = generateEEG(propCe, dexCe, ketCe, midazCe, fentCe, patient.age, newTime, combinedEff, state.eegState ?? undefined);
-
-    // Update digital twin
-    const newDigitalTwin = updateTwin(
-      state.digitalTwin || createDigitalTwin(patient),
-      newPkStates,
-      newVitals.hr,
-      newVitals.spo2,
-      dt,
-      newRhythm,
-      newVitals.sbp
-    );
 
     // Accumulate IV fluid infused
     const newIvFluids = { ...state.ivFluids };
