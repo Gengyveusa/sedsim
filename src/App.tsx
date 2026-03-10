@@ -16,6 +16,8 @@ import SedationGauge from './components/SedationGauge';
 import AEDPanel from './components/AEDPanel';
 import SimMasterOverlay from './components/SimMasterOverlay';
 import { Dashboard } from './components/Dashboard';
+import OfflineBanner from './components/OfflineBanner';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 export default function App() {
   const { isRunning, speedMultiplier, tick, trendData } = useSimStore();
@@ -37,6 +39,8 @@ export default function App() {
   return (
     <>
       <div className="h-screen flex flex-col bg-sim-bg text-white">
+        {/* Offline Banner */}
+        <OfflineBanner />
         {/* Top Banner */}
         <PatientBanner />
 
@@ -177,6 +181,7 @@ export default function App() {
         <Dashboard />
       </div>
       <SimMasterOverlay enabled={simMasterEnabled} />
+      <PWAInstallPrompt />
     </>
   );
 }
