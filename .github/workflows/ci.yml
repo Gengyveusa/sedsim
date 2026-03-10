@@ -21,7 +21,8 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
+      - run: node --version && npm --version
+      - run: npm install
       - run: npm run typecheck
 
   lint:
@@ -33,7 +34,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
       - run: npm run lint
 
   test:
@@ -45,9 +46,8 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
       - run: npm test
-        if: ${{ hashFiles('jest.config.*', 'vitest.config.*') != '' }}
 
   build:
     name: Build
@@ -58,5 +58,5 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
       - run: npm run build
