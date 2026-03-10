@@ -182,20 +182,6 @@ class AudioManager {
     return this.ctx !== null && this.ctx.state !== 'closed';
   }
 
-  /**
-   * Called by PrecordialStethoscope when the stethoscope is placed or removed.
-   * Breath and heart sound routing is controlled separately via
-   * setBreathSoundsEnabled / setHeartSoundsEnabled.
-   * This hook exists so future audio-mode logic (e.g. filtering) can be added
-   * without changing the component API.
-   */
-  setStethoscopeActive(_active: boolean): void { /* reserved for future use */ }
-
-  /**
-   * Update the SpO2 / HR values used for the pulse tone and start the loop
-   * if it is not already running.  Call this on every vitals update while
-   * the simulation is running.
-   */
   updateSpO2Tone(spo2: number, hr: number): void {
     this._spo2 = spo2;
     this._hr = Math.max(10, hr); // guard against 0-division
