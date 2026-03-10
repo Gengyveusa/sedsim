@@ -715,4 +715,455 @@ describe('predictForward — numerical stability and edge cases', () => {
     expect(snaps[1].secondsAhead).toBe(120);
     expect(snaps[2].secondsAhead).toBe(300);
   });
+
+  
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. Propofol dose-response — multiple bolus levels (Marsh model)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Propofol dose-response — Marsh model across bolus levels', () => {
+  const REF_100MG_CE_60S = 1.258852;
+
+  it('50mg bolus Ce at 60s is ~50% of 100mg bolus (linear PK)', () => {
+    const snaps50 = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 50 }
+    );
+    const snaps100 = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 100 }
+    );
+    const ce50 = snaps50.find((s) => s.secondsAhead === 60)!.ceByDrug['propofol'] ?? 0;
+    const ce100 = snaps100.find((s) => s.secondsAhead === 60)!.ceByDrug['propofol'] ?? 0;
+    const ratio = ce50 / ce100;
+    expect(ratio).toBeCloseTo(0.5, 2);
+  });
+
+  it('200mg bolus Ce at 60s is ~200% of 100mg bolus (linear PK)', () => {
+    const snaps200 = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 200 }
+    );
+    const ce200 = snaps200.find((s) => s.secondsAhead === 60)!.ceByDrug['propofol'] ?? 0;
+    const ratio = ce200 / REF_100MG_CE_60S;
+    expect(ratio).toBeCloseTo(2.0, 2);
+  });
+
+  it('200mg bolus produces deeper MOASS than 100mg at 60s', () => {
+    const snaps100 = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 100 }
+    );
+    const snaps200 = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 200 }
+    );
+    const moass100 = snaps100.find((s) => s.secondsAhead === 60)!.moass;
+    const moass200 = snaps200.find((s) => s.secondsAhead === 60)!.moass;
+    expect(moass200).toBeLessThanOrEqual(moass100);
+  });
+
+  it('ghost dose prediction matches manual stepPK at 50mg (zero drift)', () => {
+    const REF = computeRefCe(propofol, 50, 0, 60);
+    const snaps = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 50 }
+    );
+    const ce = snaps.find((s) => s.secondsAhead === 60)!.ceByDrug['propofol'] ?? 0;
+    expect(ce).toBeCloseTo(REF.ce, 6);
+  });
+
+  it('ghost dose prediction matches manual stepPK at 200mg (zero drift)', () => {
+    const REF = computeRefCe(propofol, 200, 0, 300);
+    const snaps = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [300],
+      { drugName: 'propofol', dose: 200 }
+    );
+    const ce = snaps.find((s) => s.secondsAhead === 300)!.ceByDrug['propofol'] ?? 0;
+    expect(ce).toBeCloseTo(REF.ce, 6);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. Propofol infusion — Marsh model steady-state approach
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Propofol infusion — Marsh model steady-state approach', () => {
+  const propofolInfusion: Record<string, { rate: number; isRunning: boolean }> = {
+    propofol: { rate: 10, isRunning: true },
+  };
+
+  it('infusion Ce at 60s matches manual stepPK reference exactly', () => {
+    const REF = computeRefCe(propofol, 0, 10, 60);
+    const snaps = predictForward(
+      EMPTY_PK,
+      propofolInfusion,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60]
+    );
+    const ce = snaps.find((s) => s.secondsAhead === 60)!.ceByDrug['propofol'] ?? 0;
+    expect(ce).toBeCloseTo(REF.ce, 6);
+  });
+
+  it('infusion Ce at 300s matches manual stepPK reference exactly', () => {
+    const REF = computeRefCe(propofol, 0, 10, 300);
+    const snaps = predictForward(
+      EMPTY_PK,
+      propofolInfusion,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [300]
+    );
+    const ce = snaps.find((s) => s.secondsAhead === 300)!.ceByDrug['propofol'] ?? 0;
+    expect(ce).toBeCloseTo(REF.ce, 6);
+  });
+
+  it('infusion Ce rises monotonically toward steady state', () => {
+    const snaps = predictForward(
+      EMPTY_PK,
+      propofolInfusion,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [30, 60, 120, 300, 600]
+    );
+    const ces = snaps.map((s) => s.ceByDrug['propofol'] ?? 0);
+    for (let i = 1; i < ces.length; i++) {
+      expect(ces[i]).toBeGreaterThan(ces[i - 1]);
+    }
+  });
+
+  it('infusion MOASS deepens over time as Ce rises', () => {
+    const snaps = predictForward(
+      EMPTY_PK,
+      propofolInfusion,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60, 300, 600]
+    );
+    const moassValues = snaps.map((s) => s.moass);
+    expect(moassValues[2]).toBeLessThanOrEqual(moassValues[0]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. Propofol bolus + infusion (TCI-like induction + maintenance)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Propofol bolus + infusion — TCI-like induction/maintenance', () => {
+  const propofolInfusion: Record<string, { rate: number; isRunning: boolean }> = {
+    propofol: { rate: 10, isRunning: true },
+  };
+
+  it('bolus + infusion Ce exceeds infusion-only Ce at all time points', () => {
+    const bolusAndInfusion = predictForward(
+      EMPTY_PK,
+      propofolInfusion,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60, 120, 300],
+      { drugName: 'propofol', dose: 100 }
+    );
+    const infusionOnly = predictForward(
+      EMPTY_PK,
+      propofolInfusion,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60, 120, 300]
+    );
+    for (let i = 0; i < bolusAndInfusion.length; i++) {
+      const ceBoth = bolusAndInfusion[i].ceByDrug['propofol'] ?? 0;
+      const ceInfOnly = infusionOnly[i].ceByDrug['propofol'] ?? 0;
+      expect(ceBoth).toBeGreaterThan(ceInfOnly);
+    }
+  });
+
+  it('bolus + infusion matches manual stepPK at 60s (zero drift)', () => {
+    const REF = computeRefCe(propofol, 100, 10, 60);
+    const snaps = predictForward(
+      EMPTY_PK,
+      propofolInfusion,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 100 }
+    );
+    const ce = snaps.find((s) => s.secondsAhead === 60)!.ceByDrug['propofol'] ?? 0;
+    expect(ce).toBeCloseTo(REF.ce, 6);
+  });
+
+  it('bolus + infusion matches manual stepPK at 300s (zero drift)', () => {
+    const REF = computeRefCe(propofol, 100, 10, 300);
+    const snaps = predictForward(
+      EMPTY_PK,
+      propofolInfusion,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [300],
+      { drugName: 'propofol', dose: 100 }
+    );
+    const ce = snaps.find((s) => s.secondsAhead === 300)!.ceByDrug['propofol'] ?? 0;
+    expect(ce).toBeCloseTo(REF.ce, 6);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. Propofol ghost dose from non-zero PK state (mid-case ghost dosing)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Propofol ghost dose from non-zero PK state', () => {
+  it('ghost bolus on top of existing propofol state increases Ce above baseline', () => {
+    let existingPK = createInitialPKState();
+    for (let t = 0; t < 300; t++) {
+      existingPK = stepPK(existingPK, propofol, 0, 10, 1);
+    }
+    const priorCe = existingPK.ce;
+    const snaps = predictForward(
+      { propofol: { ...existingPK } },
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 100 }
+    );
+    const predictedCe = snaps.find((s) => s.secondsAhead === 60)!.ceByDrug['propofol'] ?? 0;
+    expect(predictedCe).toBeGreaterThan(priorCe);
+  });
+
+  it('ghost bolus from non-zero state produces higher Ce than from zero state', () => {
+    let existingPK = createInitialPKState();
+    for (let t = 0; t < 300; t++) {
+      existingPK = stepPK(existingPK, propofol, 0, 10, 1);
+    }
+    const fromNonZero = predictForward(
+      { propofol: { ...existingPK } },
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 100 }
+    );
+    const fromZero = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 100 }
+    );
+    const ceNonZero = fromNonZero.find((s) => s.secondsAhead === 60)!.ceByDrug['propofol'] ?? 0;
+    const ceZero = fromZero.find((s) => s.secondsAhead === 60)!.ceByDrug['propofol'] ?? 0;
+    expect(ceNonZero).toBeGreaterThan(ceZero);
+  });
+
+  it('does not mutate the non-zero input PK state', () => {
+    const inputPK: Record<string, PKState> = {
+      propofol: { c1: 3.0, c2: 1.2, c3: 0.4, ce: 2.5 },
+    };
+    const originalCe = inputPK['propofol'].ce;
+    const originalC1 = inputPK['propofol'].c1;
+    predictForward(
+      inputPK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60, 300],
+      { drugName: 'propofol', dose: 100 }
+    );
+    expect(inputPK['propofol'].ce).toBe(originalCe);
+    expect(inputPK['propofol'].c1).toBe(originalC1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. Propofol PD effects — hemodynamics and respiration
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Propofol PD effects — hemodynamics and respiration', () => {
+  it('high-dose propofol SpO2 stays in valid range', () => {
+    const noDrugSnaps = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60]
+    );
+    const highDoseSnaps = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [60],
+      { drugName: 'propofol', dose: 200 }
+    );
+    const noDrugSpo2 = noDrugSnaps.find((s) => s.secondsAhead === 60)!.spo2;
+    const highDoseSpo2 = highDoseSnaps.find((s) => s.secondsAhead === 60)!.spo2;
+    expect(noDrugSpo2).toBeGreaterThan(85);
+    expect(highDoseSpo2).toBeGreaterThanOrEqual(0);
+    expect(highDoseSpo2).toBeLessThanOrEqual(100);
+  });
+
+  it('propofol causes mild RR depression with large bolus', () => {
+    const snaps = predictForward(
+      EMPTY_PK,
+      NO_INFUSIONS,
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [120, 300],
+      { drugName: 'propofol', dose: 200 }
+    );
+    const snap120 = snaps.find((s) => s.secondsAhead === 120)!;
+    expect(snap120.rr).toBeGreaterThan(0);
+    expect(snap120.rr).toBeLessThanOrEqual(14);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13. Propofol + remifentanil synergy — combined sedation depth
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Propofol + remifentanil synergy — combined sedation depth', () => {
+  it('combined infusions produce deeper combinedEff than propofol alone', () => {
+    const propOnlySnaps = predictForward(
+      EMPTY_PK,
+      { propofol: { rate: 10, isRunning: true } },
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [300]
+    );
+    const combinedSnaps = predictForward(
+      EMPTY_PK,
+      {
+        propofol: { rate: 10, isRunning: true },
+        remifentanil: { rate: 7, isRunning: true },
+      },
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [300]
+    );
+    const propOnlyEff = propOnlySnaps.find((s) => s.secondsAhead === 300)!.combinedEff;
+    const combinedEff = combinedSnaps.find((s) => s.secondsAhead === 300)!.combinedEff;
+    expect(combinedEff).toBeGreaterThan(propOnlyEff);
+  });
+
+  it('combination produces deeper MOASS than propofol alone at 300s', () => {
+    const propOnlySnaps = predictForward(
+      EMPTY_PK,
+      { propofol: { rate: 10, isRunning: true } },
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [300]
+    );
+    const combinedSnaps = predictForward(
+      EMPTY_PK,
+      {
+        propofol: { rate: 10, isRunning: true },
+        remifentanil: { rate: 7, isRunning: true },
+      },
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [300]
+    );
+    const propOnlyMoass = propOnlySnaps.find((s) => s.secondsAhead === 300)!.moass;
+    const combinedMoass = combinedSnaps.find((s) => s.secondsAhead === 300)!.moass;
+    expect(combinedMoass).toBeLessThanOrEqual(propOnlyMoass);
+  });
+
+  it('combination RR depression exceeds propofol-only RR depression', () => {
+    const propOnlySnaps = predictForward(
+      EMPTY_PK,
+      { propofol: { rate: 10, isRunning: true } },
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [300]
+    );
+    const combinedSnaps = predictForward(
+      EMPTY_PK,
+      {
+        propofol: { rate: 10, isRunning: true },
+        remifentanil: { rate: 7, isRunning: true },
+      },
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [300]
+    );
+    const propOnlyRR = propOnlySnaps.find((s) => s.secondsAhead === 300)!.rr;
+    const combinedRR = combinedSnaps.find((s) => s.secondsAhead === 300)!.rr;
+    expect(combinedRR).toBeLessThanOrEqual(propOnlyRR);
+  });
+
+  it('all combined predictions have bounded vitals', () => {
+    const snaps = predictForward(
+      EMPTY_PK,
+      {
+        propofol: { rate: 10, isRunning: true },
+        remifentanil: { rate: 7, isRunning: true },
+      },
+      STANDARD_PATIENT,
+      ROOM_AIR_FIO2,
+      BASELINE_VITALS,
+      [30, 60, 120, 300, 600]
+    );
+    snaps.forEach((s) => {
+      expect(s.spo2).toBeGreaterThanOrEqual(0);
+      expect(s.spo2).toBeLessThanOrEqual(100);
+      expect(s.rr).toBeGreaterThanOrEqual(0);
+      expect(s.combinedEff).toBeGreaterThanOrEqual(0);
+      expect(s.combinedEff).toBeLessThanOrEqual(1);
+      expect(s.moass).toBeGreaterThanOrEqual(1);
+      expect(s.moass).toBeLessThanOrEqual(5);
+    });
+  });
 });
