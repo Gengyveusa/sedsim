@@ -669,6 +669,7 @@ const vfibOffset = vfibOffsetRef.current;
     }
 
     sweepRef.current += SWEEP_SPEED;
+    // eslint-disable-next-line react-hooks/immutability
     animRef.current = requestAnimationFrame(drawAll);
   }, [vitals.hr, vitals.rr, vitals.etco2, vitals.rhythm, vitals.sbp, vitals.dbp,
       showPleth, showCapno, hrScale, spo2Scale, etco2Scale]);

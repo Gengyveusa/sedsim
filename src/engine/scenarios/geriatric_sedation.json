@@ -1,0 +1,212 @@
+{
+  "id": "geriatric_sedation",
+  "title": "Geriatric Procedural Sedation – Increased Sensitivity and Comorbidities",
+  "description": "An 82-year-old patient with multiple comorbidities requires moderate sedation for a colonoscopy. Practise recognising altered pharmacokinetics and pharmacodynamics in elderly patients, conservative dosing, and management of geriatric-specific complications including delirium.",
+  "tags": ["geriatric", "elderly", "increased sensitivity", "pharmacokinetics", "delirium", "moderate sedation", "hard"],
+  "patient": { "archetypeId": "geriatric_patient" },
+  "learningObjectives": [
+    "Explain how age-related physiology alters drug PK/PD in elderly patients",
+    "Apply the 'start low, go slow' principle for geriatric sedation",
+    "Recognise and manage emergence delirium in elderly patients",
+    "Identify drug interactions relevant to polypharmacy in geriatric patients",
+    "Select the safest sedation agents for frail elderly patients"
+  ],
+  "estimatedDurationSec": 600,
+  "phases": [
+    { "id": "pre",          "label": "Pre-Procedure",      "order": 1 },
+    { "id": "induction",    "label": "Sedation Induction", "order": 2 },
+    { "id": "maintenance",  "label": "Maintenance",        "order": 3 },
+    { "id": "complication", "label": "Complication",       "order": 4 },
+    { "id": "recovery",     "label": "Recovery",           "order": 5 },
+    { "id": "debrief",      "label": "Debrief",            "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_pk_pd",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "Your patient is an 82-year-old female (45 kg, BMI 21). PMH: atrial fibrillation (on warfarin), hypertension, mild cognitive impairment, osteoporosis, CKD stage 3. Current medications: warfarin, metoprolol, lisinopril, amlodipine, sertraline. Which physiological change MOST increases midazolam drug effect in elderly patients?",
+      "options": [
+        { "id": "pk_brain",  "label": "Increased central nervous system sensitivity (pharmacodynamic change)", "isCorrect": true  },
+        { "id": "pk_renal",  "label": "Decreased renal clearance shortens drug half-life",                     "isCorrect": false },
+        { "id": "pk_muscle", "label": "Decreased muscle mass reduces volume of distribution",                  "isCorrect": false },
+        { "id": "pk_fast",   "label": "Faster hepatic metabolism increases drug effect",                       "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! The dominant pharmacodynamic change in elderly patients is increased CNS receptor sensitivity (GABA-A upregulation, reduced neuronal reserves). The brain responds more strongly to the same drug concentration.",
+        "Decreased renal clearance PROLONGS benzodiazepine active metabolite elimination (extending duration), not shortens it.",
+        "Decreased muscle mass reduces lean Vd, increasing peak plasma levels — this is a PK effect, but the dominant concern is CNS PD hypersensitivity.",
+        "Hepatic metabolism DECREASES with age (reduced blood flow, phase I reactions), extending drug half-life."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_pk_pd", "toStateId": "state_dose_calc", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_pkpd_elderly",
+            "description": "Correctly identifies CNS PD hypersensitivity as dominant elderly drug effect mechanism",
+            "weight": 10,
+            "evaluationHint": "Patient selected pk_brain option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_dose_calc",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "Time to sedate this 82-year-old for colonoscopy. Applying 'start low, go slow', what is the most appropriate INITIAL midazolam dose?",
+      "options": [
+        { "id": "dose_0.5",  "label": "0.5 mg IV (half the healthy adult starting dose)", "isCorrect": true  },
+        { "id": "dose_1",    "label": "1 mg IV (standard adult starting dose)",            "isCorrect": false },
+        { "id": "dose_2",    "label": "2 mg IV (front-load to ensure adequate sedation)",  "isCorrect": false },
+        { "id": "dose_0.25", "label": "0.25 mg IV (below therapeutic threshold)",          "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! For patients >65 years (and especially >80), start at 0.5 mg IV (or lower) with slow titration. Geriatric PD hypersensitivity means 0.5 mg may be equivalent to 1–1.5 mg in a young adult.",
+        "1 mg is the standard adult dose but risks over-sedation, prolonged recovery, and post-procedure delirium in an 82-year-old with cognitive impairment.",
+        "2 mg is inappropriate — significant risk of apnoea, hypotension, and delirium in a frail elderly patient.",
+        "0.25 mg is at the lower limit but may be reasonable in very frail patients. For this 45 kg, cognitively impaired patient, 0.5 mg is the better validated starting point."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "midazolam", "doseMg": 0.5, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_dose_calc", "toStateId": "state_drug_interaction", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_geriatric_dose",
+            "description": "Selects 0.5 mg initial midazolam dose for geriatric patient",
+            "weight": 15,
+            "evaluationHint": "Patient selected dose_0.5 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_drug_interaction",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "This patient is on sertraline (SSRI) and metoprolol. She is also receiving fentanyl 25 mcg for analgesia. Which drug interaction is MOST clinically relevant to monitor?",
+      "options": [
+        { "id": "int_sero",  "label": "Fentanyl + sertraline: risk of serotonin syndrome (particularly with high fentanyl doses)", "isCorrect": true  },
+        { "id": "int_metro", "label": "Metoprolol + midazolam: severe bradycardia from combined β-blockade and sedation",         "isCorrect": false },
+        { "id": "int_warf",  "label": "Warfarin + fentanyl: enhanced anticoagulation causing bleeding",                          "isCorrect": false },
+        { "id": "int_lisi",  "label": "Lisinopril + propofol: hypertensive emergency",                                           "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Fentanyl (weak serotonergic activity) + sertraline (SSRI) can precipitate serotonin syndrome, especially at higher doses. Monitor for: agitation, tremor, clonus, hyperthermia, tachycardia.",
+        "Metoprolol does not significantly interact with midazolam pharmacodynamically for bradycardia. Monitoring is appropriate but not the primary risk.",
+        "Warfarin prolongs bleeding time but does not pharmacokinetically interact with fentanyl to enhance anticoagulation.",
+        "Propofol + ACE inhibitors do not cause hypertension — if anything, propofol causes vasodilation/hypotension."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_drug_interaction", "toStateId": "state_delirium", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_serotonin_risk",
+            "description": "Correctly identifies fentanyl + SSRI serotonin syndrome risk",
+            "weight": 15,
+            "evaluationHint": "Patient selected int_sero option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_delirium",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Procedure complete. During recovery, the patient is agitated, disoriented, pulling at the IV, and calling out confused names. She does not recognise the nurse. This started 20 minutes post-procedure. MOASS 4 (eyes open, following commands inconsistently). What is the MOST likely diagnosis?",
+      "options": [
+        { "id": "del_delirium",  "label": "Post-procedure delirium (emergence delirium / PACU delirium)",   "isCorrect": true  },
+        { "id": "del_pain",      "label": "Uncontrolled pain causing agitation",                             "isCorrect": false },
+        { "id": "del_hypoxia",   "label": "Hypoxia – SpO2 is 96% on 2 L/min NC",                            "isCorrect": false },
+        { "id": "del_paradox",   "label": "Paradoxical midazolam reaction",                                  "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Emergence delirium in elderly patients with pre-existing cognitive impairment is a major post-sedation complication. Risk factors: age >65, pre-existing dementia, benzodiazepine use, sleep deprivation.",
+        "Pain can cause agitation but disorientation and failure to recognise staff point to delirium rather than isolated pain.",
+        "SpO2 96% is acceptable – hypoxia is not the primary cause here.",
+        "Paradoxical midazolam reaction typically occurs DURING sedation (acute combativeness), not 20 minutes into recovery."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_delirium", "toStateId": "state_delirium_mgmt", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_delirium_dx",
+            "description": "Correctly identifies post-procedure delirium in elderly patient",
+            "weight": 15,
+            "evaluationHint": "Patient selected del_delirium option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_delirium_mgmt",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "The patient has post-procedure delirium. She is not violent but is confused and at risk of falls. What is the SAFEST first-line management?",
+      "options": [
+        { "id": "mgmt_reorient", "label": "Non-pharmacological: reorientation, familiar voice/family, low lighting, calm environment", "isCorrect": true  },
+        { "id": "mgmt_halo",     "label": "Haloperidol 2 mg IV immediately to sedate the patient",                                    "isCorrect": false },
+        { "id": "mgmt_midaz",    "label": "Additional midazolam 1 mg IV to calm the agitation",                                       "isCorrect": false },
+        { "id": "mgmt_restrain", "label": "Physical restraints to prevent falls",                                                      "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Non-pharmacological de-escalation is first-line for PACU delirium. Reorientation, familiar family presence, low-stimulus environment, and pain/urinary retention exclusion resolve most cases.",
+        "Haloperidol has a role in severe agitated delirium but carries QTc prolongation risk and should not be the reflex first-line in a non-violent patient.",
+        "Additional benzodiazepines WORSEN delirium and are contraindicated in elderly PACU delirium management.",
+        "Physical restraints increase delirium severity and injury risk. They are a last resort, not first-line."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_delirium_mgmt", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_delirium_nonpharm",
+            "description": "Correctly selects non-pharmacological de-escalation for PACU delirium",
+            "weight": 20,
+            "evaluationHint": "Patient selected mgmt_reorient option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• Elderly PD hypersensitivity: CNS responds more strongly at same plasma levels\n• 'Start low, go slow': initial midazolam 0.5 mg (or less) for patients >65 years\n• SSRI + fentanyl: monitor for serotonin syndrome\n• Post-procedure delirium: non-pharmacological first; avoid benzodiazepines",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}

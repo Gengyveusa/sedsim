@@ -30,17 +30,17 @@ export default  function ControlBar() {
 
   const handlePlayPause = () => {
     if (!isRunning) {
-      // Starting — init AudioContext on this user gesture to satisfy browser policy
-      audioManager.init();
+      // Starting — resume AudioContext on this user gesture (browser autoplay policy).
+      audioManager.resume();
     } else {
-      // Pausing
-      audioManager.stopAll();
+      // Pausing — suspend AudioContext to free resources while the sim is idle.
+      audioManager.suspend();
     }
     toggleRunning();
   };
 
   const handleReset = () => {
-    audioManager.stopAll();
+    audioManager.suspend();
     if (isScenarioActive) {
       conductorInstance.stop();
     }

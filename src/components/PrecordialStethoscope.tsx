@@ -107,7 +107,6 @@ export default function PrecordialStethoscope() {
     const next = !isPlaced;
     setIsPlaced(next);
     audioManager.init();
-    audioManager.setStethoscopeActive(next);
     audioManager.setBreathSoundsEnabled(next);
     audioManager.setHeartSoundsEnabled(next);
   }, [isPlaced]);

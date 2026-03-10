@@ -1,0 +1,216 @@
+{
+  "id": "sedation_airway_loss",
+  "title": "Sedation Emergency – Complete Airway Loss",
+  "description": "A sedated patient progresses to complete airway obstruction and apnoea requiring escalating airway rescue manoeuvres, bag-mask ventilation, and potential emergency airway management. Emphasises the 'cannot oxygenate' scenario in procedural sedation.",
+  "tags": ["sedation", "airway loss", "apnoea", "bag-mask ventilation", "airway rescue", "emergency", "hard"],
+  "patient": { "archetypeId": "obese_adult" },
+  "learningObjectives": [
+    "Recognise complete airway obstruction in a sedated patient",
+    "Execute escalating airway rescue: jaw thrust → oral airway → BMV → supraglottic airway → intubation",
+    "Apply two-hand bag-mask ventilation technique correctly",
+    "Understand OSA and obesity as high-risk factors for airway loss",
+    "Determine when to call for anaesthesia/airway expert assistance"
+  ],
+  "estimatedDurationSec": 480,
+  "phases": [
+    { "id": "pre",          "label": "Risk Assessment",    "order": 1 },
+    { "id": "induction",    "label": "Sedation Induction", "order": 2 },
+    { "id": "maintenance",  "label": "Complication",       "order": 3 },
+    { "id": "complication", "label": "Rescue Escalation",  "order": 4 },
+    { "id": "recovery",     "label": "Stabilisation",      "order": 5 },
+    { "id": "debrief",      "label": "Debrief",            "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_risk_assessment",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "Pre-procedure: A 52-year-old male (BMI 42 kg/m²) presents for liver biopsy under moderate sedation. He has known severe OSA (AHI 48), Mallampati III, and a short thick neck. He uses CPAP nightly but did not bring the device. Which risk factor MOST elevates his airway loss risk during sedation?",
+      "options": [
+        { "id": "risk_osa",   "label": "Untreated OSA with high AHI (pharyngeal muscle relaxation risk)", "isCorrect": true  },
+        { "id": "risk_liver", "label": "Liver disease (altered drug metabolism)",                         "isCorrect": false },
+        { "id": "risk_bmi",   "label": "BMI alone is the primary risk (weight on chest wall)",            "isCorrect": false },
+        { "id": "risk_mall",  "label": "Mallampati III alone is the strongest predictor",                 "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Untreated high-AHI OSA is the greatest predictor of sedation-induced upper airway obstruction. Opioids and benzodiazepines abolish the arousal response that normally clears obstruction.",
+        "Liver disease alters pharmacokinetics but does not directly cause airway obstruction.",
+        "Obesity contributes to reduced FRC and pharyngeal crowding, but OSA-specific upper airway collapse is the dominant mechanism here.",
+        "Mallampati predicts intubation difficulty more than obstruction risk. OSA with high AHI is the stronger airway loss predictor."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_risk_assessment", "toStateId": "state_obstruction", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_osa_risk",
+            "description": "Correctly identifies high-AHI OSA as primary airway loss risk factor",
+            "weight": 10,
+            "evaluationHint": "Patient selected risk_osa option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_obstruction",
+      "phaseId": "maintenance",
+      "type": "question",
+      "prompt": "Sedation with propofol 120 mg administered. Biopsy underway. Suddenly: complete cessation of EtCO2 waveform, SpO2 dropping rapidly 98% → 90% → 83%. Chest wall is not moving. You see paradoxical rocking (see-saw motion). What does this indicate?",
+      "options": [
+        { "id": "obs_complete", "label": "Complete upper airway obstruction with obstructed apnoea", "isCorrect": true  },
+        { "id": "obs_central",  "label": "Central apnoea – respiratory drive abolished",              "isCorrect": false },
+        { "id": "obs_probe",    "label": "Capnography probe displacement artefact only",              "isCorrect": false },
+        { "id": "obs_bron",     "label": "Bronchospasm causing exhalation obstruction",               "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Paradoxical (see-saw) chest/abdominal rocking with absent EtCO2 confirms complete upper airway obstruction. The patient is trying to breathe against a closed glottis.",
+        "Central apnoea presents with NO respiratory effort (no chest movement at all). See-saw motion indicates active respiratory effort against an obstruction.",
+        "EtCO2 disappearance AND SpO2 drop AND paradoxical motion together indicate real airway obstruction, not just a probe issue.",
+        "Bronchospasm causes audible wheeze on exhalation and prolonged expiration, not complete absence of EtCO2 with paradoxical motion."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_obstruction", "toStateId": "state_escalation", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_obstruction_recognition",
+            "description": "Correctly identifies complete upper airway obstruction",
+            "weight": 15,
+            "evaluationHint": "Patient selected obs_complete option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_escalation",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "SpO2 is 78% and dropping. Jaw thrust alone does not restore ventilation. What is the CORRECT escalated response in the correct order?",
+      "options": [
+        { "id": "esc_oap_bmv",  "label": "Insert oropharyngeal airway + two-hand bag-mask ventilation + call for expert airway help", "isCorrect": true  },
+        { "id": "esc_intub",    "label": "Proceed directly to RSI intubation",                                                        "isCorrect": false },
+        { "id": "esc_nalox",    "label": "Give naloxone 0.4 mg IV and wait for spontaneous breathing",                                "isCorrect": false },
+        { "id": "esc_prone",    "label": "Position the patient prone to open the airway",                                             "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! The escalation sequence is: jaw thrust → oral/nasal airway → two-hand BMV → supraglottic airway → intubation. Call for expert help early. Do not delay BMV.",
+        "RSI intubation may be needed but is premature at this stage. BMV and supraglottic airways should be attempted first.",
+        "Naloxone reverses opioids but not propofol. The SpO2 is critically low — pharmacological reversal is too slow; BMV is the priority.",
+        "Prone positioning is not part of acute sedation airway rescue and may further compromise ventilation."
+      ],
+      "simActions": [
+        { "type": "apply_stimulus", "payload": { "stimulusType": "oropharyngeal_airway" } },
+        { "type": "change_oxygen",  "payload": { "device": "bag_mask", "fio2": 1.0 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_escalation", "toStateId": "state_bmv_technique", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_oap_bmv",
+            "description": "Correctly escalates to OPA + bag-mask ventilation and calls for help",
+            "weight": 20,
+            "evaluationHint": "Patient selected esc_oap_bmv option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_bmv_technique",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Two-person bag-mask ventilation is being attempted for this obese OSA patient but remains difficult. Which technique MOST improves mask seal and ventilation in a difficult BMV patient?",
+      "options": [
+        { "id": "bmv_twohand", "label": "Two-hand (thenar eminence) E-C clamp technique, second provider squeezes the bag", "isCorrect": true  },
+        { "id": "bmv_harder",  "label": "Apply more force to the mask to improve seal",                                     "isCorrect": false },
+        { "id": "bmv_faster",  "label": "Increase ventilation rate to 20 breaths/min",                                      "isCorrect": false },
+        { "id": "bmv_pillow",  "label": "Remove the pillow and lay the patient completely flat",                             "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Two-hand technique with thenar eminence grip provides superior mask seal versus one-hand technique. A second provider squeezes the bag to complete the manoeuvre.",
+        "Excessive mask pressure causes air leakage and facial soft-tissue injury. Two-hand seal is superior to increased force.",
+        "Hyperventilation is harmful — 10–12 breaths/min with small tidal volumes (6–8 mL/kg IBW) avoids gastric inflation and auto-PEEP.",
+        "Ramped or elevated head position (reverse Trendelenburg) IMPROVES BMV in obese patients. Flat positioning worsens airway obstruction."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_bmv_technique", "toStateId": "state_stabilisation", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_bmv_technique",
+            "description": "Identifies two-hand thenar eminence technique for difficult BMV",
+            "weight": 15,
+            "evaluationHint": "Patient selected bmv_twohand option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_stabilisation",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "SpO2 recovers to 95% with BMV. The anaesthesiologist arrives. Propofol is stopped. The patient begins making spontaneous effort. What is the safest monitoring plan for the recovery period?",
+      "options": [
+        { "id": "stab_ext", "label": "Continuous capnography + SpO2 monitoring until full MOASS recovery; consider CPAP for OSA", "isCorrect": true  },
+        { "id": "stab_d",   "label": "Transfer to PACU on room air when SpO2 ≥ 94%",                                            "isCorrect": false },
+        { "id": "stab_o2",  "label": "Supplemental O2 alone is sufficient for recovery monitoring",                            "isCorrect": false },
+        { "id": "stab_home","label": "Discharge home once the patient is awake and communicating",                              "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! OSA patients require continuous capnography and SpO2 throughout recovery. CPAP should be applied post-procedure. Supplemental O2 masks hypoventilation in OSA patients.",
+        "OSA patients on supplemental O2 can maintain SpO2 ≥ 94% even during significant hypoventilation. EtCO2 monitoring is essential.",
+        "O2 alone is insufficient — it masks hypoventilation in OSA. Continuous capnography is standard of care.",
+        "Post-sedation airway emergency requires extended monitoring (PACU or equivalent); same-day discharge is inappropriate."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_stabilisation", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_recovery_monitoring",
+            "description": "Plans continuous capnography and CPAP for OSA recovery",
+            "weight": 15,
+            "evaluationHint": "Patient selected stab_ext option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• OSA + obesity = high-risk airway; have escalation plan before starting sedation\n• Paradoxical (see-saw) motion = obstructive apnoea, not central apnoea\n• Escalation: jaw thrust → OPA → 2-hand BMV → SGA → intubation\n• OSA recovery: continuous capnography, CPAP; supplemental O2 alone masks hypoventilation",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}

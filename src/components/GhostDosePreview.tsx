@@ -14,12 +14,13 @@ import { predictForward } from '../engine/predict';
 import { DRUG_DATABASE } from '../engine/drugs';
 import { PredictionResult, MOASSLevel } from '../types';
 
-const GHOST_DRUGS = ['propofol', 'midazolam', 'fentanyl', 'ketamine', 'dexmedetomidine'];
+const GHOST_DRUGS = ['propofol', 'midazolam', 'fentanyl', 'remifentanil', 'ketamine', 'dexmedetomidine'];
 
 const DOSE_PRESETS: Record<string, number[]> = {
   propofol: [20, 50, 100, 150],
   midazolam: [1, 2, 3, 5],
   fentanyl: [25, 50, 75, 100],
+  remifentanil: [10, 25, 50, 100],
   ketamine: [10, 25, 50],
   dexmedetomidine: [10, 20, 40],
 };

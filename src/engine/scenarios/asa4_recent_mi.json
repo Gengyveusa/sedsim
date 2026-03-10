@@ -1,0 +1,180 @@
+{
+  "id": "asa4_recent_mi",
+  "title": "ASA IV – Recent Myocardial Infarction, High-Risk Sedation",
+  "description": "A patient who suffered an acute MI 3 weeks ago with reduced ejection fraction requires urgent moderate sedation for a GI bleed investigation. Practise high-risk cardiac patient assessment, haemodynamic-preserving sedation strategies, and management of perioperative cardiac events.",
+  "tags": ["ASA IV", "recent MI", "reduced ejection fraction", "high risk", "cardiac", "haemodynamic stability", "expert"],
+  "patient": { "archetypeId": "post_mi_patient" },
+  "learningObjectives": [
+    "Apply ASA IV classification criteria for recent MI",
+    "Select haemodynamic-preserving sedation agents for severe cardiac compromise",
+    "Monitor and respond to perioperative ST changes in a post-MI patient",
+    "Understand the 6-week guideline for elective procedures after MI",
+    "Manage sedation-induced hypotension in cardiogenic shock risk patients"
+  ],
+  "estimatedDurationSec": 660,
+  "phases": [
+    { "id": "pre",          "label": "Pre-Procedure",      "order": 1 },
+    { "id": "induction",    "label": "Sedation Induction", "order": 2 },
+    { "id": "maintenance",  "label": "Maintenance",        "order": 3 },
+    { "id": "complication", "label": "Cardiac Event",      "order": 4 },
+    { "id": "recovery",     "label": "Stabilisation",      "order": 5 },
+    { "id": "debrief",      "label": "Debrief",            "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_asa_class",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "A 61-year-old male had an anterior STEMI 3 weeks ago with EF 30% post-PCI. He is on aspirin, ticagrelor, atorvastatin, bisoprolol, and ramipril. He presents with active GI bleeding requiring urgent endoscopy. What ASA class is he?",
+      "options": [
+        { "id": "asa4", "label": "ASA IV – life-threatening systemic disease (recent MI < 6 weeks + EF 30%)", "isCorrect": true  },
+        { "id": "asa3", "label": "ASA III – severe but stable cardiac disease",                              "isCorrect": false },
+        { "id": "asa2", "label": "ASA II – post-MI on DAPT counts as mild systemic disease",               "isCorrect": false },
+        { "id": "asa5", "label": "ASA V – moribund, survival not expected >24 hours",                      "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! MI within 6 weeks with EF 30% constitutes ASA IV – a life-threatening systemic disease. This is distinct from older stable coronary disease.",
+        "ASA III is correct for chronic stable CHF or remote MI (>6 weeks). MI within 6 weeks with severely reduced EF elevates the classification to ASA IV.",
+        "Post-MI <6 weeks with EF 30% is far beyond 'mild systemic disease'.",
+        "ASA V is reserved for moribund patients not expected to survive 24 hours without surgery. This patient is critically ill but not moribund."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_asa_class", "toStateId": "state_drug_choice", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_asa4",
+            "description": "Correctly classifies recent MI + EF 30% as ASA IV",
+            "weight": 10,
+            "evaluationHint": "Patient selected asa4 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_drug_choice",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "For urgent endoscopy in this ASA IV patient (EF 30%, BP 94/60, HR 58 on bisoprolol), which sedation approach BEST preserves haemodynamics?",
+      "options": [
+        { "id": "drug_fent_midaz", "label": "Fentanyl 25 mcg + midazolam 0.5 mg with careful titration", "isCorrect": true  },
+        { "id": "drug_propofol",   "label": "Propofol infusion at 100 mcg/kg/min (standard induction)",  "isCorrect": false },
+        { "id": "drug_keta_only",  "label": "Ketamine alone 1 mg/kg IV bolus",                            "isCorrect": false },
+        { "id": "drug_dex",        "label": "Dexmedetomidine 1 mcg/kg loading dose over 10 min",          "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Low-dose fentanyl + midazolam with careful titration provides adequate sedation with minimal cardiac depression. Avoids propofol's vasodilatory hypotension in a patient with borderline BP.",
+        "Propofol causes dose-dependent vasodilation and negative inotropy — contraindicated as induction agent in EF 30% with baseline hypotension.",
+        "Ketamine alone increases HR and BP through catecholamine release — undesirable in post-MI heart where tachycardia increases oxygen demand on a stunned myocardium.",
+        "Dexmedetomidine loading dose causes initial hypertension then bradycardia — poorly tolerated in a patient with bisoprolol (already HR 58) and low EF."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "fentanyl", "doseMg": 0.025, "route": "iv_bolus" } },
+        { "type": "give_drug", "payload": { "drug": "midazolam", "doseMg": 0.5, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_drug_choice", "toStateId": "state_st_changes", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_haemodynamic_drugs",
+            "description": "Selects fentanyl + midazolam to preserve haemodynamics in ASA IV cardiac patient",
+            "weight": 20,
+            "evaluationHint": "Patient selected drug_fent_midaz option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_st_changes",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "20 minutes into endoscopy: new 2 mm ST elevation in leads V2–V4. BP dropped to 72/44. HR 48 (bradycardia). SpO2 94%. The patient is diaphoretic and confused. What is the MOST likely event?",
+      "options": [
+        { "id": "ev_reinfarction", "label": "Re-infarction (acute coronary occlusion) precipitated by haemodynamic stress", "isCorrect": true  },
+        { "id": "ev_oversed",      "label": "Oversedation causing hypotension and EEG changes misread as ST elevation",    "isCorrect": false },
+        { "id": "ev_vagal",        "label": "Vasovagal reaction from GI scope insertion",                                   "isCorrect": false },
+        { "id": "ev_air",          "label": "Air embolism from endoscope insufflation",                                     "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! New ST elevation + haemodynamic collapse in a 3-week post-MI patient during physiological stress is re-infarction until proved otherwise. This is a cardiac emergency.",
+        "Oversedation causes respiratory depression, not acute ST elevation with diaphoresis. ECG changes are real cardiac pathology.",
+        "Vasovagal reactions cause bradycardia + hypotension but NOT ST elevation. This is a cardiac event.",
+        "Air embolism is a rare endoscopy complication that typically presents with cardiovascular collapse without ST elevation pattern."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_st_changes", "toStateId": "state_cardiac_arrest_risk", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_reinfarction",
+            "description": "Correctly identifies re-infarction as cause of ST elevation + collapse",
+            "weight": 15,
+            "evaluationHint": "Patient selected ev_reinfarction option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_cardiac_arrest_risk",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Re-infarction suspected. Procedure is being halted. The patient remains haemodynamically unstable (BP 68/38, HR 42, ST elevation unchanged). What is the immediate priority?",
+      "options": [
+        { "id": "pri_cardio",  "label": "Halt procedure, activate cardiac catheterisation lab, support BP with vasopressors, prepare for arrest", "isCorrect": true  },
+        { "id": "pri_thrombo", "label": "Give IV thrombolytics immediately",                                                                      "isCorrect": false },
+        { "id": "pri_bicarb",  "label": "Give sodium bicarbonate 50 mEq IV for presumed metabolic acidosis",                                      "isCorrect": false },
+        { "id": "pri_fluids",  "label": "Rapid 2 L crystalloid bolus to restore BP",                                                              "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Active STEMI + haemodynamic compromise in a recent PCI patient requires immediate cath lab activation. Support haemodynamics with vasopressors, ensure crash cart at bedside, activate rapid STEMI protocol.",
+        "Thrombolytics are contraindicated within 3 months of PCI and in active GI bleeding (which this patient has). PCI is the treatment.",
+        "Sodium bicarbonate is not indicated without blood gas confirmation of severe acidosis; it does not treat cardiac ischaemia.",
+        "Fluids in cardiogenic shock worsen pulmonary oedema in a heart with EF 30%. Vasopressors are preferred."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_cardiac_arrest_risk", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_cath_activation",
+            "description": "Correctly activates cath lab and manages cardiogenic shock",
+            "weight": 20,
+            "evaluationHint": "Patient selected pri_cardio option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• Recent MI (<6 weeks) + EF 30% = ASA IV\n• Propofol contraindicated in severe cardiac compromise (haemodynamic vasodilation)\n• Fentanyl + low-dose midazolam: preferred haemodynamic-preserving sedation\n• Re-infarction during sedation: halt procedure, activate cath lab, vasopressors\n• Thrombolytics contraindicated post-PCI and in active GI bleed",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}

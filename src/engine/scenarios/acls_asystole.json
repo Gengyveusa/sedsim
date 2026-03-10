@@ -1,0 +1,200 @@
+{
+  "id": "acls_asystole",
+  "title": "ACLS – Asystole Cardiac Arrest",
+  "description": "A patient presents with asystole, the non-shockable flat-line rhythm. Practise confirming asystole, applying the non-shockable ACLS algorithm, identifying and treating reversible causes (5H/5T), and understanding why defibrillation is contraindicated.",
+  "tags": ["ACLS", "asystole", "non-shockable rhythm", "cardiac arrest", "5H5T", "advanced"],
+  "patient": { "archetypeId": "adult_cardiac_arrest" },
+  "learningObjectives": [
+    "Confirm asystole and avoid inappropriate defibrillation",
+    "Apply the ACLS non-shockable cardiac arrest algorithm",
+    "Administer epinephrine 1 mg IV every 3–5 minutes during asystole",
+    "Systematically search for and treat reversible causes (5H/5T)",
+    "Understand the poor prognosis of asystole and criteria for termination of resuscitation"
+  ],
+  "estimatedDurationSec": 600,
+  "phases": [
+    { "id": "pre",          "label": "Scene Assessment",     "order": 1 },
+    { "id": "induction",    "label": "Initial Response",     "order": 2 },
+    { "id": "maintenance",  "label": "Ongoing Resuscitation","order": 3 },
+    { "id": "complication", "label": "Reversible Causes",    "order": 4 },
+    { "id": "recovery",     "label": "Outcome",              "order": 5 },
+    { "id": "debrief",      "label": "Debrief",              "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_recognition",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "A 70-year-old male with advanced COPD is found unresponsive in a nursing home. EMS confirms no pulse, no breathing. Monitor shows a nearly flat line with occasional artefact. How do you CONFIRM asystole before proceeding?",
+      "options": [
+        { "id": "conf_leads",  "label": "Check in two leads, verify gain settings, and confirm loose lead is not causing artefact", "isCorrect": true  },
+        { "id": "conf_shock",  "label": "Defibrillate and see if rhythm converts",                                                  "isCorrect": false },
+        { "id": "conf_one",    "label": "A single-lead flat line is sufficient confirmation",                                       "isCorrect": false },
+        { "id": "conf_wait",   "label": "Wait 30 seconds for the rhythm to declare itself",                                         "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! AHA guidelines require asystole confirmation in ≥2 leads and verification that gain settings and lead connections are correct before concluding asystole.",
+        "Defibrillating asystole provides no benefit and may cause myocardial injury. Shock is only for shockable rhythms (VFib/VTach).",
+        "Single-lead flat line may represent fine VFib or a loose lead. Always confirm in multiple leads.",
+        "Waiting delays CPR. Confirm quickly in two leads while compressions continue."
+      ],
+      "simActions": [
+        { "type": "set_rhythm", "payload": { "rhythm": "asystole" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_recognition", "toStateId": "state_no_shock", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_asystole_confirm",
+            "description": "Correctly confirms asystole in two leads before proceeding",
+            "weight": 15,
+            "evaluationHint": "Patient selected conf_leads option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_no_shock",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "Asystole confirmed in two leads. IV access obtained. What is the CORRECT immediate action for asystole?",
+      "options": [
+        { "id": "act_cpr_epi", "label": "Continue CPR and give epinephrine 1 mg IV as soon as access is available", "isCorrect": true  },
+        { "id": "act_shock",   "label": "Deliver a 200 J unsynchronised shock to restart the heart",                "isCorrect": false },
+        { "id": "act_atrop",   "label": "Give atropine 1 mg IV as first-line drug for asystole",                    "isCorrect": false },
+        { "id": "act_pace",    "label": "Initiate transcutaneous pacing immediately",                               "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Non-shockable algorithm: CPR + epinephrine q3–5 min + treat reversible causes. No shock for asystole.",
+        "Defibrillation of asystole is contraindicated — the heart cannot be 'restarted' from a flat line by a shock.",
+        "Atropine is no longer recommended in cardiac arrest (removed from AHA guidelines 2010+). Epinephrine is the drug of choice.",
+        "Transcutaneous pacing has not been shown to improve outcomes in asystole and is not recommended as routine first-line treatment."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "epinephrine", "doseMg": 1.0, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_no_shock", "toStateId": "state_epinephrine_repeat", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_no_shock",
+            "description": "Correctly avoids defibrillation and gives epinephrine for asystole",
+            "weight": 15,
+            "evaluationHint": "Patient selected act_cpr_epi option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_epinephrine_repeat",
+      "phaseId": "maintenance",
+      "type": "info",
+      "prompt": "CPR is ongoing. Epinephrine 1 mg IV given at T+0. Good CPR quality: rate 105/min, depth 5.5 cm, full recoil, minimal interruptions.\n\n📚 Teaching Point: Repeat epinephrine every 3–5 minutes throughout the arrest. Keep CPR cycles tight (2-min intervals with rhythm checks). Avoid hyperventilation – target 10 breaths/min with advanced airway.",
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_epinephrine_repeat", "toStateId": "state_5h5t", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": null
+    },
+    {
+      "id": "state_5h5t",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Asystole continues despite 8 minutes of CPR and two doses of epinephrine. You systematically evaluate reversible causes. This patient has COPD and was found with an empty opioid prescription bottle nearby. Which 5H/5T cause should you treat NOW?",
+      "options": [
+        { "id": "cause_hypoxia",   "label": "Hypoxia – ensure adequate oxygenation and ventilation",              "isCorrect": true  },
+        { "id": "cause_tension",   "label": "Tension pneumothorax – needle decompress both sides empirically",     "isCorrect": false },
+        { "id": "cause_toxins",    "label": "Toxins (opioid) – give naloxone 2 mg IV and reassess",               "isCorrect": true  },
+        { "id": "cause_tamponade", "label": "Cardiac tamponade – perform bedside pericardiocentesis immediately",  "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Hypoxia is the most common reversible cause in COPD patients with respiratory failure; ensure bag-mask ventilation is effective.",
+        "Tension pneumothorax is a consideration in COPD but requires clinical signs (absent breath sounds, tracheal deviation). Empirical bilateral decompression without these signs is not recommended.",
+        "Correct! With an empty opioid bottle present, opioid toxicity is a treatable cause. Naloxone 2 mg IV may restore spontaneous breathing.",
+        "Tamponade is possible but less likely without clinical context (neck veins, prior pericardial disease). Pericardiocentesis requires ultrasound confirmation when possible."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "naloxone", "doseMg": 2.0, "route": "iv_bolus" } },
+        { "type": "change_oxygen", "payload": { "device": "bag_mask", "fio2": 1.0 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_5h5t", "toStateId": "state_outcome", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_5h5t_hypoxia_opioid",
+            "description": "Correctly identifies and treats hypoxia and opioid toxicity",
+            "weight": 20,
+            "evaluationHint": "Patient selected cause_hypoxia and/or cause_toxins"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_outcome",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "After naloxone and optimised ventilation, the rhythm converts to sinus bradycardia at 40 bpm. A weak carotid pulse is palpable. What is the correct IMMEDIATE post-ROSC management?",
+      "options": [
+        { "id": "out_optimize", "label": "Optimise oxygenation (SpO2 94–98%), treat bradycardia if symptomatic, admit to ICU", "isCorrect": true  },
+        { "id": "out_atrop",    "label": "Give atropine 1 mg for the bradycardia immediately",                                   "isCorrect": false },
+        { "id": "out_resume",   "label": "Resume CPR since HR < 60 is too slow for adequate output",                            "isCorrect": false },
+        { "id": "out_discharge","label": "Monitor for 1 hour in ED then discharge if stable",                                   "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! After ROSC, the priority is haemodynamic stabilisation, oxygenation, and ICU admission. Symptomatic bradycardia post-ROSC may be treated with atropine or pacing if causing haemodynamic compromise.",
+        "Atropine should only be given if the bradycardia is causing haemodynamic compromise. Routine atropine post-ROSC is not indicated.",
+        "ROSC with a palpable pulse is achieved – CPR must not be resumed unless the pulse is lost.",
+        "Post-cardiac arrest patients require ICU admission for post-resuscitation care (targeted temperature management, monitoring)."
+      ],
+      "simActions": [
+        { "type": "set_rhythm", "payload": { "rhythm": "sinus_bradycardia" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_outcome", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_post_rosc",
+            "description": "Correctly manages post-ROSC sinus bradycardia and plans ICU admission",
+            "weight": 15,
+            "evaluationHint": "Patient selected out_optimize option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• Confirm asystole in ≥2 leads; NO defibrillation\n• CPR + epinephrine 1 mg q3–5 min is the non-shockable algorithm\n• Atropine is NOT recommended in cardiac arrest\n• Always search for 5H/5T reversible causes throughout the arrest",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}
