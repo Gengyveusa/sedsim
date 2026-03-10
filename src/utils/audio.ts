@@ -619,6 +619,11 @@ class AudioManager {
     }
   }
 
+  setStethoscopeActive(active: boolean): void {
+    this.setBreathSoundsEnabled(active);
+    this.setHeartSoundsEnabled(active);
+  }
+
   private _clearAlarmTimer(): void {
     if (this.alarmTimer !== null) {
       clearTimeout(this.alarmTimer);
