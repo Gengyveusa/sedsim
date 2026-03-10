@@ -5,6 +5,13 @@ import LandingPage from './LandingPage';
 import './index.css';
 
 const App = lazy(() => import('./App'));
+const InstructorDashboard = lazy(() => import('./pages/InstructorDashboard'));
+
+const SimFallback = (
+  <div className="h-screen bg-sim-bg flex items-center justify-center text-white text-lg">
+    Loading simulator…
+  </div>
+);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -13,11 +20,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/" element={<LandingPage />} />
         <Route
           path="/sim"
-          element={
-            <Suspense fallback={<div className="h-screen bg-sim-bg flex items-center justify-center text-white text-lg">Loading simulator…</div>}>
-              <App />
-            </Suspense>
-          }
+          element={<Suspense fallback={SimFallback}><App /></Suspense>}
+        />
+        <Route
+          path="/instructor"
+          element={<Suspense fallback={SimFallback}><InstructorDashboard /></Suspense>}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

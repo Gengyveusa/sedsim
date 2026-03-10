@@ -4,6 +4,7 @@ import { InteractiveScenario } from '../engine/ScenarioEngine';
 import useAIStore from '../store/useAIStore';
 import useSimStore from '../store/useSimStore';
 import { useConductor } from '../hooks/useConductor';
+import useInstructorStore, { getLearnerName } from '../store/useInstructorStore';
 
 const DIFFICULTY_COLORS: Record<InteractiveScenario['difficulty'], string> = {
   easy: 'bg-green-900 text-green-300',
@@ -94,7 +95,32 @@ export const ScenarioPanel: React.FC = () => {
   
   const handleStopScenario = () => {
     conductor.stop();
-    // Clean up scenario state
+
+    // ── Record session for instructor dashboard ──────────────────────────
+    if (currentScenario) {
+      const sim = useSimStore.getState();
+      const trendData = sim.trendData;
+      const spo2Values = trendData.map(p => p.vitals.spo2).filter(v => v > 0);
+      const sbpValues  = trendData.map(p => p.vitals.sbp).filter(v => v > 0);
+      const moassValues = trendData.map(p => p.moass);
+
+      useInstructorStore.getState().addSession({
+        studentName:            getLearnerName(),
+        scenarioId:             currentScenario.id,
+        scenarioTitle:          currentScenario.title,
+        difficulty:             currentScenario.difficulty,
+        completedAt:            Date.now(),
+        durationSeconds:        sim.elapsedSeconds,
+        drugsAdministeredCount: sim.drugsAdministeredCount,
+        interventionsApplied:   sim.eventLog.filter(e => e.type === 'intervention').length,
+        alertsTriggered:        sim.eventLog.filter(e => e.type === 'alert').length,
+        minSpo2:                spo2Values.length ? Math.min(...spo2Values) : 99,
+        minSbp:                 sbpValues.length  ? Math.min(...sbpValues)  : 120,
+        maxMoass:               moassValues.length ? Math.max(...moassValues) : 0,
+      });
+    }
+
+    // ── Clean up scenario state ──────────────────────────────────────────
     const sim = useSimStore.getState();
     sim.setTrueNorthLocked(false);
     sim.setScenarioActive(false);
