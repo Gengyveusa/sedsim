@@ -1,4 +1,4 @@
-import type { LearningModule, QuizQuestion, MillieScript } from './educationModules';
+import type { LearningModule } from './educationModules';
 
 // AHA BLS HeartCode — Complete Course Module for SedSim Education Engine
 // Aligned with AHA HeartCode BLS 2020/2025 Guidelines

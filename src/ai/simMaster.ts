@@ -605,7 +605,7 @@ export function generateActions(
         const from = event.data['from'] as string;
         const to = event.data['to'] as string;
         const bis = event.data['bis'] as number;
-        let msg = '';
+        let msg: string;
         if (to === 'burst_suppression') {
           msg = `BIS ${bis.toFixed(0)} — burst suppression detected. EEG shows alternating high-amplitude bursts and electrical silence. This is DEEP sedation, likely beyond procedural goals. Suppression ratio is climbing. Consider reducing drug dose.`;
         } else if (to === 'deep') {
