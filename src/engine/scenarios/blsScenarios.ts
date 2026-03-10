@@ -1,4 +1,25 @@
 import { InteractiveScenario } from '../ScenarioEngine';
+import type { ScoringRubric } from '../scoringEngine';
+
+/** Shared rubric for all BLS/ACLS scenarios. */
+const BLS_RUBRIC: ScoringRubric = {
+  passThreshold: 70,
+  weights: { timing: 0.20, appropriateness: 0.20, safety: 0.40, completeness: 0.20 },
+  criteria: {
+    timing: { targetDurationSec: 600, toleranceSec: 90 },
+    appropriateness: {
+      drugRanges: [
+        { drug: 'epinephrine', minDose: 0.5, maxDose: 1.5 },
+        { drug: 'atropine',    minDose: 0.4, maxDose: 1.0 },
+        { drug: 'amiodarone',  minDose: 150, maxDose: 400 },
+        { drug: 'naloxone',    minDose: 0.04, maxDose: 0.4 },
+      ],
+    },
+    safety: { spo2DangerThreshold: 85, moassMinAllowed: 0, maxDangerSeconds: 30 },
+    completeness: { requiredStepFraction: 0.85 },
+  },
+};
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BLS Cardiac Arrest Scenarios for SedSim
@@ -337,6 +358,7 @@ export const BLS_ADULT_VFIB_ARREST: InteractiveScenario = {
       'Post-ROSC: targeted oxygenation, 12-lead ECG, hemodynamic support, arrange definitive care.',
     ],
   },
+  scoringRubric: BLS_RUBRIC,
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -678,6 +700,7 @@ export const BLS_ADULT_ASYSTOLE: InteractiveScenario = {
       'BLS providers play a critical role even after ACLS arrives.',
     ],
   },
+  scoringRubric: BLS_RUBRIC,
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1013,6 +1036,7 @@ export const BLS_PEDIATRIC_ARREST: InteractiveScenario = {
       'Post-ROSC: support oxygenation, avoid hyperoxia, prepare for PICU transfer.',
     ],
   },
+  scoringRubric: BLS_RUBRIC,
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1312,6 +1336,7 @@ export const BLS_CHOKING_ADULT: InteractiveScenario = {
       'Prevention: suction, throat packs, and surgical airway readiness during dental/airway procedures.',
     ],
   },
+  scoringRubric: BLS_RUBRIC,
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1617,6 +1642,7 @@ export const BLS_DROWNING: InteractiveScenario = {
       'Post-ROSC: expect pulmonary edema, aggressive oxygenation, ICU observation for ARDS.',
     ],
   },
+  scoringRubric: BLS_RUBRIC,
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1961,6 +1987,7 @@ export const BLS_OPIOID_OVERDOSE: InteractiveScenario = {
       'CPR is required for cardiac arrest regardless of cause — naloxone alone cannot restart a heart.',
     ],
   },
+  scoringRubric: BLS_RUBRIC,
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -9,6 +9,7 @@
 
 import type { SimAction } from '../ScenarioEngine';
 import type { ScenarioQuestion } from '../ScenarioEngine';
+import type { ScoringRubric } from '../scoringEngine';
 
 // ─── Beat System ─────────────────────────────────────────────────────────────
 
@@ -122,6 +123,8 @@ export interface ConductorScenario {
     discussionQuestions: string[];
     keyTakeaways: string[];
   };
+  /** Optional four-dimension scoring rubric. Falls back to defaultRubric(difficulty) at debrief time. */
+  scoringRubric?: ScoringRubric;
 }
 
 // ─── Structured Message (Millie Chat) ────────────────────────────────────────

@@ -8,6 +8,7 @@ import { generateDebrief } from '../ai/mentor';
 import { AirwayDevice, InterventionType } from '../types';
 import { vitalCoherenceMonitor } from './VitalCoherenceMonitor';
 import type { SedSimScenario, ScenarioScore, ChecklistItemResult } from './SedSimCase.types';
+import { scoreScenario, defaultRubric, type ScoringRubric, type ScoringSummary } from './scoringEngine';
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -126,6 +127,8 @@ export interface InteractiveScenario {
       complicationResponse: number;
     };
   };
+  /** Four-dimension scoring rubric for this scenario. Falls back to defaultRubric(difficulty). */
+  scoringRubric?: ScoringRubric;
 }
 
 // ─── ScenarioEngine ─────────────────────────────────────────────────────────
@@ -875,12 +878,40 @@ export class ScenarioEngine {
     const { discussionQuestions, keyTakeaways } = this.scenario.debrief;
     const enhanced = this.scenario.debriefEnhanced;
 
+    // ── Four-dimension scoring engine ───────────────────────────────────────
+    const rubric =
+      this.scenario.scoringRubric ??
+      (this.jsonScenario?.rubric) ??
+      defaultRubric(this.scenario.difficulty);
+
+    const summary: ScoringSummary = scoreScenario(rubric, {
+      elapsedSeconds: this.scenarioTimeSeconds,
+      eventLog: sim.eventLog,
+      trendData: sim.trendData,
+      completedStepIds: Array.from(this.firedStepIds),
+      totalStepCount: this.scenario.steps.length,
+    });
+
+    // Store for UI review
+    useAIStore.getState().setLastScenarioScore(summary);
+    // Persist to localStorage for cross-session review
+    try {
+      const key = `sedsim_score_${this.scenario.id}`;
+      localStorage.setItem(key, JSON.stringify({ ...summary, scenarioId: this.scenario.id, scenarioTitle: this.scenario.title, completedAt: Date.now() }));
+    } catch { /* ignore storage errors */ }
+
+    const passBadge = summary.passed ? '✅ PASS' : '❌ FAIL';
     const debriefLines = [
       `🎓 **Scenario Debrief — ${this.scenario.title}**\n`,
       `**Overall Grade: ${score.overallGrade}**\n` +
         `• Titration Accuracy: ${score.titrationAccuracy}%\n` +
         `• EEG Interpretation: ${score.eegInterpretation}%\n` +
         `• Complication Response: ${score.complicationResponse}%`,
+      `📊 **${passBadge} — Score: ${summary.percentScore}% (${summary.grade}) — Pass ≥ ${summary.passThreshold}%**\n` +
+        `• ⏱ Timing:           ${summary.dimensions.timing.score}/${summary.dimensions.timing.maxScore} pts (${summary.dimensions.timing.percent}%)\n` +
+        `• 💊 Appropriateness:  ${summary.dimensions.appropriateness.score}/${summary.dimensions.appropriateness.maxScore} pts (${summary.dimensions.appropriateness.percent}%)\n` +
+        `• 🛡 Safety:           ${summary.dimensions.safety.score}/${summary.dimensions.safety.maxScore} pts (${summary.dimensions.safety.percent}%)\n` +
+        `• ✔ Completeness:     ${summary.dimensions.completeness.score}/${summary.dimensions.completeness.maxScore} pts (${summary.dimensions.completeness.percent}%)`,
     ];
 
     if (enhanced?.scoringWeights) {
@@ -911,12 +942,12 @@ export class ScenarioEngine {
       );
     }
 
-    // JSON scenario scoring summary
+    // JSON scenario checklist scoring summary
     if (this.jsonScenario) {
       const jsonScore = evaluateJsonScore(this.jsonScenario, this.jsonAnswers);
       debriefLines.push(
-        `\n📊 **Performance Summary — ${this.jsonScenario.title}**\n` +
-          `**Total Score: ${jsonScore.totalScore} / ${jsonScore.maxScore} (${jsonScore.percentScore}%)**`
+        `\n📋 **Checklist Score — ${this.jsonScenario.title}**\n` +
+          `**Total: ${jsonScore.totalScore} / ${jsonScore.maxScore} (${jsonScore.percentScore}%)**`
       );
       const itemLines = jsonScore.items.map(item =>
         `${item.passed ? '✅' : '❌'} ${item.description} — ${item.earned}/${item.weight} pts`

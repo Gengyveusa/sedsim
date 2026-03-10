@@ -1,4 +1,26 @@
 import { InteractiveScenario } from '../ScenarioEngine';
+import type { ScoringRubric } from '../scoringEngine';
+
+/** Shared rubric for all moderate-difficulty scenarios. */
+const MODERATE_RUBRIC: ScoringRubric = {
+  passThreshold: 65,
+  weights: { timing: 0.15, appropriateness: 0.35, safety: 0.30, completeness: 0.20 },
+  criteria: {
+    timing: { targetDurationSec: 600, toleranceSec: 90 },
+    appropriateness: {
+      drugRanges: [
+        { drug: 'midazolam',  minDose: 0.25, maxDose: 1.5  },
+        { drug: 'fentanyl',   minDose: 12.5, maxDose: 75   },
+        { drug: 'propofol',   minDose: 10,   maxDose: 150  },
+        { drug: 'ketamine',   minDose: 10,   maxDose: 75   },
+        { drug: 'dexmedetomidine', minDose: 0.25, maxDose: 1.5 },
+      ],
+    },
+    safety: { spo2DangerThreshold: 88, moassMinAllowed: 1, maxDangerSeconds: 25 },
+    completeness: { requiredStepFraction: 0.80 },
+  },
+};
+
 
 export const MOD_ELDERLY_COPD: InteractiveScenario = {
   id: 'mod_elderly_copd',
@@ -245,6 +267,7 @@ export const MOD_ELDERLY_COPD: InteractiveScenario = {
       'Discharge requires return to baseline SpO2 on room air, not just MOASS 5.',
     ],
   },
+  scoringRubric: MODERATE_RUBRIC,
 };
 
 export const MOD_OBESE_OSA: InteractiveScenario = {
@@ -455,6 +478,7 @@ export const MOD_OBESE_OSA: InteractiveScenario = {
       'CPAP should be restarted as soon as tolerated post-procedure.',
     ],
   },
+  scoringRubric: MODERATE_RUBRIC,
 };
 
 export const MOD_PEDIATRIC_DENTAL: InteractiveScenario = {
@@ -645,6 +669,7 @@ export const MOD_PEDIATRIC_DENTAL: InteractiveScenario = {
       'Same discharge criteria as adults — 30 minutes minimum, with responsible adult escort.',
     ],
   },
+  scoringRubric: MODERATE_RUBRIC,
 };
 
 export const MOD_DIABETIC_CARDIOVERSION: InteractiveScenario = {
@@ -854,6 +879,7 @@ export const MOD_DIABETIC_CARDIOVERSION: InteractiveScenario = {
       'Always have transcutaneous pacing available for cardioversion procedures.',
     ],
   },
+  scoringRubric: MODERATE_RUBRIC,
 };
 
 export const MOD_RENAL_BIOPSY: InteractiveScenario = {
@@ -1047,6 +1073,7 @@ export const MOD_RENAL_BIOPSY: InteractiveScenario = {
       'Flumazenil has shorter duration than midazolam metabolite — resedation is common.',
     ],
   },
+  scoringRubric: MODERATE_RUBRIC,
 };
 
 export const DENTAL_OVERSEDATION_ASA2: InteractiveScenario = {
@@ -1372,6 +1399,7 @@ export const DENTAL_OVERSEDATION_ASA2: InteractiveScenario = {
       'Patient demand for deeper sedation does not override clinical judgment',
     ],
   },
+  scoringRubric: MODERATE_RUBRIC,
 };
 
 export const MODERATE_SCENARIOS: InteractiveScenario[] = [

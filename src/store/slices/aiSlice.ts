@@ -7,6 +7,7 @@ import { GhostDose, TutorialState } from '../../types';
 import type { ScenarioQuestion } from '../../engine/ScenarioEngine';
 import type { SimMasterAnnotation } from '../../ai/simMaster';
 import type { StructuredMessage, VitalAnnotation } from '../../engine/conductor/types';
+import type { ScoringSummary } from '../../engine/scoringEngine';
 
 export interface AISlice {
   // Orchestrator
@@ -69,6 +70,9 @@ export interface AISlice {
   conductorPhase: string | null;
   millieEmotion: string;
 
+  // Scoring
+  lastScenarioScore: ScoringSummary | null;
+
   // Actions
   initializeAI: () => void;
   startAI: () => void;
@@ -104,6 +108,7 @@ export interface AISlice {
   clearVitalAnnotations: () => void;
   setVitalAnnotations: (annotations: VitalAnnotation[]) => void;
   setMillieEmotion: (emotion: string) => void;
+  setLastScenarioScore: (score: ScoringSummary | null) => void;
 }
 
 export const createAISlice: StateCreator<AISlice, [], [], AISlice> = (set, get) => ({
@@ -137,6 +142,7 @@ export const createAISlice: StateCreator<AISlice, [], [], AISlice> = (set, get) 
   vitalAnnotations: [],
   conductorPhase: null,
   millieEmotion: 'encouraging',
+  lastScenarioScore: null,
 
   initializeAI: () => {
     const orchestrator = new MultiAgentOrchestrator();
@@ -320,5 +326,9 @@ export const createAISlice: StateCreator<AISlice, [], [], AISlice> = (set, get) 
 
   setMillieEmotion: (emotion) => {
     set({ millieEmotion: emotion });
+  },
+
+  setLastScenarioScore: (score) => {
+    set({ lastScenarioScore: score });
   },
 });
