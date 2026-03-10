@@ -1,0 +1,164 @@
+{
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "impaired": "Impaired",
+    "elapsed": "Elapsed:",
+    "start": "Start",
+    "stop": "Stop",
+    "push": "Push",
+    "bolus": "Bolus",
+    "infuse": "Infuse",
+    "speed": "Speed:"
+  },
+  "patientBanner": {
+    "title": "SedSim",
+    "moass": "MOASS {{level}} - {{label}}",
+    "asa": "ASA {{asa}}",
+    "loading": "Loading simulator…"
+  },
+  "moass": {
+    "5": "Awake",
+    "4": "Drowsy",
+    "3": "Light",
+    "2": "Moderate",
+    "1": "Deep",
+    "0": "Unresponsive"
+  },
+  "controlBar": {
+    "play": "Play",
+    "pause": "Pause",
+    "reset": "Reset",
+    "muteAudio": "Mute audio",
+    "unmuteAudio": "Unmute audio",
+    "silenceAlarms": "Silence alarms for 60 seconds",
+    "enableBreath": "Enable breath sounds (off by default)",
+    "disableBreath": "Disable breath sounds",
+    "enableHeart": "Enable heart sounds (off by default)",
+    "disableHeart": "Disable heart sounds"
+  },
+  "patientSelector": {
+    "title": "PATIENT",
+    "age": "Age:",
+    "weight": "Weight:",
+    "height": "Height:",
+    "sex": "Sex:",
+    "asa": "ASA:",
+    "mallampati": "Mallampati:",
+    "osa": "OSA:",
+    "copd": "COPD:",
+    "hepatic": "Hepatic:",
+    "renal": "Renal:",
+    "sensitivity": "Sensitivity:",
+    "years": "{{value}} years",
+    "kg": "{{value}} kg",
+    "cm": "{{value}} cm"
+  },
+  "drugs": {
+    "title": "Drugs",
+    "scenarioMode": "Scenario Mode — drugs controlled by Millie",
+    "customDoseTitle": "Custom dose / Infusion",
+    "ceLabel": "Ce:{{value}}"
+  },
+  "interventions": {
+    "title": "Airway & O₂",
+    "scenarioMode": "Scenario Mode — airway controlled by Millie",
+    "airwayDevice": "Airway Device",
+    "supplementary": "Supplementary",
+    "active": "Active ({{count}}):",
+    "o2Flow": "O₂ Flow: {{rate}} L/min",
+    "fio2Label": "FiO₂ (%)",
+    "fio2Max": "max {{pct}}%",
+    "flowMin": "1 L",
+    "flowMax": "6 L",
+    "airwayDevices": {
+      "room_air": "Room Air",
+      "nasal_cannula": "Nasal Cannula",
+      "nasal_hood": "Nasal Hood",
+      "oral_airway": "OPA",
+      "nasal_airway": "NPA",
+      "lma": "LMA",
+      "ett": "ETT",
+      "cricothyroidotomy": "Cricothyroidotomy",
+      "tracheostomy": "Tracheostomy"
+    },
+    "airwayNotes": {
+      "room_air": "Baseline, no supplementation",
+      "nasal_cannula": "+4% per L/min above room air",
+      "nasal_hood": "Dental/oral surgery sedation",
+      "oral_airway": "Airway patency only",
+      "nasal_airway": "Airway patency only",
+      "lma": "Supraglottic, good seal",
+      "ett": "Definitive airway, full control",
+      "cricothyroidotomy": "Surgical emergency airway",
+      "tracheostomy": "Surgical airway, stable"
+    },
+    "supplementaryItems": {
+      "jaw_thrust": "Jaw Thrust",
+      "chin_lift": "Chin Lift",
+      "bag_mask": "Bag-Mask Ventilation",
+      "suction": "Suction"
+    }
+  },
+  "emergencyDrugs": {
+    "title": "Emergency Drugs",
+    "drugs": {
+      "epinephrine": {
+        "name": "Epinephrine",
+        "indication": "Anaphylaxis / Cardiac Arrest"
+      },
+      "atropine": {
+        "name": "Atropine",
+        "indication": "Bradycardia / Bronchospasm"
+      },
+      "succinylcholine": {
+        "name": "Succinylcholine",
+        "indication": "RSI / Laryngospasm"
+      },
+      "naloxone": {
+        "name": "Naloxone",
+        "indication": "Opioid Reversal"
+      },
+      "flumazenil": {
+        "name": "Flumazenil",
+        "indication": "Benzo Reversal"
+      },
+      "diphenhydramine": {
+        "name": "Diphenhydramine",
+        "indication": "Allergic Reaction"
+      },
+      "dexamethasone": {
+        "name": "Dexamethasone",
+        "indication": "Airway Edema / Allergy"
+      },
+      "nitroglycerin": {
+        "name": "Nitroglycerin",
+        "indication": "Hypertensive Crisis / Angina"
+      }
+    }
+  },
+  "eventLog": {
+    "title": "Event Log",
+    "noEvents": "No events yet"
+  },
+  "app": {
+    "simmaster": {
+      "title": "SimMaster",
+      "description": "Proactive AI observer that highlights critical events on screen in real-time.",
+      "enable": "Enable SimMaster",
+      "disable": "Disable SimMaster",
+      "active": "SimMaster is actively observing the simulation...",
+      "collapseAirway": "Collapse Airway",
+      "expandAirway": "Show Airway & O₂",
+      "airwayLabel": "Airway",
+      "airwayTitle": "Airway & O₂",
+      "trendsLabel": "Trends",
+      "trendsTitle": "Trend Graphs",
+      "collapseTrends": "Collapse Trends",
+      "expandTrends": "Show Trend Graphs"
+    }
+  },
+  "languageSelector": {
+    "label": "Language"
+  }
+}

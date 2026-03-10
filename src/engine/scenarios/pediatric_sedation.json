@@ -1,0 +1,220 @@
+{
+  "id": "pediatric_sedation",
+  "title": "Paediatric Procedural Sedation – Weight-Based Dosing",
+  "description": "A 4-year-old child requires procedural sedation for laceration repair. Practise paediatric weight-based drug dosing, airway management differences between children and adults, and recognition of paediatric respiratory compromise.",
+  "tags": ["paediatric", "weight-based dosing", "procedural sedation", "ketamine", "midazolam", "paediatric airway", "moderate"],
+  "patient": { "archetypeId": "pediatric_patient" },
+  "learningObjectives": [
+    "Calculate weight-based drug doses accurately for a paediatric patient",
+    "Understand the anatomical differences in paediatric airways",
+    "Recognise paediatric laryngospasm and apply early treatment",
+    "Select appropriate sedation agents for a brief painful procedure in a child",
+    "Apply age-appropriate monitoring parameters for paediatric patients"
+  ],
+  "estimatedDurationSec": 480,
+  "phases": [
+    { "id": "pre",          "label": "Pre-Procedure",      "order": 1 },
+    { "id": "induction",    "label": "Dose Calculation",   "order": 2 },
+    { "id": "maintenance",  "label": "Sedation",           "order": 3 },
+    { "id": "complication", "label": "Complication",       "order": 4 },
+    { "id": "recovery",     "label": "Recovery",           "order": 5 },
+    { "id": "debrief",      "label": "Debrief",            "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_weight_dose",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "A 4-year-old boy (weight 16 kg) requires sedation for a forehead laceration repair. You plan to use IV ketamine. The recommended dose for procedural sedation is 1–2 mg/kg IV. What is the CORRECT dose range for this child?",
+      "options": [
+        { "id": "dose_16_32", "label": "16–32 mg IV (1–2 mg/kg × 16 kg)", "isCorrect": true  },
+        { "id": "dose_100",   "label": "100 mg IV (adult standard dose)",   "isCorrect": false },
+        { "id": "dose_5_10",  "label": "5–10 mg IV (0.3–0.6 mg/kg)",       "isCorrect": false },
+        { "id": "dose_50",    "label": "50 mg IV (universal paediatric dose)", "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Weight-based ketamine dosing: 1–2 mg/kg × 16 kg = 16–32 mg IV. Always use weight-based calculation; never adult flat doses for children.",
+        "100 mg is a typical adult dose (70 kg × 1.5 mg/kg). This is 6× too high for a 16 kg child — life-threatening overdose risk.",
+        "0.3–0.6 mg/kg is below the recommended procedural sedation dose and may result in inadequate sedation.",
+        "There is no universal paediatric dose for ketamine. Always calculate by weight."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_weight_dose", "toStateId": "state_airway_diff", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_weight_dose",
+            "description": "Correctly calculates ketamine dose (16–32 mg) for 16 kg child",
+            "weight": 20,
+            "evaluationHint": "Patient selected dose_16_32 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_airway_diff",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "Before administering ketamine, you assess the airway. Which anatomical feature of a 4-year-old's airway is MOST relevant to airway management risk?",
+      "options": [
+        { "id": "anat_larynx",  "label": "The larynx is more cephalad and anterior; the epiglottis is larger and omega-shaped", "isCorrect": true  },
+        { "id": "anat_teeth",   "label": "Deciduous (baby) teeth are very loose and may fall out",                              "isCorrect": false },
+        { "id": "anat_trachea", "label": "The trachea is the same relative size as an adult",                                   "isCorrect": false },
+        { "id": "anat_tongue",  "label": "The tongue is proportionally smaller than in adults",                                 "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! In children, the larynx is C3–C4 (vs. C4–C5 in adults), more anterior, and the omega-shaped epiglottis is larger relative to the airway. This increases intubation difficulty and laryngospasm risk.",
+        "Loose teeth are a practical concern but not the anatomically critical airway risk factor.",
+        "The paediatric trachea is proportionally MUCH smaller — a 1 mm reduction in diameter causes 44% reduction in airway cross-sectional area.",
+        "The tongue is proportionally LARGER in children, contributing to airway obstruction risk."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_airway_diff", "toStateId": "state_ketamine_admin", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_paed_airway",
+            "description": "Identifies cephalad anterior larynx and omega epiglottis as key paediatric airway features",
+            "weight": 10,
+            "evaluationHint": "Patient selected anat_larynx option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_ketamine_admin",
+      "phaseId": "maintenance",
+      "type": "question",
+      "prompt": "You administer ketamine 20 mg IV (1.25 mg/kg). The child becomes dissociated. The laceration is being repaired. A key safety co-administration with ketamine in paediatric procedural sedation is:",
+      "options": [
+        { "id": "coad_midaz",   "label": "Midazolam 0.05 mg/kg IV to reduce emergence reactions and secretions", "isCorrect": true  },
+        { "id": "coad_glyco",   "label": "Glycopyrrolate or atropine to reduce ketamine-induced hypersalivation", "isCorrect": true  },
+        { "id": "coad_propofol","label": "Propofol 2 mg/kg IV to deepen sedation",                               "isCorrect": false },
+        { "id": "coad_none",    "label": "No co-administration is needed; ketamine is always used alone",         "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Midazolam 0.05–0.1 mg/kg IV reduces paediatric emergence agitation/hallucinations and provides amnesia. Some centres use it routinely with ketamine.",
+        "Correct! Ketamine stimulates salivary secretions. Glycopyrrolate 0.01 mg/kg or atropine 0.02 mg/kg helps prevent secretion-related laryngospasm.",
+        "Adding propofol risks deep sedation and apnoea in a child. Ketamine does not require propofol supplementation for brief procedures.",
+        "Midazolam for emergence and antisialagogues (glycopyrrolate/atropine) are well-evidenced co-administrations with paediatric ketamine sedation."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "ketamine", "doseMg": 20, "route": "iv_bolus" } },
+        { "type": "give_drug", "payload": { "drug": "midazolam", "doseMg": 0.8, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_ketamine_admin", "toStateId": "state_laryngospasm", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_coadmin",
+            "description": "Identifies midazolam and antisialagogue as appropriate ketamine co-administrations",
+            "weight": 15,
+            "evaluationHint": "Patient selected coad_midaz and/or coad_glyco option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_laryngospasm",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Near the end of the procedure, the child develops high-pitched stridor, severe chest retractions, and SpO2 drops rapidly to 82%. No air movement on auscultation. What is occurring and what is the IMMEDIATE response?",
+      "options": [
+        { "id": "ls_laryngo",  "label": "Laryngospasm – apply jaw thrust with 5 cmH2O CPAP (Larson's manoeuvre) and call for help", "isCorrect": true  },
+        { "id": "ls_bron",     "label": "Bronchospasm – give salbutamol nebuliser",                                                  "isCorrect": false },
+        { "id": "ls_croup",    "label": "Croup – administer dexamethasone 0.15 mg/kg IV",                                           "isCorrect": false },
+        { "id": "ls_airway",   "label": "Foreign body – perform paediatric abdominal thrusts",                                       "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Laryngospasm presents with high-pitched stridor → silence (complete spasm) + chest retractions + hypoxia. First line: jaw thrust with Larson's manoeuvre (pressure at mastoid notch) + gentle CPAP. Call for help immediately.",
+        "Bronchospasm causes expiratory wheeze with prolonged exhalation — not complete absence of air entry with stridor.",
+        "Croup is viral, not perioperative laryngospasm. Treatment and urgency differ greatly.",
+        "No foreign body ingestion is described. This is a post-ketamine procedural complication (laryngospasm)."
+      ],
+      "simActions": [
+        { "type": "apply_stimulus", "payload": { "stimulusType": "jaw_thrust_cpap" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_laryngospasm", "toStateId": "state_suxamethonium", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_laryngospasm",
+            "description": "Correctly identifies laryngospasm and applies jaw thrust with CPAP",
+            "weight": 20,
+            "evaluationHint": "Patient selected ls_laryngo option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_suxamethonium",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "SpO2 dropping to 68% despite CPAP + jaw thrust. Laryngospasm is not breaking. Bag-mask ventilation unable to be delivered. What drug is used to break complete laryngospasm in children?",
+      "options": [
+        { "id": "drug_sux",    "label": "Suxamethonium (succinylcholine) 2 mg/kg IV or 4 mg/kg IM",         "isCorrect": true  },
+        { "id": "drug_propo",  "label": "Propofol 1 mg/kg IV to deepen sedation and break spasm",            "isCorrect": false },
+        { "id": "drug_atrop",  "label": "Atropine 0.02 mg/kg IV for vagal-induced laryngospasm",             "isCorrect": false },
+        { "id": "drug_keta",   "label": "Additional ketamine 1 mg/kg IV",                                    "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Suxamethonium (succinylcholine) is the only drug that reliably breaks complete laryngospasm. Dose: 2 mg/kg IV (preferred) or 4 mg/kg IM if no IV access. This is a life-saving emergency dose.",
+        "Propofol may partially relax the larynx but is unreliable for complete laryngospasm and may cause further apnoea.",
+        "Atropine treats bradycardia associated with laryngospasm but does NOT break the muscular spasm.",
+        "Additional ketamine may worsen secretions and does not reliably break laryngospasm."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "succinylcholine", "doseMg": 32, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_suxamethonium", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_sux_laryngospasm",
+            "description": "Correctly identifies suxamethonium as laryngospasm rescue drug",
+            "weight": 20,
+            "evaluationHint": "Patient selected drug_sux option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• ALWAYS calculate doses by weight in children – never use adult flat doses\n• Paediatric airway: cephalad larynx, large epiglottis, small trachea diameter\n• Ketamine co-administration: midazolam (emergence) + glycopyrrolate (secretions)\n• Laryngospasm: jaw thrust + CPAP → if no break: succinylcholine 2 mg/kg IV or 4 mg/kg IM",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}

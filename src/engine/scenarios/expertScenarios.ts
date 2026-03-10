@@ -1,4 +1,28 @@
 import { InteractiveScenario } from '../ScenarioEngine';
+import type { ScoringRubric } from '../scoringEngine';
+
+/** Shared rubric for all expert-difficulty scenarios. */
+const EXPERT_RUBRIC: ScoringRubric = {
+  passThreshold: 75,
+  weights: { timing: 0.10, appropriateness: 0.30, safety: 0.40, completeness: 0.20 },
+  criteria: {
+    timing: { targetDurationSec: 960, toleranceSec: 120 },
+    appropriateness: {
+      drugRanges: [
+        { drug: 'midazolam',  minDose: 0.25, maxDose: 1.5  },
+        { drug: 'fentanyl',   minDose: 12.5, maxDose: 75   },
+        { drug: 'propofol',   minDose: 10,   maxDose: 150  },
+        { drug: 'ketamine',   minDose: 10,   maxDose: 75   },
+        { drug: 'naloxone',   minDose: 0.04, maxDose: 0.4  },
+        { drug: 'flumazenil', minDose: 0.1,  maxDose: 0.5  },
+        { drug: 'dexmedetomidine', minDose: 0.25, maxDose: 1.5 },
+      ],
+    },
+    safety: { spo2DangerThreshold: 88, moassMinAllowed: 1, maxDangerSeconds: 15 },
+    completeness: { requiredStepFraction: 0.85 },
+  },
+};
+
 
 export const EXPERT_PRIS: InteractiveScenario = {
   id: 'expert_pris',
@@ -199,6 +223,7 @@ export const EXPERT_PRIS: InteractiveScenario = {
       'Dexmedetomidine or midazolam as alternatives. NEVER restart propofol after PRIS.',
     ],
   },
+  scoringRubric: EXPERT_RUBRIC,
 };
 
 export const EXPERT_MULTI_DRUG: InteractiveScenario = {
@@ -403,6 +428,7 @@ export const EXPERT_MULTI_DRUG: InteractiveScenario = {
       'Monitor for resedation after reversal — naloxone and flumazenil both shorter than drug duration.',
     ],
   },
+  scoringRubric: EXPERT_RUBRIC,
 };
 
 export const EXPERT_AWARENESS: InteractiveScenario = {
@@ -607,6 +633,7 @@ export const EXPERT_AWARENESS: InteractiveScenario = {
       'Consider BIS monitoring for patients with known sedation resistance.',
     ],
   },
+  scoringRubric: EXPERT_RUBRIC,
 };
 
 export const EXPERT_MALIGNANT_HYPERTHERMIA: InteractiveScenario = {
@@ -808,6 +835,7 @@ export const EXPERT_MALIGNANT_HYPERTHERMIA: InteractiveScenario = {
       'Future anesthesia: total IV anesthesia (TIVA) with propofol + opioid only — no volatile agents.',
     ],
   },
+  scoringRubric: EXPERT_RUBRIC,
 };
 
 export const EXPERT_CARDIAC_ARREST: InteractiveScenario = {
@@ -1018,6 +1046,7 @@ export const EXPERT_CARDIAC_ARREST: InteractiveScenario = {
       'All post-VFib ROSC patients: ICU, 12-lead ECG, cardiology, consider TTM.',
     ],
   },
+  scoringRubric: EXPERT_RUBRIC,
 };
 
 export const EXPERT_CHF_SEDATION: InteractiveScenario = {
@@ -1508,6 +1537,7 @@ export const EXPERT_CHF_SEDATION: InteractiveScenario = {
       'EtCO2 is the earliest ventilation warning — monitor continuously and act before SpO2 falls.',
     ],
   },
+  scoringRubric: EXPERT_RUBRIC,
 };
 
 export const EXPERT_SCENARIOS: InteractiveScenario[] = [

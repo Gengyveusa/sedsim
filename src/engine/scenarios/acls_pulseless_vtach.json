@@ -1,0 +1,257 @@
+{
+  "id": "acls_pulseless_vtach",
+  "title": "ACLS – Pulseless Ventricular Tachycardia",
+  "description": "A monitored in-hospital patient develops pulseless ventricular tachycardia. Practise recognising pulseless VTach, applying the shockable ACLS algorithm, and differentiating it from stable VTach.",
+  "tags": ["ACLS", "VTach", "pulseless VTach", "shockable rhythm", "cardiac arrest", "advanced"],
+  "patient": { "archetypeId": "adult_cardiac_arrest" },
+  "learningObjectives": [
+    "Distinguish pulseless VTach from stable (perfusing) VTach",
+    "Apply the ACLS shockable rhythm algorithm for pulseless VTach",
+    "Recognise wide-complex regular tachycardia on the ECG",
+    "Administer epinephrine and amiodarone at appropriate intervals",
+    "Identify underlying reversible causes (5H/5T framework)"
+  ],
+  "estimatedDurationSec": 660,
+  "phases": [
+    { "id": "pre",          "label": "Scene Assessment",     "order": 1 },
+    { "id": "induction",    "label": "Initial Response",     "order": 2 },
+    { "id": "maintenance",  "label": "Ongoing Resuscitation","order": 3 },
+    { "id": "complication", "label": "Reversible Causes",    "order": 4 },
+    { "id": "recovery",     "label": "ROSC",                 "order": 5 },
+    { "id": "debrief",      "label": "Debrief",              "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_recognition",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "A 62-year-old male with ischaemic cardiomyopathy (EF 25%) is on telemetry post-MI day 2. The alarm sounds – the monitor shows a REGULAR wide-complex tachycardia at 200 bpm. He is unresponsive when you try to rouse him. No carotid pulse is detected after a 5-second check. Which ACLS algorithm applies?",
+      "options": [
+        { "id": "alg_shock",  "label": "Shockable cardiac arrest algorithm (same as VFib)", "isCorrect": true  },
+        { "id": "alg_stable", "label": "Stable tachycardia algorithm – synchronised cardioversion", "isCorrect": false },
+        { "id": "alg_brady",  "label": "Bradycardia algorithm",                                      "isCorrect": false },
+        { "id": "alg_watch",  "label": "Observe for 60 seconds and reassess",                       "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Pulseless VTach is treated identically to VFib: unsynchronised defibrillation + CPR + vasopressors + antiarrhythmics.",
+        "Synchronised cardioversion is for patients with a pulse. This patient is pulseless – treat as cardiac arrest.",
+        "Heart rate is 200 bpm – bradycardia does not apply.",
+        "A pulseless patient requires immediate resuscitation; observation is inappropriate."
+      ],
+      "simActions": [
+        { "type": "set_rhythm", "payload": { "rhythm": "pulseless_vtach" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_recognition", "toStateId": "state_differentiate", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_correct_algorithm",
+            "description": "Correctly identifies pulseless VTach as a shockable cardiac arrest",
+            "weight": 15,
+            "evaluationHint": "Patient selected alg_shock option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_differentiate",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "Which ECG feature BEST distinguishes VTach from SVT with aberrant conduction (a key differential)?",
+      "options": [
+        { "id": "diff_fusion",   "label": "Presence of fusion beats or atrioventricular dissociation (AV dissociation)", "isCorrect": true  },
+        { "id": "diff_rate",     "label": "Heart rate > 150 bpm (rate alone differentiates VT from SVT)",                 "isCorrect": false },
+        { "id": "diff_qrs100",   "label": "QRS duration ≥ 100 ms is sufficient to diagnose VTach",                       "isCorrect": false },
+        { "id": "diff_regular",  "label": "Regular rhythm always indicates VTach",                                         "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! AV dissociation (P-waves independent of QRS), capture beats, and fusion beats are pathognomonic of VTach.",
+        "Rate alone cannot distinguish VT from SVT – both can exceed 150 bpm.",
+        "QRS ≥ 120 ms (not 100 ms) suggests aberrancy; but SVT with bundle-branch block also has wide QRS. AV dissociation is the key.",
+        "Both VT and SVT with aberrancy can be regular; regularity alone does not diagnose VT."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_differentiate", "toStateId": "state_first_shock", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_av_dissociation",
+            "description": "Identifies AV dissociation as pathognomonic of VTach",
+            "weight": 10,
+            "evaluationHint": "Patient selected diff_fusion option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_first_shock",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "CPR is underway. Pads attached. Ready to defibrillate. Should the shock be SYNCHRONISED or UNSYNCHRONISED for pulseless VTach?",
+      "options": [
+        { "id": "sh_unsync", "label": "Unsynchronised (defibrillation mode)", "isCorrect": true  },
+        { "id": "sh_sync",   "label": "Synchronised cardioversion mode",       "isCorrect": false },
+        { "id": "sh_both",   "label": "Either is acceptable for pulseless VTach", "isCorrect": false },
+        { "id": "sh_none",   "label": "No shock – give amiodarone first",         "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Pulseless VTach is treated with UNSYNCHRONISED defibrillation (same as VFib). Synchronisation is only for patients with a pulse.",
+        "Synchronised cardioversion risks triggering VFib if the shock falls on the T-wave in a pulseless rhythm. Use defibrillation mode.",
+        "For pulseless VTach, only unsynchronised (defibrillation) mode is appropriate.",
+        "Defibrillation takes priority over pharmacological therapy in shockable rhythms."
+      ],
+      "simActions": [
+        { "type": "apply_stimulus", "payload": { "stimulusType": "defibrillation", "joules": 200 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_first_shock", "toStateId": "state_5h5t", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_unsync_shock",
+            "description": "Correctly selects unsynchronised defibrillation for pulseless VTach",
+            "weight": 15,
+            "evaluationHint": "Patient selected sh_unsync option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_5h5t",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "After two shocks and epinephrine, VTach persists. You consider reversible causes. This patient had an acute MI. Which '5H/5T' cause is MOST likely driving refractory VTach in this context?",
+      "options": [
+        { "id": "cause_ischemia", "label": "Acute myocardial ischaemia (Thrombosis – coronary)",           "isCorrect": true  },
+        { "id": "cause_hyper",    "label": "Hyperkalaemia",                                                  "isCorrect": false },
+        { "id": "cause_tension",  "label": "Tension pneumothorax",                                           "isCorrect": false },
+        { "id": "cause_hypoxia",  "label": "Hypoxia",                                                        "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! In post-MI patients, refractory VTach/VFib is most commonly driven by ongoing coronary ischaemia. Emergent catheterisation may be warranted post-ROSC.",
+        "Hyperkalaemia is an important cause but less likely in an isolated post-MI setting without renal failure or metabolic disturbance.",
+        "Tension pneumothorax is a 5T cause but unlikely in a step-down patient without recent intervention.",
+        "Hypoxia is critical to address but is less specific to this post-MI context than coronary thrombosis."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_5h5t", "toStateId": "state_amiodarone", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_reversible_cause",
+            "description": "Identifies coronary ischaemia as most likely reversible cause",
+            "weight": 10,
+            "evaluationHint": "Patient selected cause_ischemia option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_amiodarone",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "VTach continues. Third shock delivered. Which antiarrhythmic is administered now and at what dose?",
+      "options": [
+        { "id": "drug_amio",   "label": "Amiodarone 300 mg IV bolus",            "isCorrect": true  },
+        { "id": "drug_lido",   "label": "Lidocaine 1–1.5 mg/kg IV (alternative)","isCorrect": true  },
+        { "id": "drug_mag",    "label": "Magnesium 2 g IV",                      "isCorrect": false },
+        { "id": "drug_adenosine","label": "Adenosine 6 mg IV rapid push",        "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Amiodarone 300 mg IV is first-line for shock-refractory VTach/VFib. A second dose of 150 mg can be given if needed.",
+        "Correct! Lidocaine 1–1.5 mg/kg IV is an acceptable alternative when amiodarone is unavailable.",
+        "Magnesium is indicated for Torsades de Pointes, not monomorphic VTach.",
+        "Adenosine terminates AV-node-dependent SVT — it has no effect on VTach."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "amiodarone", "doseMg": 300, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_amiodarone", "toStateId": "state_rosc", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_amiodarone",
+            "description": "Administers amiodarone or lidocaine for shock-refractory VTach",
+            "weight": 15,
+            "evaluationHint": "Patient selected drug_amio or drug_lido option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_rosc",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "ROSC achieved after the fourth shock. The patient remains unconscious. 12-lead ECG shows STEMI (anterior). What is the next priority?",
+      "options": [
+        { "id": "rosc_cath",  "label": "Urgent cardiology consultation and emergent PCI regardless of neurological status", "isCorrect": true  },
+        { "id": "rosc_wait",  "label": "Wait for neurological recovery before PCI",                                         "isCorrect": false },
+        { "id": "rosc_lysis", "label": "Give fibrinolytic therapy since PCI is risky post-arrest",                         "isCorrect": false },
+        { "id": "rosc_amio",  "label": "Start amiodarone infusion and defer cardiac workup to morning",                    "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! AHA/ESC guidelines recommend emergent coronary angiography (and PCI if indicated) post-ROSC with STEMI, irrespective of comatose status.",
+        "Neurological status should not delay PCI — unconsciousness alone is not a contraindication to emergent PCI post-ROSC.",
+        "PCI is preferred over fibrinolysis post-cardiac arrest due to bleeding risk and lower PCI morbidity.",
+        "Amiodarone infusion is useful for arrhythmia prophylaxis, but STEMI management takes priority."
+      ],
+      "simActions": [
+        { "type": "set_rhythm", "payload": { "rhythm": "sinus_rhythm" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_rosc", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_pci_priority",
+            "description": "Correctly prioritises emergent PCI after ROSC with STEMI",
+            "weight": 20,
+            "evaluationHint": "Patient selected rosc_cath option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• Pulseless VTach = shockable; treat with unsynchronised defibrillation\n• CPR immediately after every shock; epinephrine q3–5 min\n• Amiodarone 300 mg after 3rd shock for refractory VTach\n• Post-ROSC STEMI → emergent PCI regardless of neurological status",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}

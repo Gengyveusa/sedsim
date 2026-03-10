@@ -1,0 +1,183 @@
+{
+  "id": "sedation_oversedation",
+  "title": "Sedation Emergency – Oversedation & Respiratory Depression",
+  "description": "A routine upper endoscopy patient develops progressive oversedation after cumulative propofol and opioid dosing. Practise recognising and grading sedation depth, managing airway and ventilation, and using reversal agents appropriately.",
+  "tags": ["sedation", "oversedation", "respiratory depression", "reversal agents", "airway", "moderate sedation", "hard"],
+  "patient": { "archetypeId": "healthy_adult" },
+  "learningObjectives": [
+    "Recognise the signs of oversedation on the MOASS scale",
+    "Identify hypercapnia on capnography before SpO2 drops",
+    "Perform stepwise airway manoeuvres (jaw thrust, chin lift, bag-mask ventilation)",
+    "Administer flumazenil and naloxone at correct doses for reversal",
+    "Understand the limitations and risks of reversal agents"
+  ],
+  "estimatedDurationSec": 540,
+  "phases": [
+    { "id": "pre",          "label": "Pre-Procedure",      "order": 1 },
+    { "id": "induction",    "label": "Sedation Induction", "order": 2 },
+    { "id": "maintenance",  "label": "Maintenance",        "order": 3 },
+    { "id": "complication", "label": "Oversedation Crisis", "order": 4 },
+    { "id": "recovery",     "label": "Recovery",           "order": 5 },
+    { "id": "debrief",      "label": "Debrief",            "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_early_warning",
+      "phaseId": "maintenance",
+      "type": "question",
+      "prompt": "An upper endoscopy is underway. The patient received midazolam 2 mg + fentanyl 75 mcg + propofol 80 mg over 10 minutes. EtCO2 has risen from 38 to 52 mmHg. SpO2 is 96% (still acceptable). Respiratory rate dropped from 16 to 8/min. MOASS is 2 (responds only to vigorous stimulation). What is the EARLIEST indicator that oversedation is developing?",
+      "options": [
+        { "id": "warn_etco2",  "label": "Rising EtCO2 (capnography change before SpO2 drop)", "isCorrect": true  },
+        { "id": "warn_spo2",   "label": "SpO2 drop to < 95%",                                  "isCorrect": false },
+        { "id": "warn_moass",  "label": "MOASS level change is the earliest indicator",         "isCorrect": false },
+        { "id": "warn_rr",     "label": "Respiratory rate < 8/min",                             "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Capnography (EtCO2 rise) precedes SpO2 desaturation by 60–90 seconds in patients on supplemental oxygen. It is the earliest warning of hypoventilation.",
+        "SpO2 drop is a late sign — especially on supplemental oxygen. By the time SpO2 falls, significant hypoventilation has occurred.",
+        "MOASS reflects depth of sedation, not ventilation. A patient can be deeply sedated (MOASS 1) but still ventilating.",
+        "Respiratory rate < 8 is concerning but lags behind capnography changes as an early warning."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_early_warning", "toStateId": "state_airway_response", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_etco2_early",
+            "description": "Identifies rising EtCO2 as the earliest oversedation warning",
+            "weight": 15,
+            "evaluationHint": "Patient selected warn_etco2 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_airway_response",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "EtCO2 is now 62 mmHg. SpO2 dropped to 88%. RR 5/min. MOASS 1 (unresponsive). The patient's jaw is falling back, obstructing the airway. What is your FIRST intervention?",
+      "options": [
+        { "id": "air_jaw",    "label": "Jaw thrust and chin lift to open the airway",                     "isCorrect": true  },
+        { "id": "air_nalox",  "label": "Administer naloxone 0.4 mg IV immediately",                      "isCorrect": false },
+        { "id": "air_intub",  "label": "Immediately call for emergent RSI intubation",                   "isCorrect": false },
+        { "id": "air_stim",   "label": "Sternal rub to stimulate the patient",                           "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Airway positioning (jaw thrust, chin lift) is always the first-line response to obstruction. This simple manoeuvre often resolves hypoxaemia without drugs or intubation.",
+        "Naloxone reverses only the opioid component — but midazolam and propofol also contributed. Airway manoeuvres take priority over pharmacological reversal.",
+        "Intubation is a last resort. Simple airway manoeuvres and ventilation should be attempted first.",
+        "Sternal rub may temporarily increase arousal but does not address the mechanical airway obstruction."
+      ],
+      "simActions": [
+        { "type": "apply_stimulus", "payload": { "stimulusType": "jaw_thrust" } },
+        { "type": "change_oxygen", "payload": { "device": "nasal_cannula", "fio2": 0.44 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_airway_response", "toStateId": "state_reversal", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_airway_first",
+            "description": "Correctly performs airway manoeuvre as first intervention",
+            "weight": 20,
+            "evaluationHint": "Patient selected air_jaw option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_reversal",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Airway now patent with jaw thrust. SpO2 recovering to 92%. Bag-mask ventilation in progress. Despite stimulation, the patient remains MOASS 1. Given the drug history (midazolam 2 mg + fentanyl 75 mcg + propofol 80 mg), which reversal strategy is appropriate?",
+      "options": [
+        { "id": "rev_both",    "label": "Flumazenil 0.2 mg IV (for midazolam) AND naloxone 0.04–0.1 mg IV titrated (for fentanyl)", "isCorrect": true  },
+        { "id": "rev_nalox",   "label": "Naloxone 0.4 mg IV only – this is likely pure opioid toxicity",                            "isCorrect": false },
+        { "id": "rev_flumax",  "label": "Flumazenil 1 mg IV (full reversal dose) as a single bolus",                               "isCorrect": false },
+        { "id": "rev_none",    "label": "Avoid reversal agents – bag-mask ventilation is sufficient",                               "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Both benzodiazepine and opioid reversal are indicated given the polypharmacy. Naloxone should be titrated (low dose) to avoid precipitating acute opioid withdrawal or sympathetic surge.",
+        "Naloxone alone reverses only fentanyl. Midazolam 2 mg was also given – flumazenil is needed to address the benzodiazepine component.",
+        "Full-dose flumazenil (1 mg) can precipitate benzodiazepine withdrawal seizures. The recommended approach is 0.2 mg IV increments titrated to arousal.",
+        "Bag-mask is essential but reversal agents are indicated to facilitate airway recovery and reduce the need for intubation."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "flumazenil", "doseMg": 0.2, "route": "iv_bolus" } },
+        { "type": "give_drug", "payload": { "drug": "naloxone", "doseMg": 0.04, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_reversal", "toStateId": "state_renarcotization", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_reversal_both",
+            "description": "Administers both flumazenil and titrated naloxone",
+            "weight": 20,
+            "evaluationHint": "Patient selected rev_both option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_renarcotization",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "The patient awoke after reversal. SpO2 recovered to 97%. 45 minutes later, the patient becomes drowsy again (MOASS 2–3), EtCO2 rising to 48 mmHg. What phenomenon is occurring and how do you manage it?",
+      "options": [
+        { "id": "ren_correct", "label": "Re-narcotisation – naloxone has a shorter half-life than fentanyl; titrate repeat naloxone doses and extend monitoring", "isCorrect": true  },
+        { "id": "ren_new",     "label": "New adverse event – restart full resuscitation protocol",                                                               "isCorrect": false },
+        { "id": "ren_flumax2", "label": "Flumazenil effect wore off – give 1 mg flumazenil IV push",                                                            "isCorrect": false },
+        { "id": "ren_propofol","label": "Propofol redistribution – no treatment needed, monitor only",                                                          "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Re-narcotisation occurs because naloxone (half-life 30–90 min) is shorter than fentanyl (2–4 hrs). Repeated low-dose naloxone or infusion and extended monitoring are required.",
+        "Re-narcotisation is expected and predictable after opioid reversal. Full resuscitation is not indicated while the patient is maintaining airway reflexes.",
+        "Flumazenil's duration (1–2 hrs) is also shorter than midazolam, but the primary cause here is opioid re-narcotisation from fentanyl.",
+        "Propofol context sensitivity does play a role but fentanyl re-narcotisation is the primary concern; active management is required."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_renarcotization", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_renarcotization",
+            "description": "Correctly identifies and manages re-narcotisation",
+            "weight": 15,
+            "evaluationHint": "Patient selected ren_correct option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• EtCO2 rise precedes SpO2 drop – use capnography\n• Airway manoeuvres FIRST before pharmacological reversal\n• Titrate naloxone (0.04–0.1 mg) to avoid withdrawal/sympathetic surge\n• Re-narcotisation risk: naloxone t½ < fentanyl t½ – extend monitoring",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
 import { DRUG_DATABASE } from '../engine/drugs';
@@ -82,7 +83,16 @@ export default function SedationGauge() {
   const [mode, setMode] = useState<GaugeMode>('petals');
   const [autoSwitched, setAutoSwitched] = useState(false);
 
-  const { combinedEff, moass, pkStates, vitals, patient, setActiveGaugeMode } = useSimStore();
+  const { combinedEff, moass, pkStates, vitals, patient, setActiveGaugeMode } = useSimStore(
+    useShallow(s => ({
+      combinedEff: s.combinedEff,
+      moass: s.moass,
+      pkStates: s.pkStates,
+      vitals: s.vitals,
+      patient: s.patient,
+      setActiveGaugeMode: s.setActiveGaugeMode,
+    }))
+  );
 
   // Respond to SimMaster gauge switch requests
   const requestGaugeMode = useAIStore((s: { requestGaugeMode: string | null }) => s.requestGaugeMode);
@@ -179,9 +189,9 @@ export default function SedationGauge() {
   return (
     <div className="flex flex-col items-center gap-4" data-region="moass">
       {/* Mode selector - aviation style tab bar */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap justify-center">
         {(['avatar', 'risk', 'petals'] as GaugeMode[]).map(m => (
-          <button key={m} onClick={() => setMode(m)} className={`px-3 py-1.5 text-sm rounded font-bold tracking-wide transition-all ${
+          <button key={m} onClick={() => setMode(m)} className={`px-3 min-h-[44px] text-sm rounded font-bold tracking-wide transition-all ${
             mode === m
               ? m === 'avatar' ? 'bg-cyan-500 text-black'
               : m === 'petals' ? 'bg-emerald-500 text-black'
@@ -197,7 +207,7 @@ export default function SedationGauge() {
       {mode === 'avatar' && (
         <>
           <div style={{ overflowX: 'auto', overflowY: 'visible', width: '100%' }}>
-            <div style={{ minWidth: '800px' }}>
+            <div style={{ minWidth: '600px' }}>
               <PhysiologyAvatar vitals={vitals} moass={moass} combinedEff={combinedEff} patient={patient} rhythm={vitals.rhythm} size={avatarSize} />
             </div>
           </div>
@@ -206,7 +216,11 @@ export default function SedationGauge() {
 
       {/* ===== MODES D & E: Radar and Petals use the gauge SVG ===== */}
       {mode !== 'avatar' && (
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-2xl">
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          className="drop-shadow-2xl w-full"
+          style={{ maxWidth: size, height: 'auto' }}
+        >
           {/* SVG Defs */}
           <defs>
             <style>{`

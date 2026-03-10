@@ -11,6 +11,23 @@
 html, body {
   height: 100%;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Prevent text selection flash on touch double-tap */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent callout on long-press for interactive elements */
+button, a, input, select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch-friendly tap targets (44px min per Apple HIG / WCAG) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #root {
@@ -88,4 +105,33 @@ html, body {
 @keyframes glowPulse {
   0%, 100% { filter: drop-shadow(0 0 3px currentColor); }
   50% { filter: drop-shadow(0 0 8px currentColor); }
+}
+
+/* ── Accessibility: focus indicators ──────────────────────────── */
+
+/* Keyboard-only focus ring — visible on Tab but not on click */
+:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Skip-to-main-content link */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom-right-radius: 4px;
+}
+.skip-link:focus-visible {
+  top: 0;
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
 }

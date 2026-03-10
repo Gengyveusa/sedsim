@@ -1,4 +1,24 @@
 import { InteractiveScenario } from '../ScenarioEngine';
+import type { ScoringRubric } from '../scoringEngine';
+
+/** Shared rubric for all easy-difficulty scenarios. */
+const EASY_RUBRIC: ScoringRubric = {
+  passThreshold: 60,
+  weights: { timing: 0.15, appropriateness: 0.35, safety: 0.30, completeness: 0.20 },
+  criteria: {
+    timing: { targetDurationSec: 420, toleranceSec: 60 },
+    appropriateness: {
+      drugRanges: [
+        { drug: 'midazolam',  minDose: 0.5,  maxDose: 2.0  },
+        { drug: 'fentanyl',   minDose: 25,   maxDose: 100  },
+        { drug: 'propofol',   minDose: 10,   maxDose: 200  },
+        { drug: 'ketamine',   minDose: 10,   maxDose: 100  },
+      ],
+    },
+    safety: { spo2DangerThreshold: 88, moassMinAllowed: 1, maxDangerSeconds: 30 },
+    completeness: { requiredStepFraction: 0.75 },
+  },
+};
 
 export const EASY_COLONOSCOPY: InteractiveScenario = {
   id: 'easy_colonoscopy',
@@ -219,6 +239,7 @@ export const EASY_COLONOSCOPY: InteractiveScenario = {
       'Even routine colonoscopy in ASA 1 patients requires full monitoring and rescue readiness.',
     ],
   },
+  scoringRubric: EASY_RUBRIC,
 };
 
 export const EASY_DENTAL_EXTRACTION: InteractiveScenario = {
@@ -435,6 +456,7 @@ export const EASY_DENTAL_EXTRACTION: InteractiveScenario = {
       'A 30-minute minimum monitoring period is required before discharge.',
     ],
   },
+  scoringRubric: EASY_RUBRIC,
 };
 
 export const EASY_LACERATION_REPAIR: InteractiveScenario = {
@@ -640,6 +662,7 @@ export const EASY_LACERATION_REPAIR: InteractiveScenario = {
       'Quiet emergence environment reduces ketamine recovery time and distress.',
     ],
   },
+  scoringRubric: EASY_RUBRIC,
 };
 
 export const EASY_FRACTURE_REDUCTION: InteractiveScenario = {
@@ -841,6 +864,7 @@ export const EASY_FRACTURE_REDUCTION: InteractiveScenario = {
       'Fentanyl pre-treatment reduces required propofol dose and respiratory depression.',
     ],
   },
+  scoringRubric: EASY_RUBRIC,
 };
 
 export const EASY_ABSCESS_DRAINAGE: InteractiveScenario = {
@@ -1037,6 +1061,7 @@ export const EASY_ABSCESS_DRAINAGE: InteractiveScenario = {
       'Phenylephrine is the vasopressor of choice for pure vasodilatory hypotension.',
     ],
   },
+  scoringRubric: EASY_RUBRIC,
 };
 
 export const EASY_SCENARIOS: InteractiveScenario[] = [

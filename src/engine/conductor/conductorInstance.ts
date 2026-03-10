@@ -14,6 +14,7 @@ import useAIStore from '../../store/useAIStore';
 import type { VitalAnnotation } from './types';
 import type { ConductorStep } from './types';
 import type { ScenarioQuestion } from '../ScenarioEngine';
+import type { ScoringSummary } from '../scoringEngine';
 
 const simAccessor: SimStoreAccessor = {
   getVitals: () => {
@@ -49,6 +50,8 @@ const simAccessor: SimStoreAccessor = {
       store.administerBolus(drug, dose);
     }
   },
+  getEventLog: () => useSimStore.getState().eventLog,
+  getTrendData: () => useSimStore.getState().trendData,
 };
 
 const aiAccessor: AIStoreAccessor = {
@@ -78,6 +81,9 @@ const aiAccessor: AIStoreAccessor = {
   },
   setPendingContinue: (pending: { stepId: string; stepLabel: string } | null) => {
     useAIStore.getState().setPendingContinue(pending);
+  },
+  setLastScenarioScore: (score: ScoringSummary | null) => {
+    useAIStore.getState().setLastScenarioScore(score);
   },
 };
 

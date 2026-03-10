@@ -1,0 +1,221 @@
+{
+  "id": "acls_pea",
+  "title": "ACLS – Pulseless Electrical Activity (PEA)",
+  "description": "A patient develops PEA cardiac arrest. Practise recognising organised electrical activity without a pulse, applying the non-shockable algorithm, and systematically identifying and treating the reversible causes that underlie PEA.",
+  "tags": ["ACLS", "PEA", "non-shockable rhythm", "cardiac arrest", "5H5T", "reversible causes", "advanced"],
+  "patient": { "archetypeId": "adult_cardiac_arrest" },
+  "learningObjectives": [
+    "Define PEA and distinguish it from a pulse-generating rhythm",
+    "Apply the ACLS non-shockable (PEA) algorithm",
+    "Use the 5H/5T framework to identify treatable causes of PEA",
+    "Initiate targeted therapy for the most likely reversible cause",
+    "Understand that a narrow-complex PEA suggests obstructive causes"
+  ],
+  "estimatedDurationSec": 660,
+  "phases": [
+    { "id": "pre",          "label": "Scene Assessment",     "order": 1 },
+    { "id": "induction",    "label": "Initial Response",     "order": 2 },
+    { "id": "maintenance",  "label": "Ongoing Resuscitation","order": 3 },
+    { "id": "complication", "label": "Reversible Cause",     "order": 4 },
+    { "id": "recovery",     "label": "Outcome",              "order": 5 },
+    { "id": "debrief",      "label": "Debrief",              "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_recognition",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "A 52-year-old female with known malignancy develops sudden unresponsiveness during a clinic visit. The monitor shows organised narrow-complex complexes at 80 bpm. NO carotid pulse is palpable. What is this rhythm?",
+      "options": [
+        { "id": "rh_pea",     "label": "Pulseless Electrical Activity (PEA)", "isCorrect": true  },
+        { "id": "rh_pulse",   "label": "Normal sinus rhythm with haemodynamic instability", "isCorrect": false },
+        { "id": "rh_asystole","label": "Asystole",                                          "isCorrect": false },
+        { "id": "rh_vfib",    "label": "Fine ventricular fibrillation",                     "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! PEA is defined as organised electrical activity on the monitor WITHOUT a palpable pulse. It requires the non-shockable arrest algorithm.",
+        "Haemodynamic instability still requires a pulse to be a perfusing rhythm. No pulse = cardiac arrest regardless of ECG pattern.",
+        "Asystole shows no discernible complexes. This patient has organised narrow complexes.",
+        "VFib is a chaotic waveform. This is organised electrical activity."
+      ],
+      "simActions": [
+        { "type": "set_rhythm", "payload": { "rhythm": "pea" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_recognition", "toStateId": "state_algorithm", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_pea_recognition",
+            "description": "Correctly identifies PEA rhythm",
+            "weight": 15,
+            "evaluationHint": "Patient selected rh_pea option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_algorithm",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "PEA confirmed. IV access is obtained. What is the immediate treatment?",
+      "options": [
+        { "id": "act_cpr_epi", "label": "High-quality CPR and epinephrine 1 mg IV immediately", "isCorrect": true  },
+        { "id": "act_shock",   "label": "Defibrillate – narrow complex may respond to shock",   "isCorrect": false },
+        { "id": "act_calcium", "label": "Give calcium chloride 1 g IV as first-line for PEA",   "isCorrect": false },
+        { "id": "act_pacing",  "label": "Initiate external pacing immediately",                  "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! PEA follows the non-shockable algorithm: CPR + epinephrine q3–5 min + search for reversible causes.",
+        "Defibrillation is not indicated for organised PEA – the electrical system is producing complexes; the problem is mechanical (no cardiac output).",
+        "Calcium chloride is only indicated for PEA secondary to hyperkalaemia or calcium-channel-blocker toxicity — not empirically for all PEA.",
+        "Transcutaneous pacing is not recommended for PEA — the heart has intrinsic electrical activity; the problem is mechanical, not conduction."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "epinephrine", "doseMg": 1.0, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_algorithm", "toStateId": "state_narrow_clue", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_cpr_epi",
+            "description": "Correctly initiates CPR and epinephrine for PEA",
+            "weight": 15,
+            "evaluationHint": "Patient selected act_cpr_epi option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_narrow_clue",
+      "phaseId": "maintenance",
+      "type": "question",
+      "prompt": "The PEA is narrow-complex. This patient has a known malignancy and you notice neck vein distension and distant heart sounds. Which diagnosis does narrow-complex PEA + these findings MOST suggest?",
+      "options": [
+        { "id": "cause_tamponade",  "label": "Cardiac tamponade (Beck's Triad)",           "isCorrect": true  },
+        { "id": "cause_tension",    "label": "Tension pneumothorax",                         "isCorrect": false },
+        { "id": "cause_pe",         "label": "Massive pulmonary embolism",                   "isCorrect": false },
+        { "id": "cause_hypo",       "label": "Profound hypovolaemia",                        "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Beck's Triad (hypotension, JVD, muffled heart sounds) in a malignancy patient strongly suggests cardiac tamponade. Narrow-complex PEA with JVD points to obstructive causes.",
+        "Tension pneumothorax also causes JVD but presents with absent breath sounds and tracheal deviation. Heart sounds remain audible.",
+        "Massive PE is possible (especially with malignancy) but muffled heart sounds and Beck's Triad point more toward tamponade. PE typically shows S1Q3T3 on ECG.",
+        "Profound hypovolaemia causes flat neck veins, not JVD."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_narrow_clue", "toStateId": "state_treatment", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_tamponade_id",
+            "description": "Correctly identifies cardiac tamponade from clinical clues",
+            "weight": 15,
+            "evaluationHint": "Patient selected cause_tamponade option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_treatment",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Cardiac tamponade is suspected. Ultrasound confirms large pericardial effusion with RV collapse. What is the definitive emergent treatment?",
+      "options": [
+        { "id": "tx_pericardio", "label": "Emergency pericardiocentesis (needle or surgical drainage)", "isCorrect": true  },
+        { "id": "tx_fluid",      "label": "Aggressive IV fluid bolus to overcome tamponade",            "isCorrect": false },
+        { "id": "tx_steroids",   "label": "IV methylprednisolone 1 g for pericarditis",                 "isCorrect": false },
+        { "id": "tx_lytics",     "label": "Systemic fibrinolytics for presumed PE",                     "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Needle pericardiocentesis (or surgical drainage in the operating room) is the only definitive treatment for tamponade-related PEA.",
+        "IV fluids can temporarily increase preload but are only a bridge — they do not relieve the tamponade. Pericardiocentesis is required.",
+        "Steroids address inflammation but have no role in acute haemodynamic tamponade.",
+        "Fibrinolytics are for PE, not tamponade. They would be dangerous here — increasing haemorrhagic risk into the pericardium."
+      ],
+      "simActions": [
+        { "type": "apply_stimulus", "payload": { "stimulusType": "pericardiocentesis" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_treatment", "toStateId": "state_rosc", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_pericardiocentesis",
+            "description": "Correctly identifies and performs pericardiocentesis for tamponade PEA",
+            "weight": 20,
+            "evaluationHint": "Patient selected tx_pericardio option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_rosc",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "After pericardiocentesis relieving 400 mL of bloody fluid, a strong carotid pulse returns. BP 95/60. The patient regains consciousness. What is the most critical next step?",
+      "options": [
+        { "id": "rosc_icu",     "label": "Urgent cardiothoracic surgery/oncology referral and ICU admission for ongoing drainage", "isCorrect": true  },
+        { "id": "rosc_repeat",  "label": "Repeat pericardiocentesis in 4 hours as a matter of routine",                           "isCorrect": false },
+        { "id": "rosc_obs",     "label": "Observe in the clinic recovery bay for 2 hours",                                         "isCorrect": false },
+        { "id": "rosc_steroids","label": "Start high-dose steroids to prevent re-accumulation",                                    "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Malignant pericardial effusion will re-accumulate. The patient needs surgical drainage, pericardial window, or oncological treatment, plus ICU monitoring.",
+        "Routine repeat pericardiocentesis at a fixed interval is not appropriate — ongoing drainage (drain in situ) or surgical management is required.",
+        "Discharge to observation is inappropriate after PEA cardiac arrest. ICU-level monitoring is required.",
+        "Steroids reduce pericarditis-related effusions but malignant effusions require oncological or surgical management."
+      ],
+      "simActions": [
+        { "type": "set_rhythm", "payload": { "rhythm": "sinus_tachycardia" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_rosc", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_definitive_care",
+            "description": "Plans definitive management (surgical drainage + ICU) post-ROSC from tamponade",
+            "weight": 10,
+            "evaluationHint": "Patient selected rosc_icu option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• PEA = organised ECG activity WITHOUT a pulse; non-shockable algorithm\n• Narrow-complex PEA + JVD → obstructive cause (tamponade or tension PTX)\n• Cardiac tamponade: Beck's Triad → emergency pericardiocentesis\n• Always use 5H/5T framework to drive targeted treatment during PEA",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}

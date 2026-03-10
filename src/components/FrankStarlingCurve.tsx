@@ -139,6 +139,22 @@ export default function FrankStarlingCurve({ vitals: _vitals, patient: _patient,
         Frank-Starling PV Loop
       </div>
       <svg width={W} height={H} style={{ background: '#1e293b', borderRadius: '6px' }}>
+      {/* Normal reference range shading: EDV 100–140 mL (x) and ESV 30–65 mL (x) */}
+        {/* Published ranges: Lang et al. JASE 2015; Rudski et al. JASE 2010 */}
+        <rect
+          x={xS(100)} y={pad - 5} width={xS(140) - xS(100)} height={H - pad * 2 + 5}
+          fill="#4ade80" fillOpacity={0.05}
+        />
+        <rect
+          x={xS(30)} y={pad - 5} width={xS(65) - xS(30)} height={H - pad * 2 + 5}
+          fill="#60a5fa" fillOpacity={0.07}
+        />
+        <text x={xS(120)} y={pad + 8} textAnchor="middle" fill="#4ade80" fontSize={6} opacity={0.6}>
+          Normal EDV
+        </text>
+        <text x={xS(47)} y={pad + 8} textAnchor="middle" fill="#60a5fa" fontSize={6} opacity={0.6}>
+          Normal ESV
+        </text>
         {/* Grid */}
         {[0, 50, 100, 150].map(v => (
           <line key={`gx${v}`} x1={xS(v)} y1={pad - 5} x2={xS(v)} y2={H - pad}

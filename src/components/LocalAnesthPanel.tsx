@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 import { LA_META, LA_DRUG_KEYS } from '../engine/drugs';
 
@@ -16,7 +17,9 @@ const LA_NAMES: Record<string, string> = {
 };
 
 export default function LocalAnesthPanel() {
-  const { patient, administerBolus } = useSimStore();
+  const { patient, administerBolus } = useSimStore(
+    useShallow(s => ({ patient: s.patient, administerBolus: s.administerBolus }))
+  );
   const [carpuleCounts, setCarpuleCounts] = useState<Record<string, number>>({});
 
   const handleCarpule = (drugKey: string) => {

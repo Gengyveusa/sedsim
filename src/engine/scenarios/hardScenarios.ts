@@ -1,4 +1,27 @@
 import { InteractiveScenario } from '../ScenarioEngine';
+import type { ScoringRubric } from '../scoringEngine';
+
+/** Shared rubric for all hard-difficulty scenarios. */
+const HARD_RUBRIC: ScoringRubric = {
+  passThreshold: 70,
+  weights: { timing: 0.10, appropriateness: 0.30, safety: 0.40, completeness: 0.20 },
+  criteria: {
+    timing: { targetDurationSec: 780, toleranceSec: 120 },
+    appropriateness: {
+      drugRanges: [
+        { drug: 'midazolam',  minDose: 0.25, maxDose: 1.5  },
+        { drug: 'fentanyl',   minDose: 12.5, maxDose: 75   },
+        { drug: 'propofol',   minDose: 10,   maxDose: 150  },
+        { drug: 'ketamine',   minDose: 10,   maxDose: 75   },
+        { drug: 'naloxone',   minDose: 0.04, maxDose: 0.4  },
+        { drug: 'flumazenil', minDose: 0.1,  maxDose: 0.5  },
+      ],
+    },
+    safety: { spo2DangerThreshold: 88, moassMinAllowed: 1, maxDangerSeconds: 20 },
+    completeness: { requiredStepFraction: 0.80 },
+  },
+};
+
 
 export const HARD_PARADOXICAL_AGITATION: InteractiveScenario = {
   id: 'hard_paradoxical_agitation',
@@ -192,6 +215,7 @@ export const HARD_PARADOXICAL_AGITATION: InteractiveScenario = {
       'Document as drug sensitivity for all future encounters.',
     ],
   },
+  scoringRubric: HARD_RUBRIC,
 };
 
 export const HARD_LARYNGOSPASM: InteractiveScenario = {
@@ -413,6 +437,7 @@ export const HARD_LARYNGOSPASM: InteractiveScenario = {
       'Always have succinylcholine drawn up for deep sedation airway procedures.',
     ],
   },
+  scoringRubric: HARD_RUBRIC,
 };
 
 export const HARD_LAST_TOXICITY: InteractiveScenario = {
@@ -617,6 +642,7 @@ export const HARD_LAST_TOXICITY: InteractiveScenario = {
       'ACLS modifications: low-dose epi, no vasopressin, continue Intralipid, consider ECMO.',
     ],
   },
+  scoringRubric: HARD_RUBRIC,
 };
 
 export const HARD_BRONCHOSPASM: InteractiveScenario = {
@@ -840,6 +866,7 @@ export const HARD_BRONCHOSPASM: InteractiveScenario = {
       'Abort procedure if bronchospasm is refractory — patient safety over diagnostic yield.',
     ],
   },
+  scoringRubric: HARD_RUBRIC,
 };
 
 export const HARD_HEMORRHAGE: InteractiveScenario = {
@@ -1048,6 +1075,7 @@ export const HARD_HEMORRHAGE: InteractiveScenario = {
       'Tranexamic acid within 3 hours of major hemorrhage reduces mortality — give early.',
     ],
   },
+  scoringRubric: HARD_RUBRIC,
 };
 
 export const PEDS_LARYNGOSPASM_ASA1: InteractiveScenario = {
@@ -1362,6 +1390,7 @@ export const PEDS_LARYNGOSPASM_ASA1: InteractiveScenario = {
       'NPPE is the "second hit" after laryngospasm — monitor before discharge, minimum 2 hours',
     ],
   },
+  scoringRubric: HARD_RUBRIC,
 };
 
 export const HARD_SCENARIOS: InteractiveScenario[] = [

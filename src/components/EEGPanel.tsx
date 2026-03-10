@@ -24,7 +24,7 @@ const SEDATION_STATE_COLORS: Record<string, string> = {
   isoelectric: '#dc2626',
 };
 
-  const EEGPanel: React.FC<EEGPanelProps> = ({ eegState, isRunning: _isRunning }) => {
+  const EEGPanel: React.FC<EEGPanelProps> = React.memo(({ eegState, isRunning: _isRunning }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dsaCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -187,6 +187,6 @@ const SEDATION_STATE_COLORS: Record<string, string> = {
       </div>
     </div>
   );
-};
+});
 
 export default EEGPanel;

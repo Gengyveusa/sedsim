@@ -1,5 +1,5 @@
 import { PKState, Vitals, Patient, MOASSLevel, DrugParams, InterventionType } from '../types';
-import { stepPK } from './pkModel';
+import { stepPK, createInitialPKState } from './pkModel';
 import { combinedEffect, effectToMOASS, hillEffect } from './pdModel';
 import { calculateVitals } from './physiology';
 import { DRUG_DATABASE } from './drugs';
@@ -41,9 +41,20 @@ export function predictForward(
     simPK[name] = { c1: state.c1, c2: state.c2, c3: state.c3, ce: state.ce };
   }
 
+  // Ensure all drugs referenced in infusions are represented in simPK
+  for (const name of Object.keys(infusions)) {
+    if (!simPK[name] && DRUG_DATABASE[name]) {
+      simPK[name] = createInitialPKState();
+    }
+  }
+
   // Apply ghost bolus at t=0
+  // Initialise the drug state if not already present (e.g. fresh simulation)
   if (ghostBolus && DRUG_DATABASE[ghostBolus.drugName]) {
     const drug = DRUG_DATABASE[ghostBolus.drugName];
+    if (!simPK[ghostBolus.drugName]) {
+      simPK[ghostBolus.drugName] = createInitialPKState();
+    }
     simPK[ghostBolus.drugName] = stepPK(
       simPK[ghostBolus.drugName], drug, ghostBolus.dose, 0, 1
     );
@@ -97,3 +108,4 @@ export function predictForward(
 
   return snapshots;
 }
+

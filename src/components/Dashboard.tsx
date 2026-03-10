@@ -16,8 +16,65 @@ import {
 import { getQuestionForEvent, SocraticQuestion } from '../ai/simMasterPrompt';
 import { streamClaude } from '../ai/claudeClient';
 import { buildSimMasterSystemPrompt } from '../ai/simMasterPrompt';
+import { DigitalTwin } from '../engine/digitalTwin';
 
 type AITab = 'eeg' | 'mentor' | 'simmaster' | 'oxyhb' | 'frankstarling' | 'echosim' | 'learn';
+
+// ---------------------------------------------------------------------------
+// CompositeRiskBadge — color-coded badge with hover breakdown tooltip
+// ---------------------------------------------------------------------------
+
+function compositeRiskColor(score: number): { badge: string; label: string } {
+  if (score >= 75) return { badge: 'bg-red-900/70 text-red-300 border-red-500',       label: 'CRITICAL' };
+  if (score >= 50) return { badge: 'bg-orange-900/70 text-orange-300 border-orange-500', label: 'HIGH' };
+  if (score >= 25) return { badge: 'bg-yellow-900/70 text-yellow-300 border-yellow-500', label: 'MODERATE' };
+  return                  { badge: 'bg-green-900/70 text-green-300 border-green-500',  label: 'LOW' };
+}
+
+interface CompositeRiskBadgeProps {
+  digitalTwin: DigitalTwin;
+}
+
+const CompositeRiskBadge: React.FC<CompositeRiskBadgeProps> = ({ digitalTwin }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const { compositeRisk, riskBreakdown } = digitalTwin.predictedOutcome;
+  const { badge, label } = compositeRiskColor(compositeRisk);
+
+  return (
+    <div className="relative">
+      <div
+        className={`flex items-center justify-between px-2 py-1.5 rounded border cursor-help ${badge}`}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        <span className="text-[10px] font-bold tracking-wide">COMPOSITE RISK</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-mono font-bold">{compositeRisk}%</span>
+          <span className="text-[9px] font-semibold opacity-80">{label}</span>
+        </div>
+      </div>
+
+      {showTooltip && (
+        <div className="absolute z-50 bottom-full left-0 right-0 mb-1 p-2 bg-gray-900 border border-gray-600 rounded shadow-xl text-[9px] space-y-1">
+          <div className="text-gray-300 font-bold mb-1">Risk Breakdown</div>
+          <div className="flex justify-between"><span className="text-gray-400">Hypotension</span><span className="text-white">{riskBreakdown.hypotensionComponent}%</span></div>
+          <div className="flex justify-between"><span className="text-gray-400">Desaturation</span><span className="text-white">{riskBreakdown.desaturationComponent}%</span></div>
+          <div className="flex justify-between"><span className="text-gray-400">Arrhythmia</span><span className="text-white">{riskBreakdown.arrhythmiaComponent}%</span></div>
+          <div className="flex justify-between"><span className="text-gray-400">Awareness</span><span className="text-white">{riskBreakdown.awarenessComponent}%</span></div>
+          {riskBreakdown.airwayComponent > 0 && (
+            <div className="flex justify-between"><span className="text-gray-400">Airway (Mallampati)</span><span className="text-white">{riskBreakdown.airwayComponent}%</span></div>
+          )}
+          <div className="border-t border-gray-700 pt-1 mt-1">
+            <div className="flex justify-between"><span className="text-gray-400">ASA {digitalTwin.asa} modifier</span><span className="text-cyan-300">{riskBreakdown.asaModifier}×</span></div>
+            {riskBreakdown.comorbidityAddend > 0 && (
+              <div className="flex justify-between"><span className="text-gray-400">Comorbidity addend</span><span className="text-cyan-300">+{riskBreakdown.comorbidityAddend}</span></div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // SimMasterFeed — live scrolling commentary for the sidebar panel
@@ -344,6 +401,7 @@ export const Dashboard: React.FC = () => {
                 onClick={() => setActiveTab(null)}
                 className="text-gray-400 hover:text-white text-sm px-1"
                 title="Close"
+                aria-label={`Close ${tabs.find(t => t.id === activeTab)?.label ?? ''} panel`}
               >
                 &#x00d7;
               </button>
@@ -356,7 +414,9 @@ export const Dashboard: React.FC = () => {
                   {simState.digitalTwin && (
                     <div className="p-3 border-t border-gray-700 text-[10px]">
                       <h3 className="text-xs font-bold text-white mb-2">Digital Twin &ndash; Risk Metrics</h3>
-                      <div className="space-y-1">
+                      {/* Composite risk badge with hover tooltip */}
+                      <CompositeRiskBadge digitalTwin={simState.digitalTwin} />
+                      <div className="space-y-1 mt-2">
                         <div className="flex justify-between">
                           <span className="text-gray-400">Hypotension Risk</span>
                           <span className={simState.digitalTwin.predictedOutcome.hypotensionRisk > 50 ? 'text-red-400' : simState.digitalTwin.predictedOutcome.hypotensionRisk > 25 ? 'text-yellow-400' : 'text-green-400'}>
@@ -476,11 +536,15 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
         {/* Vertical tab buttons on the right edge */}
-        <div className="pointer-events-auto flex flex-col bg-gray-900/90 border-l border-gray-700">
+        <div className="pointer-events-auto flex flex-col bg-gray-900/90 border-l border-gray-700" role="tablist" aria-label="AI tools and analysis panels" aria-orientation="vertical">
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              role="tab"
               onClick={() => handleTabClick(tab.id)}
+              aria-selected={activeTab === tab.id}
+              aria-label={`${tab.label} panel${activeTab === tab.id ? ', open' : ''}`}
+              aria-expanded={activeTab === tab.id}
               className={`flex flex-col items-center justify-center px-1.5 py-3 transition-colors border-b border-gray-700 ${
                 activeTab === tab.id
                   ? 'bg-blue-900/60 text-blue-400 border-l-2 border-l-blue-400'
@@ -488,7 +552,7 @@ export const Dashboard: React.FC = () => {
               }`}
               title={tab.label}
             >
-              <span className="text-base">{tab.icon}</span>
+              <span className="text-base" aria-hidden="true">{tab.icon}</span>
               <span className="text-[9px] mt-0.5 leading-tight whitespace-nowrap">{tab.label}</span>
             </button>
           ))}

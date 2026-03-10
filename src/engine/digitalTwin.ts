@@ -5,6 +5,24 @@
 import { Patient, PKState, CardiacRhythm } from '../types';
 import { getAclsGuidance } from './cardiacRhythm';
 
+// ASA class multipliers applied to composite risk
+export const ASA_RISK_MODIFIERS: Record<1 | 2 | 3 | 4, number> = {
+  1: 1.0,
+  2: 1.3,
+  3: 1.8,
+  4: 2.5,
+};
+
+export interface RiskBreakdown {
+  hypotensionComponent: number;   // 0-100
+  desaturationComponent: number;  // 0-100
+  awarenessComponent: number;     // 0-100
+  arrhythmiaComponent: number;    // 0-100
+  airwayComponent: number;        // 0-100
+  asaModifier: number;            // e.g. 1.0, 1.3, 1.8, 2.5
+  comorbidityAddend: number;      // e.g. 0.2, 0.35
+}
+
 export interface DigitalTwin extends Patient {
   sensitivityMultiplier: number;
   comorbidities: string[];
@@ -15,6 +33,8 @@ export interface DigitalTwin extends Patient {
     desaturationRisk: number;
     awarenessRisk: number;
     arrhythmiaRisk: number;
+    compositeRisk: number;        // 0-100, ASA+comorbidity adjusted
+    riskBreakdown: RiskBreakdown;
     predictedRhythm: CardiacRhythm;
     aclsGuidance: string[];
   };
@@ -49,6 +69,16 @@ export const createDigitalTwin = (basePatient: Patient): DigitalTwin => {
       desaturationRisk: 0,
       awarenessRisk: 0,
       arrhythmiaRisk: 0,
+      compositeRisk: 0,
+      riskBreakdown: {
+        hypotensionComponent: 0,
+        desaturationComponent: 0,
+        awarenessComponent: 0,
+        arrhythmiaComponent: 0,
+        airwayComponent: 0,
+        asaModifier: ASA_RISK_MODIFIERS[basePatient.asa] ?? 1.0,
+        comorbidityAddend: 0,
+      },
       predictedRhythm: 'normal_sinus',
       aclsGuidance: [],
     },
@@ -124,6 +154,43 @@ export const updateTwin = (
 
   const aclsGuidance = getAclsGuidance(currentRhythm);
 
+  // ── ASA class modifier ──────────────────────────────────────────────────────
+  const asaModifier = ASA_RISK_MODIFIERS[twin.asa as 1 | 2 | 3 | 4] ?? 1.0;
+
+  // ── Comorbidity additive modifiers ──────────────────────────────────────────
+  // Each comorbidity adds to the multiplier (stacks with ASA modifier)
+  const comorbidityAddend =
+    (twin.osa ? 0.2 : 0) +
+    (twin.copd ? 0.15 : 0) +
+    (twin.hepaticImpairment ? 0.2 : 0) +
+    (twin.renalImpairment ? 0.15 : 0);
+
+  // ── Airway component ────────────────────────────────────────────────────────
+  // Mallampati score contributes a baseline airway risk (higher = harder intubation)
+  const airwayComponent = twin.mallampati ? (twin.mallampati - 1) * 8 : 0; // 0, 8, 16, 24
+
+  // ── Composite risk score ────────────────────────────────────────────────────
+  // Weighted average of all raw risk components (before modifier adjustment)
+  const compositeBase =
+    hypotensionRisk * 0.30 +
+    desaturationRisk * 0.30 +
+    arrhythmiaRisk * 0.20 +
+    awarenessRisk * 0.10 +
+    airwayComponent * 0.10;
+
+  const totalModifier = asaModifier + comorbidityAddend;
+  const compositeRisk = Math.min(100, Math.round(compositeBase * totalModifier));
+
+  const riskBreakdown: RiskBreakdown = {
+    hypotensionComponent: Math.round(hypotensionRisk),
+    desaturationComponent: Math.round(desaturationRisk),
+    awarenessComponent: Math.round(awarenessRisk),
+    arrhythmiaComponent: Math.round(arrhythmiaRisk),
+    airwayComponent: Math.round(airwayComponent),
+    asaModifier,
+    comorbidityAddend,
+  };
+
   return {
     ...twin,
     currentCe: newCe,
@@ -133,6 +200,8 @@ export const updateTwin = (
       desaturationRisk: Math.round(desaturationRisk),
       awarenessRisk: Math.round(awarenessRisk),
       arrhythmiaRisk: Math.round(arrhythmiaRisk),
+      compositeRisk,
+      riskBreakdown,
       predictedRhythm: currentRhythm,
       aclsGuidance,
     },

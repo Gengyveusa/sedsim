@@ -12,6 +12,7 @@ import { conductorInstance } from '../engine/conductor/conductorInstance';
 import GhostDosePreview from './GhostDosePreview';
 import { ScenarioPanel } from './ScenarioPanel';
 import ScenarioStepper from './ScenarioStepper';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface MentorChatProps {
   vitals: Vitals;
@@ -48,6 +49,8 @@ const MentorChat: React.FC<MentorChatProps> = ({
   const lastObservationTimeRef = useRef<number>(0);
   const lastAutoObsRef = useRef<{ content: string; time: number }>({ content: '', time: 0 });
   const streamingIdxRef = useRef<number | null>(null);
+
+  const isOnline = useOnlineStatus();
 
   // Scenario Q&A state from store
   const currentQuestion = useAIStore(s => s.currentQuestion);
@@ -420,19 +423,24 @@ const MentorChat: React.FC<MentorChatProps> = ({
 
       {/* Input */}
       <div className="p-3 border-t border-gray-700">
+        {!isOnline && (
+          <p className="text-[10px] text-amber-400 text-center mb-2">
+            📡 Offline — AI responses unavailable
+          </p>
+        )}
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask Millie..."
-            className="flex-1 bg-gray-800 text-white text-xs rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
-            disabled={isThinking}
+            placeholder={isOnline ? 'Ask Millie...' : 'Offline — AI unavailable'}
+            className="flex-1 bg-gray-800 text-white text-xs rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none disabled:opacity-50"
+            disabled={isThinking || !isOnline}
           />
           <button
             onClick={() => handleSend()}
-            disabled={isThinking || !input.trim()}
+            disabled={isThinking || !input.trim() || !isOnline}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white text-xs px-3 py-2 rounded transition-colors"
           >
             {isThinking ? '…' : 'Send'}
