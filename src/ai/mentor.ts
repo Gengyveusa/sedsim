@@ -3,7 +3,7 @@
 // Provides real-time guidance, post-session debrief, and adaptive feedback
 // Uses Claude Opus API with offline KNOWLEDGE_BASE fallback
 
-import { Vitals, LogEntry, MOASSLevel } from '../types';
+import { Vitals, LogEntry, MOASSLevel, AirwayState, CardiacRhythm } from '../types';
 import { EEGState } from '../engine/eegModel';
 import { DigitalTwin } from '../engine/digitalTwin';
 import { streamClaude, offlineFallback, ClaudeContext } from './claudeClient';
@@ -190,6 +190,256 @@ export const generateDebrief = (
 };
 
 export default { generateMentorResponse, generateDebrief, getSuggestedQuestions };
+
+// ---------------------------------------------------------------------------
+// Proactive teaching triggers
+// ---------------------------------------------------------------------------
+
+/** The 8 clinical pattern types that Millie can proactively teach about. */
+export type ProactiveTriggerType =
+  | 'oversedation'
+  | 'respiratory_depression'
+  | 'hemodynamic_instability'
+  | 'drug_interaction'
+  | 'airway_compromise'
+  | 'cardiac_arrest_delayed'
+  | 'incorrect_dosing'
+  | 'missed_reversal';
+
+/**
+ * Cooldown state — maps each trigger type to the timestamp (ms) it last fired.
+ * Pass a mutable object; `checkProactiveTriggers` updates it in-place.
+ */
+export type TriggerCooldowns = Partial<Record<ProactiveTriggerType, number>>;
+
+/** Minimum gap between repeat firings of the same trigger (60 seconds). */
+export const TRIGGER_COOLDOWN_MS = 60_000;
+
+/** Context required by `checkProactiveTriggers`. */
+export interface ProactiveTriggerContext {
+  vitals: Vitals;
+  moass: MOASSLevel;
+  pkStates: Record<string, { ce: number }>;
+  /** Optional EEG state — reserved for future trigger expansion. */
+  eeg?: EEGState;
+  /** Optional digital-twin patient data for dose-checking. */
+  twin?: DigitalTwin;
+  /** Optional airway state for airway-compromise trigger. */
+  airway?: AirwayState;
+  /** Recent event log entries for missed-reversal detection. */
+  eventLog?: LogEntry[];
+  /**
+   * How many continuous seconds the airway has been compromised without any
+   * physical intervention (jaw-thrust, oral airway, etc.).
+   */
+  secondsAirwayCompromisedWithoutIntervention?: number;
+  /**
+   * How many continuous seconds the current arrest rhythm has been active
+   * without a documented ACLS intervention.
+   */
+  secondsWithArrestRhythm?: number;
+  /**
+   * The most recent bolus administered, used to check dose-per-kg validity.
+   * `dose` must be in the drug's native bolus unit (mg for propofol/midazolam,
+   * mcg for fentanyl) so that dose-per-kg comparisons use consistent units.
+   * Set to `null` when no recent bolus is available.
+   */
+  recentBolus?: { drugName: string; dose: number; unit: string } | null;
+}
+
+/**
+ * Evaluate all 8 proactive teaching triggers against the current simulation
+ * state and fire the highest-priority one that is not on cooldown.
+ *
+ * - Updates `cooldowns` in-place when a trigger fires.
+ * - Returns a `MentorMessage` using a Socratic question (not a direct answer),
+ *   or `null` when no trigger condition is met or all matching triggers are
+ *   still within their cooldown window.
+ *
+ * @param context  Current simulation snapshot.
+ * @param cooldowns  Mutable cooldown-state object (persisted by the caller).
+ * @param nowMs  Current wall-clock time in milliseconds (default: Date.now()).
+ */
+export const checkProactiveTriggers = (
+  context: ProactiveTriggerContext,
+  cooldowns: TriggerCooldowns,
+  nowMs: number = Date.now()
+): MentorMessage | null => {
+  const { vitals, moass, pkStates, twin, airway, eventLog = [] } = context;
+
+  const propCe  = pkStates['propofol']?.ce ?? 0;
+  const fentCe  = pkStates['fentanyl']?.ce ?? 0;
+  const midazCe = pkStates['midazolam']?.ce ?? 0;
+
+  const isOnCooldown = (type: ProactiveTriggerType): boolean => {
+    const last = cooldowns[type];
+    return last !== undefined && nowMs - last < TRIGGER_COOLDOWN_MS;
+  };
+
+  const fire = (type: ProactiveTriggerType, content: string): MentorMessage => {
+    cooldowns[type] = nowMs;
+    return { role: 'mentor', content, timestamp: nowMs, confidence: 0.9 };
+  };
+
+  // --- Trigger 1: Oversedation (MOASS 0-1) ---
+  if (moass <= 1 && !isOnCooldown('oversedation')) {
+    return fire(
+      'oversedation',
+      `🔍 MOASS is ${moass}/5 — the patient shows minimal response to stimulation. ` +
+      `What does this level of sedation depth tell you about airway reflex preservation? ` +
+      `Which vital signs or clinical signs would you reassess right now? -- Millie`
+    );
+  }
+
+  // --- Trigger 2: Respiratory depression (RR < 8 or SpO₂ < 90) ---
+  if ((vitals.rr < 8 || vitals.spo2 < 90) && !isOnCooldown('respiratory_depression')) {
+    const detail = vitals.rr < 8
+      ? `respiratory rate of ${vitals.rr}/min`
+      : `SpO₂ of ${vitals.spo2}%`;
+    return fire(
+      'respiratory_depression',
+      `⚠️ I'm noticing a ${detail}. What physiological mechanism links hypnotic and opioid ` +
+      `effect-site concentrations to this finding? What would be your first clinical intervention? -- Millie`
+    );
+  }
+
+  // --- Trigger 3: Hemodynamic instability (SBP < 90 or HR < 50) ---
+  if ((vitals.sbp < 90 || vitals.hr < 50) && !isOnCooldown('hemodynamic_instability')) {
+    const detail = vitals.sbp < 90
+      ? `BP ${vitals.sbp}/${vitals.dbp} mmHg`
+      : `HR ${vitals.hr} bpm`;
+    return fire(
+      'hemodynamic_instability',
+      `⚠️ ${detail} is outside safe parameters. Which drugs currently active have ` +
+      `sympatholytic or vasodilatory properties? How does each one contribute to this hemodynamic picture? -- Millie`
+    );
+  }
+
+  // --- Trigger 4: Drug interaction — propofol + opioid synergy ---
+  if (propCe > 1.5 && fentCe > 0.001 && !isOnCooldown('drug_interaction')) {
+    return fire(
+      'drug_interaction',
+      `💊 Propofol Ce ${propCe.toFixed(1)} mcg/mL and fentanyl Ce ${(fentCe * 1000).toFixed(1)} ng/mL ` +
+      `are both clinically active simultaneously. How do these two agents interact ` +
+      `pharmacodynamically? What does the Bouillon response-surface model predict about their ` +
+      `combined effect on sedation depth and respiratory drive? -- Millie`
+    );
+  }
+
+  // --- Trigger 5: Airway compromise without intervention ---
+  const airwayCompromisedSeconds =
+    context.secondsAirwayCompromisedWithoutIntervention ?? 0;
+  const airwayObstructed =
+    airway !== undefined && airway.obstructionType !== 'none' && airway.intervention === 'none';
+
+  if (
+    (airwayCompromisedSeconds > 30 || airwayObstructed) &&
+    !isOnCooldown('airway_compromise')
+  ) {
+    const detail = airwayCompromisedSeconds > 30
+      ? `been compromised for over ${Math.round(airwayCompromisedSeconds)} seconds`
+      : `showing ${airway?.obstructionType} obstruction`;
+    return fire(
+      'airway_compromise',
+      `🫁 The airway has ${detail} without a physical intervention. ` +
+      `What non-pharmacological maneuvers are available to you right now? ` +
+      `At what point would you escalate to a definitive airway device? -- Millie`
+    );
+  }
+
+  // --- Trigger 6: Delayed recognition of cardiac arrest rhythm ---
+  const arrestRhythms: CardiacRhythm[] = [
+    'ventricular_fibrillation',
+    'asystole',
+    'pea',
+    'ventricular_tachycardia',
+  ];
+  const currentRhythm = vitals.rhythm;
+  const arrestDelaySeconds = context.secondsWithArrestRhythm ?? 0;
+
+  if (
+    currentRhythm !== undefined &&
+    arrestRhythms.includes(currentRhythm) &&
+    arrestDelaySeconds > 10 &&
+    !isOnCooldown('cardiac_arrest_delayed')
+  ) {
+    const rhythmLabel = currentRhythm.replace(/_/g, ' ');
+    return fire(
+      'cardiac_arrest_delayed',
+      `🚨 The monitor has been showing ${rhythmLabel} for ${Math.round(arrestDelaySeconds)} seconds. ` +
+      `Is this a shockable or non-shockable rhythm? ` +
+      `What does the ACLS algorithm call for as the immediate next step? -- Millie`
+    );
+  }
+
+  // --- Trigger 7: Incorrect drug/dose for patient weight/age ---
+  if (context.recentBolus && twin && !isOnCooldown('incorrect_dosing')) {
+    const { drugName, dose, unit } = context.recentBolus;
+    const weight = twin.weight;
+    const age    = twin.age;
+    // `dosePerKg` uses the drug's native unit (mg/kg for propofol/midazolam, mcg/kg for fentanyl)
+    const dosePerKg = dose / weight;
+    let isHighDose   = false;
+    let safeDoseHint = '';
+
+    if (drugName === 'propofol' && dosePerKg > 1.5) {
+      isHighDose   = true;
+      safeDoseHint = 'typical induction dose is 1–2 mg/kg; elderly/ASA III–IV patients often need 30–50% less';
+    } else if (drugName === 'fentanyl' && dosePerKg > 2.0) {
+      // fentanyl dose is always in mcg in this codebase, so dosePerKg is mcg/kg
+      isHighDose   = true;
+      safeDoseHint = 'typical procedural bolus is 0.5–2 mcg/kg titrated to effect';
+    } else if (drugName === 'midazolam' && dosePerKg > 0.05) {
+      isHighDose   = true;
+      safeDoseHint = 'typical dose is 0.02–0.04 mg/kg; reduce by 30% in elderly or debilitated patients';
+    }
+
+    if (isHighDose) {
+      const ageNote = age > 65 ? `, elderly (${age} yo)` : '';
+      return fire(
+        'incorrect_dosing',
+        `💉 That bolus of ${drugName} calculates to ${dosePerKg.toFixed(2)} ${unit}/kg ` +
+        `for a ${weight} kg${ageNote} patient — above typical ranges (${safeDoseHint}). ` +
+        `How does the Eleveld model account for age and weight when predicting effect-site ` +
+        `concentration? What patient factors lower the safe induction dose? -- Millie`
+      );
+    }
+  }
+
+  // --- Trigger 8: Missed reversal agent opportunity ---
+  // 8a: Opioid-driven respiratory depression without naloxone
+  if (fentCe > 0.002 && vitals.rr < 8 && !isOnCooldown('missed_reversal')) {
+    const naloxoneGiven = eventLog.some(e =>
+      e.message.toLowerCase().includes('naloxone')
+    );
+    if (!naloxoneGiven) {
+      return fire(
+        'missed_reversal',
+        `💊 Fentanyl Ce is ${(fentCe * 1000).toFixed(1)} ng/mL with RR ${vitals.rr}/min. ` +
+        `Is a reversal agent appropriate here? What is the mechanism of naloxone, ` +
+        `and what are the risks of administering a full reversal dose in an opioid-tolerant patient? -- Millie`
+      );
+    }
+  }
+
+  // 8b: Benzodiazepine-driven deep sedation without flumazenil
+  if (midazCe > 0.1 && moass <= 1 && !isOnCooldown('missed_reversal')) {
+    const flumazenilGiven = eventLog.some(e =>
+      e.message.toLowerCase().includes('flumazenil')
+    );
+    if (!flumazenilGiven) {
+      return fire(
+        'missed_reversal',
+        `💊 Midazolam Ce is ${midazCe.toFixed(2)} mcg/mL with deep sedation (MOASS ${moass}/5). ` +
+        `Would flumazenil be appropriate in this scenario? ` +
+        `What are the indications, contraindications, and duration-of-action considerations ` +
+        `for benzodiazepine reversal? -- Millie`
+      );
+    }
+  }
+
+  return null;
+};
 
 // Auto-generate a contextual observation based on current simulation state.
 // Called periodically (e.g. every 30 sim-seconds) to produce proactive mentor notes.
