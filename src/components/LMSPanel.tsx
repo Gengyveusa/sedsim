@@ -232,10 +232,6 @@ function LMSPanelContent() {
   );
 }
 
-// ─── LRSConfig type re-export for inline cast ──────────────────────────────────
-
-import type { LRSConfig } from '../lms/xapiClient';
-
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export default function LMSPanel() {
