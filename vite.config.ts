@@ -11,8 +11,8 @@ export default defineConfig({
     host: true,
   },
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    globals: false,
+    globals: true,
   },
 });
