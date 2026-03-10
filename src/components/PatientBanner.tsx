@@ -19,34 +19,34 @@ export default function PatientBanner() {
   };
 
   return (
-    <div className="bg-sim-panel border-b border-gray-700 px-4 py-2 flex items-center justify-between">
-      <div className="flex items-center gap-6">
-        <h1 className="text-lg font-bold text-sim-accent">SedSim</h1>
-        <div className="text-sm text-gray-300">
-          <span className="font-medium">{patient.age}yo {patient.sex}</span>
-          <span className="mx-2">|</span>
-          <span>{patient.weight}kg / {patient.height}cm</span>
-          <span className="mx-2">|</span>
-          <span>ASA {patient.asa}</span>
+    <div className="px-3 py-2 flex items-center justify-between min-w-0">
+      <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+        <h1 className="text-base font-bold text-sim-accent shrink-0">SedSim</h1>
+        <div className="text-xs text-gray-300 hidden sm:flex items-center gap-1 truncate">
+          <span className="font-medium whitespace-nowrap">{patient.age}yo {patient.sex}</span>
+          <span className="mx-1 text-gray-600">|</span>
+          <span className="whitespace-nowrap">{patient.weight}kg / {patient.height}cm</span>
+          <span className="mx-1 text-gray-600 hidden md:inline">|</span>
+          <span className="hidden md:inline">ASA {patient.asa}</span>
           {trueNorth.isLocked && (
-            <span className="ml-2 text-xs text-cyan-400 font-semibold">🔒 {trueNorth.label}</span>
+            <span className="ml-1 text-xs text-cyan-400 font-semibold hidden md:inline">🔒 {trueNorth.label}</span>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3 shrink-0">
         {/* MOASS Badge */}
-        <div className={`px-3 py-1 rounded-full text-sm font-bold ${moassColors[moass]}`}>
-          MOASS {moass} - {moassLabel(moass)}
+        <div className={`px-2 py-0.5 rounded-full text-xs font-bold ${moassColors[moass]}`}>
+          <span className="hidden sm:inline">MOASS </span>{moass}<span className="hidden sm:inline"> - {moassLabel(moass)}</span>
         </div>
 
         {/* Timer */}
-        <div className="text-2xl font-mono font-bold">
+        <div className="text-xl font-mono font-bold">
           {timeStr}
         </div>
 
         {/* Status indicator */}
-        <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+        <div className={`w-2.5 h-2.5 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
       </div>
     </div>
   );

@@ -11,6 +11,23 @@
 html, body {
   height: 100%;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Prevent text selection flash on touch double-tap */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent callout on long-press for interactive elements */
+button, a, input, select {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch-friendly tap targets (44px min per Apple HIG / WCAG) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #root {

@@ -71,12 +71,12 @@ export default  function ControlBar() {
   };
 
   return (
-    <div className="bg-sim-panel border-b border-gray-700 px-4 py-2 flex items-center gap-4">
+    <div className="bg-sim-panel border-t border-gray-700 px-3 py-2 flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-2">
         <button
           data-sim-id="play-button"
           onClick={handlePlayPause}
-          className={`px-4 py-1.5 rounded font-medium text-sm ${
+          className={`px-4 min-h-[44px] rounded font-medium text-sm ${
             isRunning
               ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
               : 'bg-green-600 hover:bg-green-700 text-white'
@@ -87,20 +87,20 @@ export default  function ControlBar() {
         <button
           data-sim-id="reset-button"
           onClick={handleReset}
-          className="px-4 py-1.5 rounded font-medium text-sm bg-red-600 hover:bg-red-700 text-white"
+          className="px-4 min-h-[44px] rounded font-medium text-sm bg-red-600 hover:bg-red-700 text-white"
         >
           Reset
         </button>
       </div>
 
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-gray-400">Speed:</span>
+      <div className="flex items-center gap-1.5 text-sm flex-wrap">
+        <span className="text-gray-400 text-xs">Speed:</span>
         {SPEED_OPTIONS.map((s) => (
           <button
             key={s}
             data-sim-id={`speed-${s}x`}
             onClick={() => setSpeed(s)}
-            className={`px-2 py-1 rounded text-xs ${
+            className={`px-2 min-h-[44px] rounded text-xs ${
               speedMultiplier === s
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -112,12 +112,12 @@ export default  function ControlBar() {
       </div>
 
       {/* Audio controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           data-sim-id="mute-button"
           onClick={handleMuteToggle}
           title={isMuted ? 'Unmute audio' : 'Mute audio'}
-          className={`px-2 py-1.5 rounded text-sm font-medium transition-colors ${
+          className={`px-2 min-h-[44px] rounded text-sm font-medium transition-colors ${
             isMuted
               ? 'bg-gray-700 text-gray-400 hover:bg-gray-600'
               : 'bg-gray-700 text-white hover:bg-gray-600'
@@ -129,7 +129,7 @@ export default  function ControlBar() {
           data-sim-id="silence-alarms-button"
           onClick={handleSilenceAlarms}
           title="Silence alarms for 60 seconds"
-          className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+          className={`px-2 min-h-[44px] rounded text-xs font-medium transition-colors ${
             silenceRemaining > 0
               ? 'bg-amber-700 text-amber-200'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -141,7 +141,7 @@ export default  function ControlBar() {
           data-sim-id="breath-sounds-button"
           onClick={handleBreathToggle}
           title={breathEnabled ? 'Disable breath sounds' : 'Enable breath sounds (off by default)'}
-          className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+          className={`px-2 min-h-[44px] rounded text-xs font-medium transition-colors ${
             breathEnabled
               ? 'bg-teal-700 text-teal-200 hover:bg-teal-600'
               : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
@@ -153,7 +153,7 @@ export default  function ControlBar() {
           data-sim-id="heart-sounds-button"
           onClick={handleHeartToggle}
           title={heartEnabled ? 'Disable heart sounds' : 'Enable heart sounds (off by default)'}
-          className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+          className={`px-2 min-h-[44px] rounded text-xs font-medium transition-colors ${
             heartEnabled
               ? 'bg-rose-700 text-rose-200 hover:bg-rose-600'
               : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
@@ -163,8 +163,8 @@ export default  function ControlBar() {
         </button>
       </div>
 
-      <div className="ml-auto flex items-center gap-4 text-sm">
-        <div className="text-gray-300">
+      <div className="ml-auto flex items-center gap-3 text-sm">
+        <div className="text-gray-300 hidden sm:block">
           <span className="text-gray-500">Elapsed: </span>
           <span className="font-mono text-lg">{formatTime(elapsedSeconds)}</span>
         </div>
