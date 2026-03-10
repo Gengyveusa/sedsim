@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './LandingPage';
+import './i18n';
 import './index.css';
 
 const App = lazy(() => import('./App'));

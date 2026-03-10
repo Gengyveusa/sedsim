@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import useSimStore from '../store/useSimStore';
 
 const severityStyles: Record<string, string> = {
@@ -8,6 +9,7 @@ const severityStyles: Record<string, string> = {
 };
 
 export default function EventLog() {
+  const { t } = useTranslation();
   const { eventLog } = useSimStore();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -23,10 +25,10 @@ export default function EventLog() {
 
   return (
     <div data-region="eventlog" className="flex-1 bg-sim-panel overflow-hidden flex flex-col">
-      <h3 className="text-xs text-gray-400 uppercase mb-2 px-3 pt-3">Event Log</h3>
+      <h3 className="text-xs text-gray-400 uppercase mb-2 px-3 pt-3">{t('eventLog.title')}</h3>
       <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
         {eventLog.length === 0 ? (
-          <p className="text-gray-500 text-sm">No events yet</p>
+          <p className="text-gray-500 text-sm">{t('eventLog.noEvents')}</p>
         ) : (
           eventLog.map((entry, i) => (
             <div

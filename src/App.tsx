@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import useSimStore from './store/useSimStore';
 import useAIStore from './store/useAIStore';
 import PatientBanner from './components/PatientBanner';
@@ -18,6 +19,7 @@ import SimMasterOverlay from './components/SimMasterOverlay';
 import { Dashboard } from './components/Dashboard';
 
 export default function App() {
+  const { t } = useTranslation();
   const { isRunning, speedMultiplier, tick, trendData } = useSimStore();
   const [trendsExpanded, setTrendsExpanded] = useState(false);
   const [airwayExpanded, setAirwayExpanded] = useState(false);
@@ -54,10 +56,10 @@ export default function App() {
             <div className="border border-gray-700 rounded p-3 bg-gray-800/50">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-base">{"\ud83c\udfaf"}</span>
-                <span className="text-sm font-bold text-white">SimMaster</span>
+                <span className="text-sm font-bold text-white">{t('app.simmaster.title')}</span>
               </div>
               <p className="text-xs text-gray-400 mb-3">
-                Proactive AI observer that highlights critical events on screen in real-time.
+                {t('app.simmaster.description')}
               </p>
               <button
                 onClick={() => {
@@ -70,11 +72,11 @@ export default function App() {
                     : 'bg-purple-600 hover:bg-purple-500'
                 }`}
               >
-                {simMasterEnabled ? 'Disable SimMaster' : 'Enable SimMaster'}
+                {simMasterEnabled ? t('app.simmaster.disable') : t('app.simmaster.enable')}
               </button>
               {simMasterEnabled && (
                 <p className="text-[10px] text-green-400 mt-2 animate-pulse">
-                  SimMaster is actively observing the simulation...
+                  {t('app.simmaster.active')}
                 </p>
               )}
             </div>
@@ -100,19 +102,19 @@ export default function App() {
               <button
                 onClick={() => setAirwayExpanded(true)}
                 className="h-full w-10 flex items-center justify-center bg-gray-800/60 hover:bg-gray-700/80 transition-colors group"
-                title="Show Airway & O\u2082"
+                title={t('app.simmaster.expandAirway')}
               >
-                <span className="text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase" style={{ writingMode: 'vertical-rl' as const, textOrientation: 'mixed' as const }}>Airway</span>
+                <span className="text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase" style={{ writingMode: 'vertical-rl' as const, textOrientation: 'mixed' as const }}>{t('app.simmaster.airwayLabel')}</span>
               </button>
             )}
             {airwayExpanded && (
               <div className="flex flex-col h-full bg-sim-panel">
                 <div className="flex items-center justify-between px-2 py-1 border-b border-gray-700">
-                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Airway & O\u2082</span>
+                  <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">{t('app.simmaster.airwayTitle')}</span>
                   <button
                     onClick={() => setAirwayExpanded(false)}
                     className="text-gray-400 hover:text-white text-sm px-1"
-                    title="Collapse Airway"
+                    title={t('app.simmaster.collapseAirway')}
                   >
                     &laquo;
                   </button>
@@ -137,20 +139,20 @@ export default function App() {
                 <button
                   onClick={() => setTrendsExpanded(true)}
                   className="h-full w-10 flex items-center justify-center bg-gray-800/60 hover:bg-gray-700/80 transition-colors group"
-                  title="Show Trend Graphs"
+                  title={t('app.simmaster.expandTrends')}
                 >
-                  <span className="text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase" style={{ writingMode: 'vertical-rl' as const, textOrientation: 'mixed' as const }}>Trends</span>
+                  <span className="text-xs text-gray-400 group-hover:text-cyan-400 whitespace-nowrap tracking-wider uppercase" style={{ writingMode: 'vertical-rl' as const, textOrientation: 'mixed' as const }}>{t('app.simmaster.trendsLabel')}</span>
                 </button>
               )}
               {/* Expanded: full trend panel */}
               {trendsExpanded && (
                 <div className="flex flex-col h-full bg-sim-panel">
                   <div className="flex items-center justify-between px-2 py-1 border-b border-gray-700">
-                    <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Trend Graphs</span>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">{t('app.simmaster.trendsTitle')}</span>
                     <button
                       onClick={() => setTrendsExpanded(false)}
                       className="text-gray-400 hover:text-white text-sm px-1"
-                      title="Collapse Trends"
+                      title={t('app.simmaster.collapseTrends')}
                     >
                       &raquo;
                     </button>

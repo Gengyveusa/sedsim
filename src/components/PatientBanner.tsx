@@ -1,7 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import useSimStore from '../store/useSimStore';
-import { moassLabel } from '../engine/pdModel';
+import LanguageSelector from './LanguageSelector';
 
 export default function PatientBanner() {
+  const { t } = useTranslation();
   const { trueNorth, elapsedSeconds, moass, isRunning } = useSimStore();
   const { patient } = trueNorth;
 
@@ -21,13 +23,13 @@ export default function PatientBanner() {
   return (
     <div className="bg-sim-panel border-b border-gray-700 px-4 py-2 flex items-center justify-between">
       <div className="flex items-center gap-6">
-        <h1 className="text-lg font-bold text-sim-accent">SedSim</h1>
+        <h1 className="text-lg font-bold text-sim-accent">{t('patientBanner.title')}</h1>
         <div className="text-sm text-gray-300">
           <span className="font-medium">{patient.age}yo {patient.sex}</span>
           <span className="mx-2">|</span>
           <span>{patient.weight}kg / {patient.height}cm</span>
           <span className="mx-2">|</span>
-          <span>ASA {patient.asa}</span>
+          <span>{t('patientBanner.asa', { asa: patient.asa })}</span>
           {trueNorth.isLocked && (
             <span className="ml-2 text-xs text-cyan-400 font-semibold">🔒 {trueNorth.label}</span>
           )}
@@ -37,13 +39,16 @@ export default function PatientBanner() {
       <div className="flex items-center gap-6">
         {/* MOASS Badge */}
         <div className={`px-3 py-1 rounded-full text-sm font-bold ${moassColors[moass]}`}>
-          MOASS {moass} - {moassLabel(moass)}
+          {t('patientBanner.moass', { level: moass, label: t(`moass.${moass}`) })}
         </div>
 
         {/* Timer */}
         <div className="text-2xl font-mono font-bold">
           {timeStr}
         </div>
+
+        {/* Language Selector */}
+        <LanguageSelector />
 
         {/* Status indicator */}
         <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />

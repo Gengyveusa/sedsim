@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
   import { DRUG_LIST, LA_DRUG_KEYS } from '../engine/drugs';
@@ -18,6 +19,7 @@ function CompactDrugCard({ drug, scenarioLocked, isUnlocked, scenarioHintRange }
   isUnlocked: boolean;
   scenarioHintRange?: [number, number];
 }) {
+  const { t } = useTranslation();
   const { administerBolus, startInfusion, stopInfusion, infusions, pkStates } = useSimStore();
   const [showCustom, setShowCustom] = useState(false);
   const [customDose, setCustomDose] = useState('');
@@ -61,7 +63,7 @@ function CompactDrugCard({ drug, scenarioLocked, isUnlocked, scenarioHintRange }
           onClick={() => setShowCustom(!showCustom)}
           disabled={buttonsDisabled}
           className="text-gray-500 hover:text-white text-xs px-1 disabled:cursor-not-allowed"
-          title="Custom dose / Infusion"
+          title={t('drugs.customDoseTitle')}
         >
           {showCustom ? '\u25B2' : '\u2699'}
         </button>
@@ -88,7 +90,7 @@ function CompactDrugCard({ drug, scenarioLocked, isUnlocked, scenarioHintRange }
         <div className="px-2 pb-1.5 space-y-1" style={{ background: 'rgba(0,0,0,0.2)' }}>
           {/* Custom bolus */}
           <div className="flex gap-1 items-center">
-            <span className="text-xs text-gray-500 w-12">Bolus</span>
+            <span className="text-xs text-gray-500 w-12">{t('common.bolus')}</span>
             <input
               type="number"
               value={customDose}
@@ -101,11 +103,11 @@ function CompactDrugCard({ drug, scenarioLocked, isUnlocked, scenarioHintRange }
               onClick={() => { if (customDose) { administerBolus(drugKey, Number(customDose)); setCustomDose(''); } }}
               className="px-2 py-0.5 rounded text-xs font-bold"
               style={{ background: `${color}33`, color, border: `1px solid ${color}` }}
-            >Push</button>
+            >{t('common.push')}</button>
           </div>
           {/* Infusion */}
           <div className="flex gap-1 items-center">
-            <span className="text-xs text-gray-500 w-12">Infuse</span>
+            <span className="text-xs text-gray-500 w-12">{t('common.infuse')}</span>
             <input
               type="number"
               value={infRate}
@@ -118,12 +120,12 @@ function CompactDrugCard({ drug, scenarioLocked, isUnlocked, scenarioHintRange }
               <button
                 onClick={() => { if (infRate) startInfusion(drugKey, Number(infRate)); }}
                 className="px-2 py-0.5 bg-green-800 hover:bg-green-700 rounded text-xs"
-              >Start</button>
+              >{t('common.start')}</button>
             ) : (
               <button
                 onClick={() => stopInfusion(drugKey)}
                 className="px-2 py-0.5 bg-red-800 hover:bg-red-700 rounded text-xs"
-              >Stop</button>
+              >{t('common.stop')}</button>
             )}
           </div>
         </div>
@@ -139,6 +141,7 @@ function drugMatchesProtocol(drugKey: string, protocolName: string): boolean {
 }
 
 export default function DrugPanel() {
+  const { t } = useTranslation();
   const { isScenarioActive, scenarioDrugProtocols } = useSimStore();
   const { unlockedDrug } = useAIStore();
 
@@ -149,11 +152,11 @@ export default function DrugPanel() {
   return (
     <div data-region="drugs">
       <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">
-        Drugs
+        {t('drugs.title')}
       </div>
       {isScenarioActive && (
         <div className="mb-1 px-2 py-1 rounded text-xs text-cyan-300 bg-cyan-900/40 border border-cyan-700/50">
-          Scenario Mode — drugs controlled by Millie
+          {t('drugs.scenarioMode')}
         </div>
       )}
       {filteredDrugs.map(drug => {
