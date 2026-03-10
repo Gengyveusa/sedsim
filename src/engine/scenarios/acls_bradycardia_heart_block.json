@@ -1,0 +1,218 @@
+{
+  "id": "acls_bradycardia_heart_block",
+  "title": "ACLS – Symptomatic Bradycardia and High-Degree Heart Block",
+  "description": "A patient develops symptomatic bradycardia with complete heart block during a procedure. Practise the ACLS bradycardia algorithm, atropine dosing, transcutaneous pacing, and understanding the causes and classification of heart block.",
+  "tags": ["ACLS", "bradycardia", "heart block", "atropine", "transcutaneous pacing", "transvenous pacing", "advanced"],
+  "patient": { "archetypeId": "adult_cardiac" },
+  "learningObjectives": [
+    "Identify symptomatic bradycardia requiring intervention",
+    "Apply the ACLS bradycardia algorithm (atropine → pacing → vasopressors)",
+    "Administer atropine at the correct dose and understand its limitations",
+    "Perform transcutaneous pacing correctly and manage patient discomfort",
+    "Recognise complete (third-degree) heart block on the ECG and understand its clinical significance"
+  ],
+  "estimatedDurationSec": 540,
+  "phases": [
+    { "id": "pre",          "label": "Scene Assessment",   "order": 1 },
+    { "id": "induction",    "label": "Initial Management", "order": 2 },
+    { "id": "maintenance",  "label": "Escalation",         "order": 3 },
+    { "id": "complication", "label": "Pacing",             "order": 4 },
+    { "id": "recovery",     "label": "Stabilisation",      "order": 5 },
+    { "id": "debrief",      "label": "Debrief",            "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_recognition",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "A 74-year-old male who received IV contrast for CT angiography develops sudden HR 34 bpm (regular, wide complex QRS, no relation to P waves). BP 72/44. He is diaphoretic, confused, and complaining of chest pain. This rhythm is symptomatic. Which ACLS algorithm applies?",
+      "options": [
+        { "id": "alg_brady",  "label": "Symptomatic bradycardia algorithm",               "isCorrect": true  },
+        { "id": "alg_cardiac","label": "Cardiac arrest algorithm – pulseless",            "isCorrect": false },
+        { "id": "alg_tachy",  "label": "Tachycardia algorithm",                           "isCorrect": false },
+        { "id": "alg_watch",  "label": "Watchful waiting – bradycardia may resolve spontaneously", "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! HR 34 with hypotension, chest pain, and confusion constitutes symptomatic bradycardia. This requires the ACLS bradycardia algorithm.",
+        "The patient is haemodynamically unstable but has a pulse (BP 72/44). This is NOT cardiac arrest – do not use the arrest algorithm.",
+        "HR 34 is bradycardia, not tachycardia.",
+        "Symptomatic bradycardia with haemodynamic compromise (hypotension, chest pain, altered mental status) requires immediate intervention."
+      ],
+      "simActions": [
+        { "type": "set_rhythm", "payload": { "rhythm": "complete_heart_block" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_recognition", "toStateId": "state_heart_block_id", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_brady_algorithm",
+            "description": "Correctly identifies symptomatic bradycardia algorithm",
+            "weight": 10,
+            "evaluationHint": "Patient selected alg_brady option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_heart_block_id",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "The monitor shows: regular P waves at 90/min, regular wide QRS at 34/min. There is NO consistent relationship between P waves and QRS complexes. What degree of heart block is this?",
+      "options": [
+        { "id": "hb3",     "label": "Third-degree (complete) heart block – atria and ventricles beat independently", "isCorrect": true  },
+        { "id": "hb2_m2",  "label": "Second-degree Mobitz Type II – regular PR with random dropped beats",           "isCorrect": false },
+        { "id": "hb2_m1",  "label": "Second-degree Mobitz Type I (Wenckebach) – progressive PR prolongation",       "isCorrect": false },
+        { "id": "hb1",     "label": "First-degree heart block – prolonged but consistent PR interval",               "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! No consistent P-QRS relationship = complete (third-degree) AV block. Atria and ventricles are paced by independent pacemakers (sinus and junctional/ventricular escape).",
+        "Mobitz II has consistent PR intervals with sudden dropped beats. There is no PR interval relationship here.",
+        "Wenckebach has progressive PR prolongation until a beat drops. This has NO P-R relationship at all.",
+        "First-degree block has a prolonged but CONSISTENT PR interval. This ECG shows complete AV dissociation."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_heart_block_id", "toStateId": "state_atropine", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_3rd_degree",
+            "description": "Correctly identifies third-degree (complete) heart block",
+            "weight": 15,
+            "evaluationHint": "Patient selected hb3 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_atropine",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "Complete heart block confirmed, patient symptomatic. What is the FIRST pharmacological treatment per the ACLS bradycardia algorithm?",
+      "options": [
+        { "id": "drug_atrop",  "label": "Atropine 1 mg IV, may repeat every 3–5 min (max 3 mg total)", "isCorrect": true  },
+        { "id": "drug_epi",    "label": "Epinephrine 1 mg IV bolus",                                    "isCorrect": false },
+        { "id": "drug_amio",   "label": "Amiodarone 300 mg IV",                                         "isCorrect": false },
+        { "id": "drug_adenosine","label": "Adenosine 6 mg IV rapid push",                               "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Atropine 1 mg IV is first-line for symptomatic bradycardia. Repeat every 3–5 min up to maximum 3 mg. Note: atropine is often ineffective for complete heart block (below-bundle block).",
+        "Epinephrine 2–10 mcg/min infusion is a second-line option when atropine and pacing fail — not first-line.",
+        "Amiodarone is for tachyarrhythmias, not bradycardia.",
+        "Adenosine blocks AV conduction and would WORSEN this bradycardia — absolutely contraindicated."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "atropine", "doseMg": 1.0, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_atropine", "toStateId": "state_pacing", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_atropine_first",
+            "description": "Correctly gives atropine 1 mg IV as first-line bradycardia treatment",
+            "weight": 15,
+            "evaluationHint": "Patient selected drug_atrop option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_pacing",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Atropine given. HR unchanged at 34 bpm. BP 70/42. Patient deteriorating. Atropine is typically ineffective for complete (infranodal) heart block. What is the next step?",
+      "options": [
+        { "id": "pace_tcp",    "label": "Transcutaneous pacing (TCP) immediately + analgesia/sedation for discomfort", "isCorrect": true  },
+        { "id": "pace_atrop2", "label": "Give a second dose of atropine 2 mg IV and wait 10 minutes",                  "isCorrect": false },
+        { "id": "pace_tvp",    "label": "Emergency transvenous pacing as first escalation after atropine",             "isCorrect": false },
+        { "id": "pace_defib",  "label": "Defibrillate at 200 J to reset the conduction system",                       "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! TCP is the bridge therapy for haemodynamically unstable bradycardia refractory to atropine. TCP is painful — give analgesia/sedation (morphine/midazolam) concurrently. Arrange transvenous pacing (TVP) as definitive therapy.",
+        "Atropine will not help complete heart block (infranodal block). A second atropine dose delays definitive therapy.",
+        "TVP is definitive but requires fluoroscopic guidance and time to set up. TCP is the immediate bridge.",
+        "Defibrillation is for ventricular fibrillation/pulseless VTach, not bradycardia with a pulse."
+      ],
+      "simActions": [
+        { "type": "apply_stimulus", "payload": { "stimulusType": "transcutaneous_pacing", "rate": 70, "mA": 60 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_pacing", "toStateId": "state_capture", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_tcp",
+            "description": "Correctly escalates to transcutaneous pacing with analgesia",
+            "weight": 20,
+            "evaluationHint": "Patient selected pace_tcp option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_capture",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "TCP initiated at 70/min, 60 mA. How do you confirm ELECTRICAL capture on the monitor?",
+      "options": [
+        { "id": "cap_ecg_pulse", "label": "A pacing spike followed by a wide QRS complex AND palpable pulse with each spike", "isCorrect": true  },
+        { "id": "cap_ecg_only",  "label": "A pacing spike followed by any QRS-like deflection (electrical capture alone)", "isCorrect": false },
+        { "id": "cap_bp",        "label": "BP normalisation to > 100 systolic is sufficient confirmation",                  "isCorrect": false },
+        { "id": "cap_rate",      "label": "HR displaying 70 on the monitor indicates capture",                              "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Electrical capture = pacing spike followed by wide QRS. Mechanical capture = palpable pulse with each QRS. Both must be confirmed. Rate display alone may show artifact.",
+        "Electrical capture alone is necessary but not sufficient. Mechanical capture (palpable pulse) must also be confirmed to ensure effective cardiac output.",
+        "BP improvement follows successful mechanical capture, but confirmation of capture comes from ECG + pulse assessment.",
+        "The monitor displaying '70' reflects the set rate, not actual captured beats. The ECG and pulse confirm capture."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_capture", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_capture_confirm",
+            "description": "Correctly confirms both electrical and mechanical capture during TCP",
+            "weight": 15,
+            "evaluationHint": "Patient selected cap_ecg_pulse option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• Symptomatic bradycardia: atropine 1 mg IV first (max 3 mg)\n• Atropine often ineffective for complete (infranodal) heart block\n• TCP is the bridge: pacing spike + wide QRS + palpable pulse = capture confirmed\n• Adenosine is absolutely contraindicated in bradycardia (worsens AV block)\n• Arrange transvenous pacing as definitive therapy after TCP stabilisation",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}

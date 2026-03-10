@@ -1,0 +1,298 @@
+{
+  "id": "acls_vfib_arrest",
+  "title": "ACLS – Ventricular Fibrillation Cardiac Arrest",
+  "description": "A witnessed in-hospital cardiac arrest presenting with ventricular fibrillation. Practise the full ACLS shockable rhythm algorithm: CPR, early defibrillation, epinephrine, amiodarone, and post-ROSC management.",
+  "tags": ["ACLS", "VFib", "shockable rhythm", "cardiac arrest", "defibrillation", "advanced"],
+  "patient": { "archetypeId": "adult_cardiac_arrest" },
+  "learningObjectives": [
+    "Recognise ventricular fibrillation on the ECG monitor",
+    "Execute the ACLS shockable rhythm algorithm (CPR → defibrillate → epinephrine → amiodarone)",
+    "Deliver a safe, correctly dosed unsynchronised shock",
+    "Administer epinephrine 1 mg IV every 3–5 minutes during pulseless arrest",
+    "Administer amiodarone 300 mg IV for refractory VFib after the third shock",
+    "Identify signs of ROSC and transition to post-cardiac-arrest care"
+  ],
+  "estimatedDurationSec": 720,
+  "phases": [
+    { "id": "pre",          "label": "Scene Assessment",     "order": 1 },
+    { "id": "induction",    "label": "Initial Response",     "order": 2 },
+    { "id": "maintenance",  "label": "Ongoing Resuscitation","order": 3 },
+    { "id": "complication", "label": "Refractory VFib",      "order": 4 },
+    { "id": "recovery",     "label": "ROSC",                 "order": 5 },
+    { "id": "debrief",      "label": "Debrief",              "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_recognition",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "A 58-year-old male collapses in the cardiac step-down unit. Staff call out – the patient is unresponsive. You arrive in seconds. Monitor shows a chaotic, high-amplitude waveform. The patient has no palpable carotid pulse. What is the FIRST action?",
+      "options": [
+        { "id": "r_cpr",    "label": "Start CPR immediately and call for the crash cart", "isCorrect": true  },
+        { "id": "r_rhythm", "label": "Study the ECG waveform for 30 seconds before acting", "isCorrect": false },
+        { "id": "r_epi",    "label": "Give epinephrine 1 mg IV before starting CPR",       "isCorrect": false },
+        { "id": "r_shock",  "label": "Charge the defibrillator before beginning CPR",      "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! CPR must begin immediately. Every 2-minute delay without compressions reduces survival by 10–12%.",
+        "Incorrect – waveform identification is secondary to immediate CPR when the patient is pulseless.",
+        "Incorrect – epinephrine is given after the first shock, not before beginning CPR.",
+        "Incorrect – defibrillation is important, but high-quality CPR takes priority while the defibrillator is being charged."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_recognition", "toStateId": "state_rhythm_id", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_cpr_first",
+            "description": "Immediately initiates CPR on pulseless patient",
+            "weight": 15,
+            "evaluationHint": "Patient selected r_cpr option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_rhythm_id",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "CPR is underway. The defibrillator pads are applied. You pause compressions for a 2-second rhythm check. The monitor shows a chaotic, high-amplitude waveform with no discernible QRS complexes. What rhythm is this?",
+      "options": [
+        { "id": "rh_vfib",     "label": "Ventricular Fibrillation (VFib)",         "isCorrect": true  },
+        { "id": "rh_vtach",    "label": "Ventricular Tachycardia with pulse",       "isCorrect": false },
+        { "id": "rh_asystole", "label": "Asystole",                                 "isCorrect": false },
+        { "id": "rh_afib",     "label": "Atrial Fibrillation with rapid ventricular response", "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! VFib produces a chaotic, high-amplitude, irregular waveform with no identifiable QRS complexes.",
+        "VTach with pulse is a perfusing rhythm – this patient is pulseless. Pulseless VTach is also shockable but has a recognisable wide-complex pattern.",
+        "Asystole appears as a flat line – this waveform is not flat.",
+        "AF has identifiable (irregular) QRS complexes; the monitor shows no QRS here."
+      ],
+      "simActions": [
+        { "type": "set_rhythm", "payload": { "rhythm": "vfib" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_rhythm_id", "toStateId": "state_first_shock", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_vfib_id",
+            "description": "Correctly identifies ventricular fibrillation",
+            "weight": 10,
+            "evaluationHint": "Patient selected rh_vfib option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_first_shock",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "VFib confirmed. What energy level should you select for the FIRST biphasic defibrillation attempt?",
+      "options": [
+        { "id": "sh_200",  "label": "200 J (or manufacturer-recommended biphasic dose)", "isCorrect": true  },
+        { "id": "sh_100",  "label": "100 J",                                               "isCorrect": false },
+        { "id": "sh_360",  "label": "360 J monophasic equivalent",                        "isCorrect": false },
+        { "id": "sh_50",   "label": "50 J",                                                "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! AHA 2020 guidelines recommend 120–200 J for initial biphasic defibrillation (device-specific); 200 J is the most common starting dose.",
+        "100 J is below the recommended range for initial VFib defibrillation and may be insufficient.",
+        "360 J is the monophasic equivalent; modern biphasic defibrillators are more effective at lower energies.",
+        "50 J is far too low – inadequate to terminate VFib."
+      ],
+      "simActions": [
+        { "type": "apply_stimulus", "payload": { "stimulusType": "defibrillation", "joules": 200 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_first_shock", "toStateId": "state_post_shock_cpr", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_shock_energy",
+            "description": "Selected correct biphasic energy (120–200 J) for initial shock",
+            "weight": 15,
+            "evaluationHint": "Patient selected sh_200 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_post_shock_cpr",
+      "phaseId": "maintenance",
+      "type": "question",
+      "prompt": "Shock delivered. The monitor shows VFib persists. What do you do IMMEDIATELY after the shock?",
+      "options": [
+        { "id": "ps_cpr",    "label": "Resume CPR immediately for 2 minutes before the next rhythm check", "isCorrect": true  },
+        { "id": "ps_pulse",  "label": "Immediately check for a pulse",                                      "isCorrect": false },
+        { "id": "ps_shock2", "label": "Charge and deliver a second shock immediately",                      "isCorrect": false },
+        { "id": "ps_epi",    "label": "Give epinephrine 1 mg IV before resuming CPR",                       "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Immediate post-shock CPR (2 minutes) is mandatory. Pulse checks interrupt compressions and worsen outcomes.",
+        "Post-shock pulse checks delay compressions; resume CPR first and check after 2 minutes.",
+        "Stacking shocks is not recommended; compressions between shocks improve myocardial perfusion.",
+        "Epinephrine is important but is given during CPR, not before resuming it."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_post_shock_cpr", "toStateId": "state_epinephrine", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_post_shock_cpr",
+            "description": "Correctly resumes CPR immediately after shock",
+            "weight": 10,
+            "evaluationHint": "Patient selected ps_cpr option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_epinephrine",
+      "phaseId": "maintenance",
+      "type": "question",
+      "prompt": "Two minutes of CPR completed. Rhythm check: VFib persists. Second shock delivered. What drug should be given NOW during ongoing CPR?",
+      "options": [
+        { "id": "epi_correct", "label": "Epinephrine 1 mg IV push, repeat every 3–5 min",    "isCorrect": true  },
+        { "id": "epi_hd",      "label": "High-dose epinephrine 5 mg IV",                       "isCorrect": false },
+        { "id": "epi_amio",    "label": "Amiodarone 300 mg IV (first antiarrhythmic dose)",    "isCorrect": false },
+        { "id": "epi_atrop",   "label": "Atropine 1 mg IV",                                    "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Standard epinephrine 1 mg IV every 3–5 minutes is the first-line vasopressor for all cardiac arrest rhythms.",
+        "High-dose epinephrine (>1 mg) is not recommended and may worsen post-ROSC outcomes.",
+        "Amiodarone is the correct antiarrhythmic but is given after the THIRD shock, not the second.",
+        "Atropine is not recommended in cardiac arrest – it has no role in shockable rhythms."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "epinephrine", "doseMg": 1.0, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_epinephrine", "toStateId": "state_refractory_vfib", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_epi_dose",
+            "description": "Gives epinephrine 1 mg IV at correct interval",
+            "weight": 15,
+            "evaluationHint": "Patient selected epi_correct option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_refractory_vfib",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Third shock delivered. VFib persists (refractory). Epinephrine repeat given. What antiarrhythmic drug should now be administered?",
+      "options": [
+        { "id": "ant_amio",  "label": "Amiodarone 300 mg IV bolus",              "isCorrect": true  },
+        { "id": "ant_lido",  "label": "Lidocaine 1–1.5 mg/kg IV (alternative)", "isCorrect": true  },
+        { "id": "ant_mag",   "label": "Magnesium 2 g IV for all refractory VFib","isCorrect": false },
+        { "id": "ant_bicarb","label": "Sodium bicarbonate 50 mEq IV",            "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Amiodarone 300 mg IV is the first-line antiarrhythmic for refractory VFib/pulseless VTach after the third shock (AHA Class IIb).",
+        "Correct! Lidocaine 1–1.5 mg/kg IV is an acceptable alternative when amiodarone is not available.",
+        "Magnesium is only indicated for Torsades de Pointes (polymorphic VTach) — not routine refractory VFib.",
+        "Sodium bicarbonate is only indicated for specific conditions (hyperkalaemia, TCA toxicity, prolonged arrest) — not first-line here."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "amiodarone", "doseMg": 300, "route": "iv_bolus" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_refractory_vfib", "toStateId": "state_rosc", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_amiodarone",
+            "description": "Administers amiodarone 300 mg or lidocaine for refractory VFib",
+            "weight": 15,
+            "evaluationHint": "Patient selected ant_amio or ant_lido option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_rosc",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "After the fourth shock and amiodarone, sinus rhythm restores. BP 88/54. SpO2 90%. The patient is unconscious. What is the IMMEDIATE post-ROSC priority?",
+      "options": [
+        { "id": "rosc_o2bp",   "label": "Optimise oxygenation (SpO2 94–98%), support BP (MAP ≥ 65 mmHg), obtain 12-lead ECG", "isCorrect": true  },
+        { "id": "rosc_hyper",  "label": "Hyperventilate to reduce CO2 and prevent re-arrest",                                   "isCorrect": false },
+        { "id": "rosc_hypero2","label": "Apply 100% FiO2 indefinitely to maximise oxygen delivery",                            "isCorrect": false },
+        { "id": "rosc_cpr",    "label": "Resume CPR until BP normalises spontaneously",                                         "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Post-ROSC care: target SpO2 94–98% (avoid hyperoxia), maintain MAP ≥ 65 mmHg, obtain 12-lead ECG for STEMI evaluation.",
+        "Hyperventilation causes hypocapnia, cerebral vasoconstriction, and worse neurological outcomes. Target ETCO2 35–40 mmHg.",
+        "Hyperoxia (FiO2 100%) post-ROSC causes reactive oxygen species injury. Target SpO2 94–98%.",
+        "ROSC has been achieved — CPR is not needed. Continuing compressions during ROSC causes harm."
+      ],
+      "simActions": [
+        { "type": "set_rhythm", "payload": { "rhythm": "sinus_tachycardia" } },
+        { "type": "change_oxygen", "payload": { "device": "non_rebreather_mask", "fio2": 0.60 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_rosc", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_post_rosc",
+            "description": "Correctly manages post-ROSC oxygenation and haemodynamics",
+            "weight": 20,
+            "evaluationHint": "Patient selected rosc_o2bp option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• VFib is a shockable rhythm – defibrillate ASAP\n• CPR must resume immediately after every shock\n• Epinephrine 1 mg q3–5 min; amiodarone 300 mg after the 3rd shock\n• Post-ROSC: target SpO2 94–98%, MAP ≥ 65 mmHg, 12-lead ECG",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}
