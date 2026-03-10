@@ -52,7 +52,12 @@ export function computeVisualizationState(
   moass: MOASSLevel,
   combinedEff: number,
   fio2: number,
+  fluidVolumeML: number = 0,
 ): { echoParams: EchoParams; frankStarlingPoint: FrankStarlingPoint; oxyHbPoint: OxyHbPoint; avatarState: AvatarState; waveformParams: WaveformParams } {
+  // ── Cardiac arrest detection ──
+  const rhythm = vitals.rhythm ?? 'normal_sinus';
+  const isArrest = rhythm === 'ventricular_fibrillation' || rhythm === 'asystole' || rhythm === 'pea';
+
   // ── Shared cardiac modifier computation (same as EchoSim & FrankStarlingCurve) ──
   let ees = 2.5;
   let edpScale = 1.0;
@@ -73,13 +78,17 @@ export function computeVisualizationState(
   const fentCe = pkStates['fentanyl']?.ce || 0;
   const ketCe = pkStates['ketamine']?.ce || 0;
 
-  if (propCe > 0) { ees -= propCe * 0.15; peakSys -= propCe * 5; }
+  if (propCe > 0) { ees -= propCe * 0.15; peakSys -= propCe * 5; vedv -= propCe * 3; }
   if (midazCe > 0) { ees -= midazCe * 0.05; }
   if (fentCe > 0) { ees -= fentCe * 0.2; peakSys -= fentCe * 3; }
   if (ketCe > 0) { ees += ketCe * 0.1; peakSys += ketCe * 4; }
 
-  if (moass >= 4) { ees -= 0.3; peakSys -= 15; }
-  else if (moass >= 2) { ees -= 0.15; peakSys -= 8; }
+  // Fluid loading increases preload (EDV)
+  if (fluidVolumeML > 0) { vedv += fluidVolumeML * 0.02; }
+
+  // Sedation-related hemodynamic depression (MOASS <= 3 = moderate/deep sedation)
+  if (moass <= 2) { ees -= 0.3; peakSys -= 15; }
+  else if (moass <= 3) { ees -= 0.15; peakSys -= 8; }
   ees -= combinedEff * 0.08;
 
   ees = Math.max(0.8, Math.min(4.0, ees));
@@ -87,9 +96,18 @@ export function computeVisualizationState(
   vedv = Math.max(90, Math.min(160, vedv));
   peakSys = Math.max(60, Math.min(200, peakSys));
 
-  const vesv = Math.max(30, Math.min(vedv - 20, peakSys / ees + 5));
-  const sv = vedv - vesv;
-  const ef = (sv / vedv) * 100;
+  // ESV = f(afterload, contractility). Vasodilation (lower peakSys) reduces ESV.
+  const afterloadFactor = peakSys / 120; // normalised to baseline SBP
+  let vesv = Math.max(30, Math.min(vedv - 20, vedv * 0.35 * afterloadFactor / (ees / 2.5) + 5));
+  let sv = vedv - vesv;
+  let ef = (sv / vedv) * 100;
+
+  // Cardiac arrest: collapse ejection
+  if (isArrest) {
+    vesv = vedv - 2;
+    sv = 2;
+    ef = (sv / vedv) * 100;
+  }
   const pEdp = edpScale * Math.pow(Math.max(0, vedv - 10), 2) / 1000;
 
   const echoParams: EchoParams = {

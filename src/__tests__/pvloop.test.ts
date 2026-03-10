@@ -13,7 +13,7 @@
  *   Cardiac arrest → minimal ejection → loop collapses
  */
 import { describe, it, expect } from 'vitest';
-import { computeVisualizationState } from '../store/useSimStore';
+import { computeVisualizationState } from '../store/slices/vitalsSlice';
 import type { Vitals, Patient, MOASSLevel } from '../types';
 
 const NORMAL_VITALS: Vitals = {
