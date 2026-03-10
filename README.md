@@ -1,5 +1,7 @@
 # SedSim
 
+[![CI](https://github.com/Gengyveusa/sedsim/actions/workflows/ci.yml/badge.svg)](https://github.com/Gengyveusa/sedsim/actions/workflows/ci.yml)
+
 **Real-Time Pharmacokinetic Sedation Simulator** - Browser-based PK/PD simulation for medical education
 
 ## Overview

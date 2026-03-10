@@ -1,0 +1,182 @@
+{
+  "id": "asa3_respiratory_disease",
+  "title": "ASA III – Severe COPD with Respiratory Compromise",
+  "description": "A patient with severe COPD and chronic hypercapnia requires moderate sedation for a bronchoscopy. Practise risk stratification, oxygen titration to avoid hypoxic drive suppression, and managing sedation-induced respiratory failure in a CO2 retainer.",
+  "tags": ["ASA III", "COPD", "chronic hypercapnia", "oxygen titration", "respiratory failure", "bronchoscopy", "hard"],
+  "patient": { "archetypeId": "copd_patient" },
+  "learningObjectives": [
+    "Identify COPD features that elevate procedural sedation risk",
+    "Understand the 'hypoxic drive' myth and evidence-based oxygen titration in COPD",
+    "Titrate oxygen to SpO2 88–92% target in known CO2 retainers",
+    "Recognise and manage sedation-induced acute hypercapnic respiratory failure",
+    "Determine when to escalate to non-invasive or invasive ventilation"
+  ],
+  "estimatedDurationSec": 600,
+  "phases": [
+    { "id": "pre",          "label": "Pre-Procedure",      "order": 1 },
+    { "id": "induction",    "label": "Sedation Induction", "order": 2 },
+    { "id": "maintenance",  "label": "Maintenance",        "order": 3 },
+    { "id": "complication", "label": "Respiratory Failure","order": 4 },
+    { "id": "recovery",     "label": "Recovery",           "order": 5 },
+    { "id": "debrief",      "label": "Debrief",            "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_asa_risk",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "A 67-year-old male with GOLD Stage III COPD (FEV1 38%), chronic hypercapnia (baseline PaCO2 54 mmHg), baseline SpO2 88% on room air, and cor pulmonale presents for flexible bronchoscopy. What ASA classification is most appropriate?",
+      "options": [
+        { "id": "asa3", "label": "ASA III – severe systemic disease, no constant threat to life", "isCorrect": true  },
+        { "id": "asa2", "label": "ASA II – moderate systemic disease",                           "isCorrect": false },
+        { "id": "asa4", "label": "ASA IV – constant threat to life",                             "isCorrect": false },
+        { "id": "asa1", "label": "ASA I – healthy patient",                                      "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! GOLD III COPD with chronic hypercapnia and cor pulmonale is severe systemic disease (ASA III). This patient is not at constant threat to life at rest, but has markedly elevated procedural risk.",
+        "GOLD III COPD with chronic hypercapnia and cor pulmonale is beyond mild systemic disease (ASA II).",
+        "ASA IV requires a constant threat to life at rest. This patient is compromised but functional at rest.",
+        "This patient has severe multisystem disease — not healthy."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_asa_risk", "toStateId": "state_oxygen_target", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 10,
+        "checklistItems": [
+          {
+            "id": "ci_asa3",
+            "description": "Correctly assigns ASA III for severe COPD with hypercapnia",
+            "weight": 10,
+            "evaluationHint": "Patient selected asa3 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_oxygen_target",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "The patient's baseline SpO2 is 88% on room air. He is a known CO2 retainer (baseline PaCO2 54 mmHg). What SpO2 target should you aim for during the procedure?",
+      "options": [
+        { "id": "spo2_88_92", "label": "88–92% (titrated O2 to avoid hypercapnia worsening)", "isCorrect": true  },
+        { "id": "spo2_95",    "label": "95–99% (standard normal range)",                       "isCorrect": false },
+        { "id": "spo2_100",   "label": "100% (maximum oxygenation for safety)",                "isCorrect": false },
+        { "id": "spo2_85",    "label": "85–88% (deliberately low to preserve hypoxic drive)",  "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! BTS and GOLD guidelines recommend SpO2 88–92% target in CO2 retainers. Excess oxygen suppresses ventilatory drive and worsens hypercapnia through the Haldane effect.",
+        "Targeting SpO2 ≥ 95% in a CO2 retainer delivers supranormal FiO2, worsening hypercapnia via Haldane effect and blunted hypoxic drive. SpO2 95% is correct for most patients but not for COPD CO2 retainers.",
+        "100% saturation requires high FiO2 that will cause dangerous CO2 retention in this patient.",
+        "85–88% is below the recommended target and introduces hypoxaemia risk. 88–92% balances oxygenation and CO2 retention."
+      ],
+      "simActions": [
+        { "type": "change_oxygen", "payload": { "device": "nasal_cannula", "fio2": 0.28 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_oxygen_target", "toStateId": "state_hypercapnia_crisis", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_o2_target",
+            "description": "Correctly targets SpO2 88–92% for CO2 retainer",
+            "weight": 15,
+            "evaluationHint": "Patient selected spo2_88_92 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_hypercapnia_crisis",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "Mid-procedure: midazolam 1 mg and fentanyl 25 mcg given. EtCO2 rises from 58 (post-induction) to 78 mmHg. RR drops to 5/min. SpO2 is 86% (on titrated O2). The patient is drowsy, not responsive to voice. What is the correct management?",
+      "options": [
+        { "id": "mgmt_niv",    "label": "Halt sedation, increase O2 minimally, consider NIV (BiPAP) for rising CO2", "isCorrect": true  },
+        { "id": "mgmt_highO2", "label": "Increase FiO2 to 100% to immediately correct the SpO2",                    "isCorrect": false },
+        { "id": "mgmt_more",   "label": "Give additional midazolam 0.5 mg to prevent patient movement",              "isCorrect": false },
+        { "id": "mgmt_wait",   "label": "Observe – EtCO2 elevation is expected and harmless in COPD",               "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Sedation-induced acute hypercapnia (EtCO2 78 mmHg, RR 5/min) in a COPD patient requires: stop sedating drugs, minimal FiO2 increase (target SpO2 88–92%), consider NIV (BiPAP) to support ventilation without intubation.",
+        "High FiO2 will further suppress hypoxic drive and worsen CO2 retention — the opposite of what is needed.",
+        "More sedation will further depress respiration and worsen hypercapnia. Sedation should be halted.",
+        "EtCO2 78 mmHg with RR 5/min and decreased conscious level is a hypercapnic respiratory emergency — not benign."
+      ],
+      "simActions": [
+        { "type": "change_oxygen", "payload": { "device": "bipap", "fio2": 0.30 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_hypercapnia_crisis", "toStateId": "state_escalation", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_niv_hypercapnia",
+            "description": "Correctly halts sedation and considers NIV for sedation-induced hypercapnia in COPD",
+            "weight": 20,
+            "evaluationHint": "Patient selected mgmt_niv option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_escalation",
+      "phaseId": "complication",
+      "type": "question",
+      "prompt": "BiPAP initiated. After 15 minutes, EtCO2 remains 82 mmHg and the patient is now obtunded (GCS 9). Arterial blood gas: pH 7.19, PaCO2 85 mmHg, PaO2 62 mmHg. What is the next escalation step?",
+      "options": [
+        { "id": "esc_intub",  "label": "Urgent anaesthesia consultation for intubation and mechanical ventilation", "isCorrect": true  },
+        { "id": "esc_more_bip","label": "Increase BiPAP inspiratory pressure further and wait",                    "isCorrect": false },
+        { "id": "esc_dex",    "label": "Give dexamethasone 8 mg IV to reduce airway inflammation",                 "isCorrect": false },
+        { "id": "esc_discharge","label": "Transfer to ward on home oxygen for routine management",                 "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Obtunded GCS 9 + pH 7.19 + rising PaCO2 despite NIV indicates NIV failure. Urgent intubation with mechanical ventilation is required. Call anaesthesia immediately.",
+        "Worsening pH 7.19 and obtundation despite BiPAP indicate NIV failure — further pressure adjustments will not suffice.",
+        "Dexamethasone addresses inflammation but not the immediate life-threatening hypoventilation.",
+        "This patient requires ICU-level monitoring and potential intubation — ward discharge would be dangerous."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_escalation", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_niv_failure",
+            "description": "Correctly identifies NIV failure and escalates to intubation",
+            "weight": 20,
+            "evaluationHint": "Patient selected esc_intub option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• GOLD III COPD + chronic hypercapnia + cor pulmonale = ASA III, very high procedural risk\n• Target SpO2 88–92% in CO2 retainers; titrate O2 to avoid Haldane effect\n• Sedation-induced hypercapnia + obtundation = medical emergency\n• NIV failure (pH < 7.25, obtundation, rising CO2) → urgent intubation",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}

@@ -4,6 +4,7 @@
 
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
+import { Vitals, CardiacRhythm } from '../types';
 
 const COOLDOWN_MS = 15000; // 15 seconds per parameter
 
@@ -72,6 +73,107 @@ function isCoveredByScenario(
 // Alarm entry type matching useSimStore activeAlarms shape
 interface AlarmEntry { type: string; message: string; severity: 'warning' | 'danger'; }
 
+/**
+ * Describes a detected cross-vital coherence violation, with an optional
+ * set of vital-sign corrections that should be applied to restore coherence.
+ */
+export interface CoherenceViolation {
+  /** Unique rule identifier used for cooldown tracking */
+  rule: string;
+  /** Human-readable description of the violation */
+  message: string;
+  severity: 'warning' | 'critical';
+  /** Vital-sign overrides that auto-correct the incoherent state */
+  corrections?: Partial<Vitals>;
+}
+
+// Cardiac arrest rhythms where BP must be zero and HR must reflect pulselessness
+const ARREST_RHYTHMS: ReadonlyArray<CardiacRhythm> = [
+  'ventricular_fibrillation',
+  'asystole',
+  'pea',
+];
+
+/**
+ * Pure function — detects physiologically impossible cross-vital combinations.
+ *
+ * Rules implemented:
+ *  1. SpO2 < 85 requires RR depression (RR < 8) or the combination is incoherent.
+ *  2. EtCO2/RR inverse: when RR < 8 EtCO2 must be elevated (≥ 45 mmHg).
+ *  3. MAP bounds: MAP must equal DBP + ⅓ × (SBP − DBP) within 10 mmHg.
+ *  4. Asystole → HR must be 0.
+ *  5. Cardiac arrest rhythms (VF / asystole / PEA) → SBP, DBP, MAP must be 0.
+ */
+export function detectCoherenceViolations(vitals: Vitals): CoherenceViolation[] {
+  const violations: CoherenceViolation[] = [];
+
+  // Rule 1 — SpO2 critically low without respiratory depression
+  if (vitals.spo2 < 85 && vitals.rr >= 8) {
+    violations.push({
+      rule: 'spo2_rr_coherence',
+      message:
+        `SpO2 ${vitals.spo2}% is critically low but RR ${vitals.rr} is not depressed. ` +
+        `Physiologically this indicates airway obstruction rather than respiratory depression.`,
+      severity: 'warning',
+    });
+  }
+
+  // Rule 2 — EtCO2 must rise when RR falls (inverse relationship)
+  // Only meaningful when patient is still breathing (RR > 0)
+  if (vitals.rr > 0 && vitals.rr < 8 && vitals.etco2 < 45) {
+    violations.push({
+      rule: 'etco2_rr_coherence',
+      message:
+        `RR ${vitals.rr} is depressed but EtCO2 ${vitals.etco2} is not elevated (expected ≥ 45). ` +
+        `Hypoventilation must raise EtCO2.`,
+      severity: 'warning',
+    });
+  }
+
+  // Rule 3 — MAP must equal DBP + ⅓ × pulse pressure
+  const pulsePressure = vitals.sbp - vitals.dbp;
+  const expectedMAP = Math.round(vitals.dbp + pulsePressure / 3);
+  if (Math.abs(vitals.map - expectedMAP) > 10) {
+    violations.push({
+      rule: 'map_bounds',
+      message:
+        `MAP ${vitals.map} mmHg does not match SBP ${vitals.sbp}/DBP ${vitals.dbp} ` +
+        `(formula gives ${expectedMAP} mmHg). Auto-correcting MAP.`,
+      severity: 'warning',
+      corrections: { map: expectedMAP },
+    });
+  }
+
+  // Rule 4 — Asystole implies HR = 0
+  if (vitals.rhythm === 'asystole' && vitals.hr !== 0) {
+    violations.push({
+      rule: 'asystole_hr',
+      message:
+        `Rhythm is asystole but HR is ${vitals.hr} bpm. ` +
+        `Asystole must have HR = 0. Auto-correcting.`,
+      severity: 'critical',
+      corrections: { hr: 0 },
+    });
+  }
+
+  // Rule 5 — Cardiac arrest rhythms require BP = 0 (pulseless)
+  if (vitals.rhythm && ARREST_RHYTHMS.includes(vitals.rhythm)) {
+    const hasPulse = vitals.sbp > 0 || vitals.dbp > 0 || vitals.map > 0;
+    if (hasPulse) {
+      violations.push({
+        rule: 'arrest_bp',
+        message:
+          `Cardiac arrest (${vitals.rhythm}) but BP is not zero ` +
+          `(SBP=${vitals.sbp}, DBP=${vitals.dbp}, MAP=${vitals.map}). Auto-correcting.`,
+        severity: 'critical',
+        corrections: { sbp: 0, dbp: 0, map: 0 },
+      });
+    }
+  }
+
+  return violations;
+}
+
 export class VitalCoherenceMonitor {
   // Use Zustand store subscription instead of setInterval for unified alarm source
   private unsubscribe: (() => void) | null = null;
@@ -85,7 +187,7 @@ export class VitalCoherenceMonitor {
     this.onCriticalAlert = onCriticalAlert ?? null;
     // Subscribe to store changes — fires on every tick so alarms are processed
     // in lock-step with the simulation (no separate 2-second polling timer)
-    this.unsubscribe = useSimStore.subscribe((state: { activeAlarms: AlarmEntry[]; vitals: { hr: number; spo2: number; rr: number; etco2: number; sbp: number }; moass: number }) => this.tick(state.activeAlarms, state.vitals, state.moass));
+    this.unsubscribe = useSimStore.subscribe((state: { activeAlarms: AlarmEntry[]; vitals: Vitals; moass: number }) => this.tick(state.activeAlarms, state.vitals, state.moass));
   }
 
   stop() {
@@ -141,7 +243,7 @@ export class VitalCoherenceMonitor {
     }
   }
 
-  private tick(activeAlarms: AlarmEntry[], vitals: { hr: number; spo2: number; rr: number; etco2: number; sbp: number }, moass: number) {
+  private tick(activeAlarms: AlarmEntry[], vitals: Vitals, moass: number) {
     // Use canonical activeAlarms from the store (computed by checkAlarms() in tick())
     // instead of re-evaluating individual vital thresholds here.
     // This ensures the VitalCoherenceMonitor and the main alarm system agree.
@@ -253,6 +355,26 @@ export class VitalCoherenceMonitor {
           `CRITICAL: Patient is unresponsive (MOASS 0). Check airway, breathing, circulation.`,
           'critical', 'moass'
         );
+      }
+    }
+
+    // Cross-vital coherence checks
+    const violations = detectCoherenceViolations(vitals);
+    for (const v of violations) {
+      const alertLevel = v.severity === 'critical' ? 'critical' : 'warning';
+      if (this.canAlert(v.rule, alertLevel)) {
+        this.recordAlert(v.rule, alertLevel);
+        // Log to console so violations are visible in engine logs
+        console.warn(`[VCM] Coherence violation (${v.rule}): ${v.message}`);
+        // Auto-correct incoherent vital values
+        if (v.corrections) {
+          const simStore = useSimStore.getState();
+          for (const [param, value] of Object.entries(v.corrections)) {
+            simStore.overrideVital(param, value as number);
+          }
+        }
+        // Notify the mentor
+        this.alert(v.message, alertLevel);
       }
     }
 

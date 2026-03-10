@@ -122,12 +122,16 @@ function computeRespiratoryRate(
   pkStates: Record<string, PKState>,
   patient: Patient
 ): number {
-  // Fentanyl respiratory depression
+  // Opioid respiratory depression (fentanyl + remifentanil combined)
   // Ce50 = 3.5 ng/mL for 50% RR depression (clinical range 2-5 ng/mL)
   // gamma = 1.8 (gradual onset curve)
+  // Remifentanil Ce50 for RR depression ~1.5 ng/mL (more potent, ultra-short acting)
   const fentanylCe = pkStates.fentanyl?.ce || 0;
-    const fentanylCeNg = fentanylCe; // already in ng/mL from PK model
-  const opioidEffect = sigmoidEffect(fentanylCeNg, 3.5, 1.8);
+  const remifentanilCe = pkStates.remifentanil?.ce || 0;
+  // Combine opioid effects using Bliss independence
+  const fentanylOpioidEff = sigmoidEffect(fentanylCe, 3.5, 1.8);
+  const remifentanilOpioidEff = sigmoidEffect(remifentanilCe, 1.5, 1.8);
+  const opioidEffect = 1 - (1 - fentanylOpioidEff) * (1 - remifentanilOpioidEff);
 
   // Propofol has milder RR depression
   // Ce50 for RR depression ~4 mcg/mL (higher than sedation Ce50 of 3.4)
@@ -225,6 +229,7 @@ function computeHemodynamics(
 ): { hr: number; sbp: number; dbp: number; map: number } {
   const propofolCe = pkStates.propofol?.ce || 0;
   const fentanylCe = pkStates.fentanyl?.ce || 0;
+  const remifentanilCe = pkStates.remifentanil?.ce || 0;
   const ketamineCe = pkStates.ketamine?.ce || 0;
 
   // Propofol: vasodilation + myocardial depression
@@ -232,11 +237,12 @@ function computeHemodynamics(
   const propofolHREffect = -0.15 * propofolFrac * baseline.hr;
   const propofolBPEffect = -0.25 * propofolFrac;
 
-  // Fentanyl: bradycardia via vagal tone
-  // Ce50 for bradycardia ~4 ng/mL - modest effect at sedation doses
-    const fentanylCeNg = fentanylCe; // already in ng/mL from PK model
-  const fentanylFrac = sigmoidEffect(fentanylCeNg, 4.0, 1.5);
-  const fentanylHREffect = -0.12 * fentanylFrac * baseline.hr;
+  // Opioids: bradycardia via vagal tone (fentanyl + remifentanil)
+  // Ce50 for bradycardia ~4 ng/mL for fentanyl, ~2 ng/mL for remifentanil
+  const fentanylFrac = sigmoidEffect(fentanylCe, 4.0, 1.5);
+  const remifentanilFrac = sigmoidEffect(remifentanilCe, 2.0, 1.5);
+  const opioidHRFrac = 1 - (1 - fentanylFrac) * (1 - remifentanilFrac);
+  const fentanylHREffect = -0.12 * opioidHRFrac * baseline.hr;
 
   // Ketamine: sympathomimetic (increases HR and BP)
   const ketamineFrac = sigmoidEffect(ketamineCe, 0.001, 1.5);
@@ -245,9 +251,9 @@ function computeHemodynamics(
 
   // Calculate BP first (for baroreflex)
   const sensitivity = patient.drugSensitivity ?? 1.0;
-  let sbp = baseline.sbp * (1 + (propofolBPEffect + ketamineBPEffect) * sensitivity);
-  let dbp = baseline.dbp * (1 + (propofolBPEffect * 0.7 + ketamineBPEffect * 0.7) * sensitivity);
-  let map = (sbp + 2 * dbp) / 3;
+  const sbp = baseline.sbp * (1 + (propofolBPEffect + ketamineBPEffect) * sensitivity);
+  const dbp = baseline.dbp * (1 + (propofolBPEffect * 0.7 + ketamineBPEffect * 0.7) * sensitivity);
+  const map = (sbp + 2 * dbp) / 3;
 
   // Baroreceptor reflex: hypotension -> compensatory tachycardia
   // CHF patients have blunted baroreflex (50% reduction in gain)

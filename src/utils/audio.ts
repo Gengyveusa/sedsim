@@ -14,6 +14,9 @@
  *  • 60-second alarm silence (like real monitors)
  */
 
+/** Safari uses the prefixed webkitAudioContext. */
+type WebkitWindow = typeof window & { webkitAudioContext?: typeof AudioContext };
+
 /** Map SpO2 percentage to oscillator frequency (Hz). */
 function spo2ToFrequency(spo2: number): number {
   if (spo2 >= 100) return 880;
@@ -59,6 +62,12 @@ class AudioManager {
   private isMuted: boolean = false;
   private volume: number = 0.5;
 
+  // AudioContext lifecycle state
+  /** True when the sim is paused by the user (vs. browser-auto-suspended). */
+  private _userSuspended: boolean = false;
+  /** Cached visibilitychange handler so we can remove it in dispose(). */
+  private _visibilityHandler: (() => void) | null = null;
+
   // SpO2 pulse-tone state
   private spo2Timer: ReturnType<typeof setTimeout> | null = null;
   private spo2Active: boolean = false;
@@ -88,30 +97,91 @@ class AudioManager {
   /**
    * Lazy-initialise the AudioContext on the first user gesture.
    * Must be called from a click/keydown handler (browser autoplay policy).
+   * Handles both standard AudioContext and Safari's webkitAudioContext.
    */
   init(): void {
     if (this.ctx) {
-      // Resume if the context was suspended by the browser
-      if (this.ctx.state === 'suspended') {
+      // Resume if the context was suspended by the browser (not by the user pausing the sim).
+      if (this.ctx.state === 'suspended' && !this._userSuspended) {
         this.ctx.resume().catch(() => {/* ignore */});
       }
       return;
     }
+    // Graceful degradation: skip silently if Web Audio API is unavailable.
+    const AudioCtx: typeof AudioContext | undefined =
+      window.AudioContext ?? (window as WebkitWindow).webkitAudioContext;
+    if (!AudioCtx) {
+      console.warn('[AudioManager] Web Audio API is not available in this browser.');
+      return;
+    }
     try {
-      this.ctx = new AudioContext();
+      this.ctx = new AudioCtx();
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.value = this.isMuted ? 0 : this.volume;
       this.masterGain.connect(this.ctx.destination);
+
+      // Register tab-visibility handler once so audio is suspended when the
+      // tab is hidden and resumed when the tab becomes visible again.
+      if (!this._visibilityHandler) {
+        this._visibilityHandler = () => {
+          if (!this.ctx) return;
+          if (document.hidden) {
+            // Tab hidden — suspend to avoid audio running in the background.
+            if (this.ctx.state === 'running') {
+              this.ctx.suspend().catch(() => {/* ignore */});
+            }
+          } else if (!this._userSuspended) {
+            // Tab visible again — resume only if the user hasn't paused the sim.
+            if (this.ctx.state === 'suspended') {
+              this.ctx.resume().catch(() => {/* ignore */});
+            }
+          }
+        };
+        document.addEventListener('visibilitychange', this._visibilityHandler);
+      }
     } catch (e) {
       console.warn('[AudioManager] AudioContext init failed', e);
     }
   }
 
   /**
-   * Update the SpO2 / HR values used for the pulse tone and start the loop
-   * if it is not already running.  Call this on every vitals update while
-   * the simulation is running.
+   * Suspend audio output (call when the sim is paused).
+   * Stops all active sound loops and suspends the AudioContext to free
+   * system resources without destroying the context.
    */
+  suspend(): void {
+    this._userSuspended = true;
+    this.stopAll();
+    if (this.ctx && this.ctx.state === 'running') {
+      this.ctx.suspend().catch(() => {/* ignore */});
+    }
+  }
+
+  /**
+   * Resume audio output (call when the sim is played — must originate from a
+   * user gesture to satisfy the browser autoplay policy).
+   * Initialises the AudioContext if it has not been created yet.
+   */
+  resume(): void {
+    this._userSuspended = false;
+    if (!this.ctx) {
+      // First play — initialise and return (context starts running automatically).
+      this.init();
+      return;
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {/* ignore */});
+    }
+  }
+
+  /**
+   * Returns true when the Web Audio API is available and the context is
+   * operational (not closed).  Use for graceful degradation.
+   */
+  isAvailable(): boolean {
+    return this.ctx !== null && this.ctx.state !== 'closed';
+  }
+
   updateSpO2Tone(spo2: number, hr: number): void {
     this._spo2 = spo2;
     this._hr = Math.max(10, hr); // guard against 0-division
@@ -612,11 +682,21 @@ class AudioManager {
     this.stopAll();
     this.stopCprMetronome();
     this.stopAedChargeTone();
+    if (this._visibilityHandler) {
+      document.removeEventListener('visibilitychange', this._visibilityHandler);
+      this._visibilityHandler = null;
+    }
     if (this.ctx) {
       this.ctx.close().catch(() => {/* ignore */});
       this.ctx = null;
       this.masterGain = null;
     }
+    this._userSuspended = false;
+  }
+
+  setStethoscopeActive(active: boolean): void {
+    this.setBreathSoundsEnabled(active);
+    this.setHeartSoundsEnabled(active);
   }
 
   private _clearAlarmTimer(): void {

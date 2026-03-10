@@ -1,0 +1,181 @@
+{
+  "id": "acls_post_rosc_care",
+  "title": "ACLS – Post-Cardiac Arrest Care and Targeted Temperature Management",
+  "description": "A patient achieves ROSC after a witnessed out-of-hospital VFib arrest but remains comatose. Practise comprehensive post-cardiac arrest care: oxygenation targets, haemodynamic optimisation, targeted temperature management (TTM), and neuroprognostication.",
+  "tags": ["ACLS", "post-ROSC", "targeted temperature management", "TTM", "post-cardiac arrest care", "neuroprognostication", "expert"],
+  "patient": { "archetypeId": "post_cardiac_arrest" },
+  "learningObjectives": [
+    "Apply post-cardiac arrest care bundle (oxygenation, haemodynamics, TTM, 12-lead ECG)",
+    "Avoid hyperoxia after ROSC (target SpO2 94–98%)",
+    "Maintain MAP ≥ 65 mmHg post-ROSC to optimise cerebral perfusion",
+    "Describe the indications and temperature targets for TTM",
+    "Understand the timing of neuroprognostication after cardiac arrest"
+  ],
+  "estimatedDurationSec": 600,
+  "phases": [
+    { "id": "pre",          "label": "ROSC Achieved",      "order": 1 },
+    { "id": "induction",    "label": "Initial Stabilisation","order": 2 },
+    { "id": "maintenance",  "label": "ICU Admission",      "order": 3 },
+    { "id": "complication", "label": "TTM Management",     "order": 4 },
+    { "id": "recovery",     "label": "Neuroprognostication","order": 5 },
+    { "id": "debrief",      "label": "Debrief",            "order": 6 }
+  ],
+  "states": [
+    {
+      "id": "state_rosc_initial",
+      "phaseId": "pre",
+      "type": "question",
+      "prompt": "A 55-year-old male achieved ROSC after 22 minutes of resuscitation for witnessed out-of-hospital VFib. He is intubated, comatose (GCS 3). BP 88/52. HR 118. SpO2 99% on FiO2 100%. EtCO2 42 mmHg. 12-lead ECG shows no ST changes. What is the MOST urgent immediate post-ROSC intervention?",
+      "options": [
+        { "id": "int_o2",   "label": "Reduce FiO2 to target SpO2 94–98% (avoid hyperoxia)",                  "isCorrect": true  },
+        { "id": "int_keep",  "label": "Keep FiO2 100% – maximum O2 is safe post-arrest",                    "isCorrect": false },
+        { "id": "int_neuro", "label": "Perform urgent CT head to assess neurological damage",                 "isCorrect": false },
+        { "id": "int_cool",  "label": "Start ice packs immediately without further assessment",              "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Hyperoxia (SpO2 100% on FiO2 100%) post-ROSC generates reactive oxygen species and worsens reperfusion injury. Target SpO2 94–98% by titrating FiO2 down.",
+        "Hyperoxia is independently associated with worse neurological outcomes post-ROSC. FiO2 should be titrated down to target 94–98%.",
+        "CT head is important but secondary to immediate physiological stabilisation. Haemodynamics and oxygenation take priority in the first minutes.",
+        "TTM requires proper indication assessment and controlled cooling – not immediate ice packs without assessment."
+      ],
+      "simActions": [
+        { "type": "change_oxygen", "payload": { "device": "ventilator", "fio2": 0.50 } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_rosc_initial", "toStateId": "state_haemodynamics", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_avoid_hyperoxia",
+            "description": "Correctly reduces FiO2 to avoid hyperoxia post-ROSC",
+            "weight": 15,
+            "evaluationHint": "Patient selected int_o2 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_haemodynamics",
+      "phaseId": "induction",
+      "type": "question",
+      "prompt": "FiO2 titrated to 0.45, SpO2 96%. BP remains 82/50 (MAP 61 mmHg). No STEMI on ECG. What MAP target is recommended post-ROSC and how should it be achieved in this patient?",
+      "options": [
+        { "id": "map_65",   "label": "MAP ≥ 65 mmHg; administer vasopressors (norepinephrine or dopamine) and IV fluid if tolerated", "isCorrect": true  },
+        { "id": "map_50",   "label": "MAP ≥ 50 mmHg is sufficient in post-arrest patients",                                           "isCorrect": false },
+        { "id": "map_80",   "label": "Aim MAP ≥ 80 mmHg with aggressive fluid resuscitation",                                         "isCorrect": false },
+        { "id": "map_wait", "label": "Allow permissive hypotension and wait for spontaneous haemodynamic improvement",                 "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! AHA guidelines recommend MAP ≥ 65 mmHg post-ROSC to maintain cerebral and coronary perfusion. Vasopressors (norepinephrine preferred) with cautious fluids are the correct management.",
+        "MAP ≥ 50 mmHg is insufficient to maintain cerebral autoregulation in the post-arrest brain.",
+        "Aggressive fluid resuscitation risks pulmonary oedema especially with post-arrest myocardial dysfunction. Vasopressors are preferred over large fluid volumes.",
+        "Permissive hypotension is not appropriate post-ROSC. The post-arrest brain has impaired autoregulation and requires sustained MAP ≥ 65 mmHg."
+      ],
+      "simActions": [
+        { "type": "give_drug", "payload": { "drug": "norepinephrine", "doseMg": 0.1, "route": "iv_infusion" } }
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_haemodynamics", "toStateId": "state_ttm_indication", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_map_65",
+            "description": "Correctly targets MAP ≥ 65 mmHg with vasopressors post-ROSC",
+            "weight": 15,
+            "evaluationHint": "Patient selected map_65 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_ttm_indication",
+      "phaseId": "maintenance",
+      "type": "question",
+      "prompt": "BP now 102/64 (MAP 77 mmHg) on norepinephrine. The patient remains comatose (GCS 4). He was resuscitated from VFib at a shockable initial rhythm. What is the current recommendation for targeted temperature management (TTM)?",
+      "options": [
+        { "id": "ttm_correct",  "label": "Prevent fever (temperature ≥ 37.7°C) for 72 hours; active cooling to 32–36°C may be considered", "isCorrect": true  },
+        { "id": "ttm_32",       "label": "Cool aggressively to 32°C immediately – this is mandatory for all post-arrest patients",         "isCorrect": false },
+        { "id": "ttm_none",     "label": "TTM is no longer recommended; normothermia is the only goal",                                    "isCorrect": false },
+        { "id": "ttm_warm",     "label": "Warm the patient to 38°C to promote neurological recovery",                                     "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! 2021 AHA guidelines (ILCOR advisory): active fever prevention (≤37.7°C) is mandatory for ≥72 hrs. Active cooling to 32–36°C is reasonable (individual patient consideration). Hyperthermia worsens neurological outcomes.",
+        "Post-TTM trial (2021), mandatory cooling to 32°C is no longer universally required. Fever prevention and individualised cooling (32–36°C) is the current recommendation.",
+        "Fever prevention (≤37.7°C) remains a strong recommendation. 'No TTM' is incorrect — temperature control is essential.",
+        "Warming to 38°C would be fever and is definitively harmful for post-arrest brain. Never intentionally induce fever post-arrest."
+      ],
+      "simActions": [],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_ttm_indication", "toStateId": "state_neuroprog", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 15,
+        "checklistItems": [
+          {
+            "id": "ci_ttm",
+            "description": "Correctly describes current TTM recommendation (fever prevention + individualised cooling)",
+            "weight": 15,
+            "evaluationHint": "Patient selected ttm_correct option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_neuroprog",
+      "phaseId": "recovery",
+      "type": "question",
+      "prompt": "Day 3 post-arrest: temperature controlled at 36°C. The patient is off sedation for 24 hours. GCS motor score remains 1 (no motor response). The family asks about the prognosis. When is neuroprognostication most reliable?",
+      "options": [
+        { "id": "prog_72",  "label": "≥72 hours after arrest AND ≥24 hours after rewarming; use multimodal assessment (EEG, SSEP, CT/MRI, biomarkers)", "isCorrect": true  },
+        { "id": "prog_24",  "label": "24 hours post-arrest is sufficient for accurate prognosis",                                                       "isCorrect": false },
+        { "id": "prog_gcse","label": "GCS score alone at 48 hours is sufficient for prognostication",                                                  "isCorrect": false },
+        { "id": "prog_never","label": "Neurological outcome cannot be predicted post-cardiac arrest",                                                   "isCorrect": false }
+      ],
+      "explanations": [
+        "Correct! Reliable neuroprognostication requires ≥72 hours after arrest AND ≥24 hours after rewarming. Multimodal assessment includes: clinical exam, EEG (burst suppression), SSEP (N20 absence), CT/MRI, serum NSE/S100B.",
+        "24-hour prognosis is unreliable — sedation and hypothermia confound neurological examination. Early prognostication can lead to self-fulfilling prophecies.",
+        "GCS alone is an unreliable prognostic tool. Absent pupillary reflexes, absent N20 SSEP, or burst suppression EEG provide stronger negative predictors.",
+        "Prognostication is possible with multimodal tools, though uncertainty remains. It is unethical to provide no prognostic guidance to families."
+      ],
+      "exitConditions": [
+        { "id": "ec_continue", "type": "on_continue" }
+      ],
+      "transitions": [
+        { "fromStateId": "state_neuroprog", "toStateId": "state_debrief_end", "viaConditions": ["ec_continue"] }
+      ],
+      "scoring": {
+        "maxScore": 20,
+        "checklistItems": [
+          {
+            "id": "ci_neuroprog_timing",
+            "description": "Correctly identifies ≥72 hr multimodal neuroprognostication timeline",
+            "weight": 20,
+            "evaluationHint": "Patient selected prog_72 option"
+          }
+        ]
+      }
+    },
+    {
+      "id": "state_debrief_end",
+      "phaseId": "debrief",
+      "type": "terminal",
+      "prompt": "Scenario complete. Review your performance summary below.\n\n📚 Key Teaching Points:\n• Post-ROSC: avoid hyperoxia (SpO2 94–98%), target MAP ≥ 65 mmHg with vasopressors\n• TTM (2021): mandatory fever prevention ≤37.7°C × 72 hrs; cooling to 32–36°C individualised\n• Hyperthermia post-arrest is definitively harmful\n• Neuroprognostication: wait ≥72 hrs post-arrest, ≥24 hrs post-rewarming, multimodal assessment",
+      "exitConditions": [],
+      "transitions": [],
+      "scoring": null
+    }
+  ]
+}
