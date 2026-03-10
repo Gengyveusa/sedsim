@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
   import { DRUG_LIST, LA_DRUG_KEYS } from '../engine/drugs';
@@ -18,7 +19,15 @@ function CompactDrugCard({ drug, scenarioLocked, isUnlocked, scenarioHintRange }
   isUnlocked: boolean;
   scenarioHintRange?: [number, number];
 }) {
-  const { administerBolus, startInfusion, stopInfusion, infusions, pkStates } = useSimStore();
+  const { administerBolus, startInfusion, stopInfusion, infusions, pkStates } = useSimStore(
+    useShallow(s => ({
+      administerBolus: s.administerBolus,
+      startInfusion: s.startInfusion,
+      stopInfusion: s.stopInfusion,
+      infusions: s.infusions,
+      pkStates: s.pkStates,
+    }))
+  );
   const [showCustom, setShowCustom] = useState(false);
   const [customDose, setCustomDose] = useState('');
   const [infRate, setInfRate] = useState('');
@@ -139,9 +148,10 @@ function drugMatchesProtocol(drugKey: string, protocolName: string): boolean {
 }
 
 export default function DrugPanel() {
-  const { isScenarioActive, scenarioDrugProtocols } = useSimStore();
-  const { unlockedDrug } = useAIStore();
-
+  const { isScenarioActive, scenarioDrugProtocols } = useSimStore(
+    useShallow(s => ({ isScenarioActive: s.isScenarioActive, scenarioDrugProtocols: s.scenarioDrugProtocols }))
+  );
+  const unlockedDrug = useAIStore(s => s.unlockedDrug);
   const filteredDrugs = DRUG_LIST.filter(d =>
     !LA_DRUG_KEYS.some(k => d.name.toLowerCase() === k || d.name.toLowerCase().startsWith(k.split('_')[0]))
   );

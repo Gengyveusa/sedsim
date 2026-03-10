@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { memo, useEffect, useRef, useState, useCallback } from 'react';
 import { Vitals, CardiacRhythm, EmergencyState } from '../types';
 import { isPulselessRhythm, isLethalRhythm } from '../engine/cardiacRhythm';
 import {
@@ -346,7 +346,7 @@ interface ScaleToast {
   visible: boolean;
 }
 
-export default function MonitorPanel({ vitals, history: _history }: MonitorPanelProps) {
+const MonitorPanel = memo(function MonitorPanel({ vitals, history: _history }: MonitorPanelProps) {
   const isRunning = useSimStore((s: { isRunning: boolean }) => s.isRunning);
   const emergencyState = useSimStore((s: { emergencyState: EmergencyState }) => s.emergencyState);
   const moass = useSimStore((s: { moass: number }) => s.moass);
@@ -827,4 +827,6 @@ const vfibOffset = vfibOffsetRef.current;
 
     </div>
   );
-}
+});
+
+export default MonitorPanel;

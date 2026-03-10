@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 import useAIStore from '../store/useAIStore';
 import { DRUG_DATABASE } from '../engine/drugs';
@@ -82,7 +83,16 @@ export default function SedationGauge() {
   const [mode, setMode] = useState<GaugeMode>('petals');
   const [autoSwitched, setAutoSwitched] = useState(false);
 
-  const { combinedEff, moass, pkStates, vitals, patient, setActiveGaugeMode } = useSimStore();
+  const { combinedEff, moass, pkStates, vitals, patient, setActiveGaugeMode } = useSimStore(
+    useShallow(s => ({
+      combinedEff: s.combinedEff,
+      moass: s.moass,
+      pkStates: s.pkStates,
+      vitals: s.vitals,
+      patient: s.patient,
+      setActiveGaugeMode: s.setActiveGaugeMode,
+    }))
+  );
 
   // Respond to SimMaster gauge switch requests
   const requestGaugeMode = useAIStore((s: { requestGaugeMode: string | null }) => s.requestGaugeMode);

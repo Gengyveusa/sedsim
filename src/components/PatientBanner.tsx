@@ -1,8 +1,16 @@
+import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 import { moassLabel } from '../engine/pdModel';
 
 export default function PatientBanner() {
-  const { trueNorth, elapsedSeconds, moass, isRunning } = useSimStore();
+  const { trueNorth, elapsedSeconds, moass, isRunning } = useSimStore(
+    useShallow(s => ({
+      trueNorth: s.trueNorth,
+      elapsedSeconds: s.elapsedSeconds,
+      moass: s.moass,
+      isRunning: s.isRunning,
+    }))
+  );
   const { patient } = trueNorth;
 
   const minutes = Math.floor(elapsedSeconds / 60);

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSimStore from './store/useSimStore';
 import useAIStore from './store/useAIStore';
 import PatientBanner from './components/PatientBanner';
@@ -16,12 +17,24 @@ import SedationGauge from './components/SedationGauge';
 import AEDPanel from './components/AEDPanel';
 import SimMasterOverlay from './components/SimMasterOverlay';
 import { Dashboard } from './components/Dashboard';
+import { usePerformanceObserver } from './hooks/usePerformanceObserver';
 
 export default function App() {
-  const { isRunning, speedMultiplier, tick, trendData } = useSimStore();
+  // Dev-mode performance monitoring
+  usePerformanceObserver();
+
+  // Narrow subscription: only the fields needed for the tick loop and layout.
+  const { isRunning, speedMultiplier, tick } = useSimStore(
+    useShallow(s => ({ isRunning: s.isRunning, speedMultiplier: s.speedMultiplier, tick: s.tick }))
+  );
+  const trendData = useSimStore(s => s.trendData);
+  const vitals = useSimStore(s => s.vitals);
   const [trendsExpanded, setTrendsExpanded] = useState(false);
   const [airwayExpanded, setAirwayExpanded] = useState(false);
   const simMasterEnabled = useAIStore(s => s.simMasterEnabled);
+
+  // Memoize the vitals history array so MonitorPanel's memo check stays stable.
+  const vitalsHistory = useMemo(() => trendData.map(t => t.vitals), [trendData]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -83,7 +96,7 @@ export default function App() {
           {/* Center - Hero Gauge + Monitor */}
           <div className="flex-1 flex flex-col overflow-hidden relative">
             {/* Compact vitals monitor strip at top */}
-            <MonitorPanel vitals={useSimStore.getState().vitals} history={trendData.map(t => t.vitals)} />
+            <MonitorPanel vitals={vitals} history={vitalsHistory} />
             {/* HERO: Giant Sedation Gauge - takes up most of center */}
             <div className="flex-1 overflow-y-auto">
               <SedationGauge />

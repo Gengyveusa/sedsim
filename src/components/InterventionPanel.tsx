@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 import type { AirwayDevice, InterventionType } from '../types';
 import PrecordialStethoscope from './PrecordialStethoscope';
@@ -36,7 +37,20 @@ export default function InterventionPanel() {
     interventions, fio2, airwayDevice, o2FlowRate,
     applyIntervention, removeIntervention, setFiO2, setAirwayDevice, setO2FlowRate,
     isScenarioActive,
-  } = useSimStore();
+  } = useSimStore(
+    useShallow(s => ({
+      interventions: s.interventions,
+      fio2: s.fio2,
+      airwayDevice: s.airwayDevice,
+      o2FlowRate: s.o2FlowRate,
+      applyIntervention: s.applyIntervention,
+      removeIntervention: s.removeIntervention,
+      setFiO2: s.setFiO2,
+      setAirwayDevice: s.setAirwayDevice,
+      setO2FlowRate: s.setO2FlowRate,
+      isScenarioActive: s.isScenarioActive,
+    }))
+  );
 
   const currentDeviceInfo = AIRWAY_DEVICES.find(d => d.key === airwayDevice) ?? AIRWAY_DEVICES[0];
   const [fio2Input, setFio2Input] = useState((fio2 * 100).toFixed(0));

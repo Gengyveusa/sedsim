@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import useSimStore from '../store/useSimStore';
 import { DRUG_DATABASE } from '../engine/drugs';
@@ -33,7 +33,7 @@ interface CollapsibleTrendProps {
   isAlarm?: boolean;
 }
 
-function CollapsibleTrend({ label, unit, color, currentValue, data, yMin, yMax, isAlarm = false }: CollapsibleTrendProps) {
+const CollapsibleTrend = memo(function CollapsibleTrend({ label, unit, color, currentValue, data, yMin, yMax, isAlarm = false }: CollapsibleTrendProps) {
   const [expanded, setExpanded] = useState(false);
   const displayColor = isAlarm ? '#f87171' : color;
 
@@ -90,14 +90,16 @@ function CollapsibleTrend({ label, unit, color, currentValue, data, yMin, yMax, 
       </div>
     </div>
   );
-}
+});
 
 export default function TrendGraph() {
-  const { trendData, vitals } = useSimStore();
+  const trendData = useSimStore(s => s.trendData);
+  const vitals = useSimStore(s => s.vitals);
   const [pkExpanded, setPkExpanded] = useState(false);
 
-  // Show last 120 data points (10 minutes at 5s intervals)
-  const displayData = trendData.slice(-120).map(point => ({
+  // Show last 120 data points (10 minutes at 5s intervals).
+  // useMemo prevents recomputation when unrelated store fields change.
+  const displayData = useMemo(() => trendData.slice(-120).map(point => ({
     time: Math.floor(point.time / 60) + ':' + (point.time % 60).toString().padStart(2, '0'),
     timeSec: point.time,
     hr: point.vitals.hr,
@@ -111,15 +113,15 @@ export default function TrendGraph() {
     ...Object.fromEntries(
       Object.entries(point.ce || {}).map(([k, v]) => [`ce_${k}`, v])
     ),
-  }));
+  })), [trendData]);
 
   // Check if any drug has non-zero concentration
-  const hasConcentrations = displayData.some(d =>
+  const hasConcentrations = useMemo(() => displayData.some(d =>
     Object.keys(DRUG_DATABASE).some(name =>
       (d[`cp_${name}` as keyof typeof d] as number) > 0.001 ||
       (d[`ce_${name}` as keyof typeof d] as number) > 0.001
     )
-  );
+  ), [displayData]);
 
   if (displayData.length === 0) {
     return (
@@ -132,14 +134,24 @@ export default function TrendGraph() {
     );
   }
 
+  // Pre-compute per-vital chart data (depends only on displayData, not on vitals)
+  const vitalChartData = useMemo(() =>
+    Object.fromEntries(
+      VITAL_CONFIGS.map(cfg => [
+        cfg.key,
+        displayData.map(d => ({
+          time: d.time,
+          value: d[cfg.dataKey as keyof typeof d] as number,
+        })),
+      ])
+    ) as Record<string, { time: string; value: number }[]>,
+  [displayData]);
+
   return (
     <div className="bg-sim-panel overflow-auto">
       {/* Individual vital sign accordion panels */}
       {VITAL_CONFIGS.map(cfg => {
-        const data = displayData.map(d => ({
-          time: d.time,
-          value: d[cfg.dataKey as keyof typeof d] as number,
-        }));
+        const data = vitalChartData[cfg.key];
         const currentVal = (vitals[cfg.key as VitalKey] as number) ?? 0;
         const isAlarm =
           (cfg.key === 'hr'    && (currentVal < 50 || currentVal > 120)) ||

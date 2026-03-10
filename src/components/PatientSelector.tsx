@@ -1,8 +1,18 @@
+import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 import { PATIENT_ARCHETYPES } from '../engine/physiology';
 
 export default function PatientSelector() {
-  const { patient, availableArchetypes, selectPatient, isRunning, selectedArchetypeKey, trueNorth } = useSimStore();
+  const { patient, availableArchetypes, selectPatient, isRunning, selectedArchetypeKey, trueNorth } = useSimStore(
+    useShallow(s => ({
+      patient: s.patient,
+      availableArchetypes: s.availableArchetypes,
+      selectPatient: s.selectPatient,
+      isRunning: s.isRunning,
+      selectedArchetypeKey: s.selectedArchetypeKey,
+      trueNorth: s.trueNorth,
+    }))
+  );
 
   return (
     <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-3">

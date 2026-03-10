@@ -60,6 +60,12 @@ interface SimState {
   isRunning: boolean;
   speedMultiplier: number;
 
+  /**
+   * Increments every tick. Non-critical displays can throttle updates by
+   * only re-rendering when `displayTick % N === 0` (e.g. 4Hz = every 4th tick).
+   */
+  tickCount: number;
+
   // SimMaster user behavior tracking
   activeTab: string;
   activeGaugeMode: string;
@@ -264,6 +270,7 @@ const useSimStore = create<SimState>((set, get) => ({
   elapsedSeconds: 0,
   isRunning: false,
   speedMultiplier: 1,
+  tickCount: 0,
 
   // SimMaster user behavior tracking
   activeTab: '',
@@ -472,6 +479,7 @@ const useSimStore = create<SimState>((set, get) => ({
 
     set({
       elapsedSeconds: newTime,
+      tickCount: state.tickCount + 1,
       pkStates: newPkStates,
       combinedEff,
       moass,
@@ -790,6 +798,7 @@ const useSimStore = create<SimState>((set, get) => ({
     const patient = state.patient;
     set({
       elapsedSeconds: 0,
+      tickCount: 0,
       isRunning: false,
       isScenarioActive: false,
       scenarioDrugProtocols: null,

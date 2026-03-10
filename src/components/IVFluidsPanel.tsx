@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 
 const FLUIDS = [
@@ -33,7 +34,14 @@ export default function IVFluidsPanel() {
   const [isBolus, setIsBolus] = useState(false);
   const [bolusVolume, setBolusVolume] = useState<number>(500);
 
-  const { ivFluids, startIVFluid, stopIVFluid, setIVAccess } = useSimStore();
+  const { ivFluids, startIVFluid, stopIVFluid, setIVAccess } = useSimStore(
+    useShallow(s => ({
+      ivFluids: s.ivFluids,
+      startIVFluid: s.startIVFluid,
+      stopIVFluid: s.stopIVFluid,
+      setIVAccess: s.setIVAccess,
+    }))
+  );
 
   const handleStart = () => {
     if (!selectedFluid) return;
