@@ -1,0 +1,164 @@
+{
+  "common": {
+    "yes": "Sí",
+    "no": "No",
+    "impaired": "Deteriorado",
+    "elapsed": "Transcurrido:",
+    "start": "Iniciar",
+    "stop": "Detener",
+    "push": "Administrar",
+    "bolus": "Bolo",
+    "infuse": "Infundir",
+    "speed": "Velocidad:"
+  },
+  "patientBanner": {
+    "title": "SedSim",
+    "moass": "MOASS {{level}} - {{label}}",
+    "asa": "ASA {{asa}}",
+    "loading": "Cargando simulador…"
+  },
+  "moass": {
+    "5": "Despierto",
+    "4": "Somnoliento",
+    "3": "Leve",
+    "2": "Moderado",
+    "1": "Profundo",
+    "0": "No responde"
+  },
+  "controlBar": {
+    "play": "Iniciar",
+    "pause": "Pausar",
+    "reset": "Reiniciar",
+    "muteAudio": "Silenciar audio",
+    "unmuteAudio": "Activar audio",
+    "silenceAlarms": "Silenciar alarmas por 60 segundos",
+    "enableBreath": "Activar sonidos respiratorios (desactivado por defecto)",
+    "disableBreath": "Desactivar sonidos respiratorios",
+    "enableHeart": "Activar sonidos cardíacos (desactivado por defecto)",
+    "disableHeart": "Desactivar sonidos cardíacos"
+  },
+  "patientSelector": {
+    "title": "PACIENTE",
+    "age": "Edad:",
+    "weight": "Peso:",
+    "height": "Talla:",
+    "sex": "Sexo:",
+    "asa": "ASA:",
+    "mallampati": "Mallampati:",
+    "osa": "SAOS:",
+    "copd": "EPOC:",
+    "hepatic": "Hepático:",
+    "renal": "Renal:",
+    "sensitivity": "Sensibilidad:",
+    "years": "{{value}} años",
+    "kg": "{{value}} kg",
+    "cm": "{{value}} cm"
+  },
+  "drugs": {
+    "title": "Fármacos",
+    "scenarioMode": "Modo escenario — fármacos controlados por Millie",
+    "customDoseTitle": "Dosis personalizada / Infusión",
+    "ceLabel": "Ce:{{value}}"
+  },
+  "interventions": {
+    "title": "Vía aérea y O₂",
+    "scenarioMode": "Modo escenario — vía aérea controlada por Millie",
+    "airwayDevice": "Dispositivo de vía aérea",
+    "supplementary": "Suplementario",
+    "active": "Activo ({{count}}):",
+    "o2Flow": "Flujo O₂: {{rate}} L/min",
+    "fio2Label": "FiO₂ (%)",
+    "fio2Max": "máx {{pct}}%",
+    "flowMin": "1 L",
+    "flowMax": "6 L",
+    "airwayDevices": {
+      "room_air": "Aire ambiente",
+      "nasal_cannula": "Cánula nasal",
+      "nasal_hood": "Mascarilla nasal",
+      "oral_airway": "Cánula orofaríngea (Guedel)",
+      "nasal_airway": "Cánula nasofaríngea",
+      "lma": "Mascarilla laríngea",
+      "ett": "Tubo endotraqueal",
+      "cricothyroidotomy": "Cricotirotomía",
+      "tracheostomy": "Traqueostomía"
+    },
+    "airwayNotes": {
+      "room_air": "Sin suplementación",
+      "nasal_cannula": "+4% por L/min sobre aire ambiente",
+      "nasal_hood": "Sedación para cirugía dental/oral",
+      "oral_airway": "Permeabilidad de vía aérea únicamente",
+      "nasal_airway": "Permeabilidad de vía aérea únicamente",
+      "lma": "Supraglótico, buen sello",
+      "ett": "Vía aérea definitiva, control total",
+      "cricothyroidotomy": "Vía aérea de emergencia quirúrgica",
+      "tracheostomy": "Vía aérea quirúrgica, estable"
+    },
+    "supplementaryItems": {
+      "jaw_thrust": "Tracción mandibular",
+      "chin_lift": "Elevación del mentón",
+      "bag_mask": "Ventilación con bolsa-mascarilla",
+      "suction": "Aspiración"
+    }
+  },
+  "emergencyDrugs": {
+    "title": "Fármacos de emergencia",
+    "drugs": {
+      "epinephrine": {
+        "name": "Adrenalina",
+        "indication": "Anafilaxia / Paro cardíaco"
+      },
+      "atropine": {
+        "name": "Atropina",
+        "indication": "Bradicardia / Broncoespasmo"
+      },
+      "succinylcholine": {
+        "name": "Succinilcolina",
+        "indication": "ISR / Laringoespasmo"
+      },
+      "naloxone": {
+        "name": "Naloxona",
+        "indication": "Reversión de opioides"
+      },
+      "flumazenil": {
+        "name": "Flumazenil",
+        "indication": "Reversión de benzodiacepinas"
+      },
+      "diphenhydramine": {
+        "name": "Difenhidramina",
+        "indication": "Reacción alérgica"
+      },
+      "dexamethasone": {
+        "name": "Dexametasona",
+        "indication": "Edema de vía aérea / Alergia"
+      },
+      "nitroglycerin": {
+        "name": "Nitroglicerina",
+        "indication": "Crisis hipertensiva / Angina"
+      }
+    }
+  },
+  "eventLog": {
+    "title": "Registro de eventos",
+    "noEvents": "Sin eventos aún"
+  },
+  "app": {
+    "simmaster": {
+      "title": "SimMaster",
+      "description": "Observador de IA proactivo que resalta eventos críticos en pantalla en tiempo real.",
+      "enable": "Activar SimMaster",
+      "disable": "Desactivar SimMaster",
+      "active": "SimMaster está observando activamente la simulación...",
+      "collapseAirway": "Contraer vía aérea",
+      "expandAirway": "Mostrar vía aérea y O₂",
+      "airwayLabel": "Vía aérea",
+      "airwayTitle": "Vía aérea y O₂",
+      "trendsLabel": "Tendencias",
+      "trendsTitle": "Gráficos de tendencias",
+      "collapseTrends": "Contraer tendencias",
+      "expandTrends": "Mostrar gráficos de tendencias"
+    }
+  },
+  "languageSelector": {
+    "label": "Idioma"
+  }
+}

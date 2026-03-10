@@ -1,0 +1,164 @@
+{
+  "common": {
+    "yes": "是",
+    "no": "否",
+    "impaired": "受损",
+    "elapsed": "已用时：",
+    "start": "开始",
+    "stop": "停止",
+    "push": "推注",
+    "bolus": "推注",
+    "infuse": "输注",
+    "speed": "速度："
+  },
+  "patientBanner": {
+    "title": "SedSim",
+    "moass": "MOASS {{level}} - {{label}}",
+    "asa": "ASA {{asa}}",
+    "loading": "正在加载模拟器…"
+  },
+  "moass": {
+    "5": "清醒",
+    "4": "嗜睡",
+    "3": "轻度镇静",
+    "2": "中度镇静",
+    "1": "深度镇静",
+    "0": "无反应"
+  },
+  "controlBar": {
+    "play": "开始",
+    "pause": "暂停",
+    "reset": "重置",
+    "muteAudio": "静音",
+    "unmuteAudio": "取消静音",
+    "silenceAlarms": "静默报警60秒",
+    "enableBreath": "启用呼吸音（默认关闭）",
+    "disableBreath": "关闭呼吸音",
+    "enableHeart": "启用心音（默认关闭）",
+    "disableHeart": "关闭心音"
+  },
+  "patientSelector": {
+    "title": "患者",
+    "age": "年龄：",
+    "weight": "体重：",
+    "height": "身高：",
+    "sex": "性别：",
+    "asa": "ASA：",
+    "mallampati": "Mallampati：",
+    "osa": "阻塞性睡眠呼吸暂停：",
+    "copd": "慢阻肺：",
+    "hepatic": "肝功能：",
+    "renal": "肾功能：",
+    "sensitivity": "药物敏感性：",
+    "years": "{{value}} 岁",
+    "kg": "{{value}} kg",
+    "cm": "{{value}} cm"
+  },
+  "drugs": {
+    "title": "药物",
+    "scenarioMode": "场景模式 — 药物由 Millie 控制",
+    "customDoseTitle": "自定义剂量 / 输注",
+    "ceLabel": "效应室浓度:{{value}}"
+  },
+  "interventions": {
+    "title": "气道与O₂",
+    "scenarioMode": "场景模式 — 气道由 Millie 控制",
+    "airwayDevice": "气道装置",
+    "supplementary": "辅助措施",
+    "active": "已激活 ({{count}})：",
+    "o2Flow": "O₂流量：{{rate}} L/min",
+    "fio2Label": "吸入氧浓度 (%)",
+    "fio2Max": "最大 {{pct}}%",
+    "flowMin": "1 L",
+    "flowMax": "6 L",
+    "airwayDevices": {
+      "room_air": "室内空气",
+      "nasal_cannula": "鼻导管",
+      "nasal_hood": "鼻罩",
+      "oral_airway": "口咽通气道",
+      "nasal_airway": "鼻咽通气道",
+      "lma": "喉罩",
+      "ett": "气管插管",
+      "cricothyroidotomy": "环甲膜切开术",
+      "tracheostomy": "气管切开术"
+    },
+    "airwayNotes": {
+      "room_air": "基线，无吸氧",
+      "nasal_cannula": "每升高1 L/min增加4%吸氧浓度",
+      "nasal_hood": "牙科/口腔手术镇静",
+      "oral_airway": "仅维持气道通畅",
+      "nasal_airway": "仅维持气道通畅",
+      "lma": "声门上装置，密封性良好",
+      "ett": "确定性气道，完全控制",
+      "cricothyroidotomy": "外科紧急气道",
+      "tracheostomy": "外科气道，稳定"
+    },
+    "supplementaryItems": {
+      "jaw_thrust": "托下颌",
+      "chin_lift": "抬下颌",
+      "bag_mask": "球囊面罩通气",
+      "suction": "吸引"
+    }
+  },
+  "emergencyDrugs": {
+    "title": "急救药物",
+    "drugs": {
+      "epinephrine": {
+        "name": "肾上腺素",
+        "indication": "过敏反应 / 心脏骤停"
+      },
+      "atropine": {
+        "name": "阿托品",
+        "indication": "心动过缓 / 支气管痉挛"
+      },
+      "succinylcholine": {
+        "name": "琥珀酰胆碱",
+        "indication": "快速序贯插管 / 喉痉挛"
+      },
+      "naloxone": {
+        "name": "纳洛酮",
+        "indication": "阿片类药物拮抗"
+      },
+      "flumazenil": {
+        "name": "氟马西尼",
+        "indication": "苯二氮䓬类药物拮抗"
+      },
+      "diphenhydramine": {
+        "name": "苯海拉明",
+        "indication": "过敏反应"
+      },
+      "dexamethasone": {
+        "name": "地塞米松",
+        "indication": "气道水肿 / 过敏"
+      },
+      "nitroglycerin": {
+        "name": "硝酸甘油",
+        "indication": "高血压危象 / 心绞痛"
+      }
+    }
+  },
+  "eventLog": {
+    "title": "事件记录",
+    "noEvents": "暂无事件"
+  },
+  "app": {
+    "simmaster": {
+      "title": "SimMaster",
+      "description": "主动AI观察者，实时在屏幕上高亮显示关键事件。",
+      "enable": "启用 SimMaster",
+      "disable": "禁用 SimMaster",
+      "active": "SimMaster 正在主动观察模拟...",
+      "collapseAirway": "收起气道面板",
+      "expandAirway": "展示气道与O₂",
+      "airwayLabel": "气道",
+      "airwayTitle": "气道与O₂",
+      "trendsLabel": "趋势",
+      "trendsTitle": "趋势图",
+      "collapseTrends": "收起趋势图",
+      "expandTrends": "展示趋势图"
+    }
+  },
+  "languageSelector": {
+    "label": "语言"
+  }
+}

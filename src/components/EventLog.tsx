@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import useSimStore from '../store/useSimStore';
 
 const severityStyles: Record<string, string> = {
@@ -17,6 +18,7 @@ function formatTime(seconds: number): string {
 }
 
 const EventLog = memo(function EventLog() {
+  const { t } = useTranslation();
   const eventLog = useSimStore(s => s.eventLog);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +34,7 @@ const EventLog = memo(function EventLog() {
 
   return (
     <div data-region="eventlog" className="flex-1 bg-sim-panel overflow-hidden flex flex-col">
-      <h3 className="text-xs text-gray-400 uppercase mb-2 px-3 pt-3" id="eventlog-label">Event Log</h3>
+      <h3 className="text-xs text-gray-400 uppercase mb-2 px-3 pt-3" id="eventlog-label">{t('eventLog.title')}</h3>
       <div
         className="flex-1 overflow-y-auto px-3 pb-3 space-y-1"
         role="log"
@@ -41,7 +43,7 @@ const EventLog = memo(function EventLog() {
         aria-relevant="additions"
       >
         {visibleEntries.length === 0 ? (
-          <p className="text-gray-500 text-sm">No events yet</p>
+          <p className="text-gray-500 text-sm">{t('eventLog.noEvents')}</p>
         ) : (
           visibleEntries.map((entry, i) => (
             <div

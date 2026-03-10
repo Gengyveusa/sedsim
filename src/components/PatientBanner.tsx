@@ -1,8 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import useSimStore from '../store/useSimStore';
 import { moassLabel } from '../engine/pdModel';
+import LanguageSelector from './LanguageSelector';
 
 export default function PatientBanner() {
+  const { t } = useTranslation();
   const { trueNorth, elapsedSeconds, moass, isRunning } = useSimStore(
     useShallow(s => ({
       trueNorth: s.trueNorth,
@@ -29,13 +32,13 @@ export default function PatientBanner() {
   return (
     <header className="bg-sim-panel border-b border-gray-700 px-4 py-2 flex items-center justify-between" role="banner" aria-label="Patient information banner">
       <div className="flex items-center gap-6">
-        <h1 className="text-lg font-bold text-sim-accent">SedSim</h1>
+        <h1 className="text-lg font-bold text-sim-accent">{t('patientBanner.title')}</h1>
         <div className="text-sm text-gray-300" aria-label={`Patient: ${patient.age} year old ${patient.sex}, ${patient.weight}kg / ${patient.height}cm, ASA ${patient.asa}`}>
           <span className="font-medium">{patient.age}yo {patient.sex}</span>
           <span className="mx-2" aria-hidden="true">|</span>
           <span>{patient.weight}kg / {patient.height}cm</span>
           <span className="mx-2" aria-hidden="true">|</span>
-          <span>ASA {patient.asa}</span>
+          <span>{t('patientBanner.asa', { asa: patient.asa })}</span>
           {trueNorth.isLocked && (
             <span className="ml-2 text-xs text-cyan-400 font-semibold">🔒 {trueNorth.label}</span>
           )}
@@ -50,7 +53,7 @@ export default function PatientBanner() {
           aria-live="polite"
           aria-label={`Sedation depth: MOASS level ${moass}, ${moassLabel(moass)}`}
         >
-          MOASS {moass} - {moassLabel(moass)}
+          {t('patientBanner.moass', { level: moass, label: moassLabel(moass) })}
         </div>
 
         {/* Timer */}
@@ -61,6 +64,9 @@ export default function PatientBanner() {
         >
           {timeStr}
         </div>
+
+        {/* Language Selector */}
+        <LanguageSelector />
 
         {/* Status indicator */}
         <div
