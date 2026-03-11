@@ -23,12 +23,21 @@ import OfflineBanner from './components/OfflineBanner';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import LMSPanel from './components/LMSPanel';
 import { usePerformanceObserver } from './hooks/usePerformanceObserver';
+import { useStudyAnalytics } from './hooks/useStudyAnalytics';
+import useStudyStore from './store/useStudyStore';
+import StudyOverlay from './components/StudyOverlay';
 
 export default function App() {
   const { t } = useTranslation();
 
   // Dev-mode performance monitoring
   usePerformanceObserver();
+
+  // Study analytics wiring (active only when research mode is on)
+  useStudyAnalytics();
+
+  // Research mode toggle
+  const { researchMode, setResearchMode } = useStudyStore();
 
   // Narrow subscription: only the fields needed for the tick loop and layout.
   const { isRunning, speedMultiplier, tick } = useSimStore(
@@ -322,6 +331,23 @@ export default function App() {
       </div>
       <SimMasterOverlay enabled={simMasterEnabled} />
       <PWAInstallPrompt />
+
+      {/* Research Mode toggle — bottom-left corner */}
+      <button
+        onClick={() => setResearchMode(!researchMode)}
+        className={`fixed bottom-20 left-4 z-40 text-[10px] px-2 py-1 rounded border transition-colors ${
+          researchMode
+            ? 'bg-indigo-600/80 text-indigo-100 border-indigo-500'
+            : 'bg-gray-800/80 text-gray-500 border-gray-700 hover:text-gray-300'
+        }`}
+        title="Toggle Research Mode for A/B study"
+        aria-pressed={researchMode}
+      >
+        {researchMode ? 'Research ON' : 'Research Mode'}
+      </button>
+
+      {/* Study overlay (enrollment, tests, dashboard) */}
+      <StudyOverlay />
     </>
   );
 }
