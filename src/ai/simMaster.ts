@@ -903,6 +903,339 @@ export function fallbackAnnotation(): SimMasterAnnotation {
   return { message: 'Observing...', target: 'moass_gauge', severity: 'info', action: 'highlight', timestamp: Date.now() };
 }
 
+// ---------------------------------------------------------------------------
+// v4: Teaching-mode aware action filtering
+// ---------------------------------------------------------------------------
+
+export type SimMasterTeachingMode = 'observer' | 'active_teaching' | 'assessment';
+
+/**
+ * Filter generated actions based on the current teaching mode.
+ *
+ * - **observer** (Arm A): Only safety-critical actions (priority >= 85).
+ *   No Socratic questions, no explanations — just urgent alerts.
+ * - **active_teaching** (Arm B): All actions pass through. Full Socratic
+ *   engagement, panel pointing, and explanations.
+ * - **assessment** (Arm C): Convert questions and explanations into
+ *   "what would you do?" prompts. Hide direct answers until learner responds.
+ */
+export function filterActionsByTeachingMode(
+  actions: SimMasterAction[],
+  mode: SimMasterTeachingMode
+): SimMasterAction[] {
+  switch (mode) {
+    case 'observer':
+      // Safety alerts only: suggest_action and direct_attention with high priority
+      return actions.filter(
+        a => a.priority >= 85 || a.type === 'suggest_action'
+      );
+
+    case 'assessment':
+      // Transform actions into assessment prompts
+      return actions.map(a => {
+        if (a.type === 'explain' || a.type === 'narrate') {
+          return {
+            ...a,
+            type: 'ask_question' as SimMasterActionType,
+            message: `Look at this clinical situation. What do you observe, and what would you do next?`,
+            question: a.message, // Original explanation stored as the answer
+            requiresUserResponse: true,
+          };
+        }
+        if (a.type === 'direct_attention') {
+          return {
+            ...a,
+            type: 'ask_question' as SimMasterActionType,
+            message: `Something important is changing on the monitor. Can you identify what it is and why it matters?`,
+            question: a.message,
+            requiresUserResponse: true,
+          };
+        }
+        return a;
+      });
+
+    case 'active_teaching':
+    default:
+      return actions;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// v4: Convert SimMasterAction → OverlayAnnotation for the visual system
+// ---------------------------------------------------------------------------
+
+import type { OverlayAnnotation } from '../components/SimMasterOverlay';
+
+/** Map SimMasterTargetPanel names to data-region keys used by the overlay. */
+const TARGET_PANEL_TO_REGION: Record<string, string> = {
+  monitor: 'hr',
+  avatar: 'moass-gauge',
+  radar: 'radar',
+  petals: 'moass-gauge',
+  eeg: 'eeg',
+  echo: 'eeg',
+  frank_starling: 'bp',
+  oxyhb: 'spo2',
+  drug_panel: 'drug-panel',
+  trends: 'trend-graph',
+  ghost_dose: 'drug-panel',
+  sedation_gauge: 'moass-gauge',
+  risk_metrics: 'eeg',
+  emergency_drugs: 'intervention-panel',
+  iv_fluids: 'intervention-panel',
+  airway: 'airway-controls',
+  learning_panel: 'eventlog',
+};
+
+let overlayIdCounter = 0;
+
+/**
+ * Convert a SimMasterAction into an OverlayAnnotation suitable for the
+ * visual overlay system.
+ */
+export function actionToOverlayAnnotation(action: SimMasterAction): OverlayAnnotation | null {
+  const targetPanel = action.targetPanel;
+  if (!targetPanel) return null;
+
+  const regionKey = TARGET_PANEL_TO_REGION[targetPanel];
+  if (!regionKey) return null;
+
+  const severity: OverlayAnnotation['severity'] =
+    action.priority >= 85 ? 'critical' :
+    action.priority >= 60 ? 'warning' : 'info';
+
+  const overlayAction: OverlayAnnotation['action'] =
+    action.type === 'suggest_action' || action.type === 'direct_attention' ? 'pulse' :
+    action.type === 'ask_question' ? 'point' : 'highlight';
+
+  return {
+    id: `sm-${++overlayIdCounter}-${Date.now()}`,
+    targetRegion: regionKey,
+    severity,
+    message: action.message.length > 200
+      ? action.message.slice(0, 197) + '...'
+      : action.message,
+    action: overlayAction,
+    createdAt: Date.now(),
+    autoDismissMs: action.displayDuration || 15000,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// v4: Enhanced Claude query for SimMaster with structured response
+// ---------------------------------------------------------------------------
+
+import { streamClaude, ClaudeContext } from './claudeClient';
+import { buildSimMasterSystemPrompt } from './simMasterPrompt';
+import {
+  detectClinicalPatterns,
+  CLINICAL_STATE_DEFINITIONS,
+} from './simMasterKnowledge';
+
+export interface SimMasterClaudeResponse {
+  message: string;
+  targetPanel: SimMasterTargetPanel | null;
+  severity: 'info' | 'warning' | 'critical';
+  teachingPoint: string;
+  socraticQuestion: string;
+}
+
+/**
+ * Build a rich context string summarizing the current simulation state,
+ * detected patterns, and recent events for Claude.
+ */
+function buildEnhancedContextSummary(ctx: SimMasterContext): string {
+  const lines: string[] = [];
+
+  // Vital signs with clinical status
+  const assessments = assessAllVitals(ctx.vitals, ctx.moass, ctx.eegState ?? undefined);
+  for (const a of assessments) {
+    const def = CLINICAL_STATE_DEFINITIONS[a.param];
+    const statusTag = a.status !== 'normal' ? ` [${a.status.toUpperCase()}]` : '';
+    lines.push(`${a.label}: ${a.value}${a.unit}${statusTag}`);
+    if (a.status !== 'normal' && def) {
+      const transition = a.status === 'warning'
+        ? def.transitionExplanations.normalToWarning
+        : a.status === 'danger'
+        ? def.transitionExplanations.warningToCritical
+        : def.transitionExplanations.criticalToEmergent;
+      lines.push(`  → ${transition}`);
+    }
+  }
+
+  // Drug concentrations
+  const activeDrugs = Object.entries(ctx.pkStates)
+    .filter(([, s]) => s.ce > 0.001)
+    .map(([name, s]) => `${name} Ce=${s.ce.toFixed(3)} mcg/mL`);
+  if (activeDrugs.length) {
+    lines.push(`Active drugs: ${activeDrugs.join(', ')}`);
+  }
+
+  // Detected clinical patterns
+  const patternValues: Record<string, number> = {
+    hr: ctx.vitals.hr,
+    spo2: ctx.vitals.spo2,
+    sbp: ctx.vitals.sbp,
+    rr: ctx.vitals.rr,
+    etco2: ctx.vitals.etco2,
+    moass: ctx.moass,
+    bis: ctx.eegState?.bisIndex ?? 100,
+    propofol_ce: ctx.pkStates['propofol']?.ce ?? 0,
+    fentanyl_ce: ctx.pkStates['fentanyl']?.ce ?? 0,
+    midazolam_ce: ctx.pkStates['midazolam']?.ce ?? 0,
+  };
+  const patterns = detectClinicalPatterns(patternValues);
+  if (patterns.length > 0) {
+    lines.push(`\nDetected clinical patterns:`);
+    for (const p of patterns.slice(0, 3)) {
+      lines.push(`- ${p.name} (${p.severity}): ${p.explanation.slice(0, 120)}...`);
+    }
+  }
+
+  // User behavior
+  if (ctx.userIdleSeconds > 15) {
+    lines.push(`\nLearner has been idle for ${Math.round(ctx.userIdleSeconds)} seconds.`);
+  }
+  if (ctx.lastDrugAdministered) {
+    lines.push(`Last drug administered: ${ctx.lastDrugAdministered.name} ${ctx.lastDrugAdministered.dose} at t=${ctx.lastDrugAdministered.timestamp}`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Query Claude for a context-aware SimMaster response.
+ * Falls back to a locally generated response if the API is unavailable.
+ */
+export async function querySimMasterClaude(
+  ctx: SimMasterContext,
+  triggerEvent: string,
+  learnerLevel: 'novice' | 'intermediate' | 'advanced' = 'intermediate',
+  signal?: AbortSignal
+): Promise<SimMasterClaudeResponse> {
+  const contextSummary = buildEnhancedContextSummary(ctx);
+
+  const claudeCtx: ClaudeContext = {
+    vitals: ctx.vitals,
+    moass: ctx.moass,
+    eeg: ctx.eegState ?? undefined,
+    pkStates: ctx.pkStates,
+    elapsedSeconds: ctx.elapsedSeconds,
+    learnerLevel,
+    recentEvents: [],
+    activeTab: ctx.activeTab,
+    activeGaugeMode: ctx.activeGaugeMode,
+    _systemOverride: buildSimMasterSystemPrompt({
+      vitals: ctx.vitals,
+      moass: ctx.moass,
+      eeg: ctx.eegState ?? undefined,
+      pkStates: ctx.pkStates,
+      learnerLevel,
+      recentEvents: [],
+      activeTab: ctx.activeTab,
+      activeGaugeMode: ctx.activeGaugeMode,
+    }),
+  };
+
+  const prompt = `Event: ${triggerEvent}\n\nSimulation state:\n${contextSummary}\n\nGenerate a teaching response. Include:\n1. A concise observation (what's happening)\n2. Which panel the learner should look at\n3. A Socratic question to deepen understanding\n\nKeep it under 120 words. Be specific about current values.`;
+
+  try {
+    let fullText = '';
+    await streamClaude(prompt, claudeCtx, (chunk) => { fullText += chunk; }, signal);
+
+    // Parse the response — Claude returns free text, we structure it
+    return {
+      message: fullText,
+      targetPanel: null, // Let the event detector determine the panel
+      severity: ctx.vitals.spo2 < 90 || ctx.vitals.sbp < 75 || ctx.vitals.rr <= 5 ? 'critical' :
+                ctx.vitals.spo2 < 94 || ctx.vitals.sbp < 90 || ctx.vitals.rr < 8 ? 'warning' : 'info',
+      teachingPoint: fullText.split('\n')[0] ?? '',
+      socraticQuestion: fullText.split('?')[0]?.split('\n').pop()?.trim() + '?' || '',
+    };
+  } catch {
+    // Fallback: use local knowledge base
+    const assessments = assessAllVitals(ctx.vitals, ctx.moass, ctx.eegState ?? undefined);
+    const worst = assessments.find(a => a.status !== 'normal');
+    return {
+      message: worst
+        ? `${worst.label} is ${worst.value}${worst.unit} (${worst.status}). Monitor closely.`
+        : `Patient stable at MOASS ${ctx.moass}. Continue monitoring.`,
+      targetPanel: null,
+      severity: worst?.status === 'critical' || worst?.status === 'danger' ? 'critical' :
+                worst?.status === 'warning' ? 'warning' : 'info',
+      teachingPoint: '',
+      socraticQuestion: '',
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// v4: Idle detection enhancement — urgent attention when idle during critical
+// ---------------------------------------------------------------------------
+
+/**
+ * Check if the learner is idle during a critical event and generate an
+ * urgent attention-directing action.
+ */
+export function checkIdleDuringCritical(
+  ctx: SimMasterContext,
+  lastIdleAlertTime: number
+): SimMasterAction | null {
+  const now = Date.now();
+  if (now - lastIdleAlertTime < 20000) return null; // 20s cooldown
+
+  const isCritical =
+    ctx.vitals.spo2 < 90 ||
+    ctx.vitals.sbp < 75 ||
+    ctx.vitals.rr <= 5 ||
+    ctx.vitals.hr < 35 ||
+    ctx.emergencyState?.level === 'arrest' ||
+    ctx.emergencyState?.level === 'critical';
+
+  if (!isCritical || ctx.userIdleSeconds < 15) return null;
+
+  // Determine what's most urgent
+  if (ctx.vitals.spo2 < 90) {
+    return {
+      type: 'direct_attention',
+      message: `⚠ SpO2 ${Math.round(ctx.vitals.spo2)}% — patient is desaturating and you haven't intervened! Open the Airway controls panel immediately. Jaw thrust, increase FiO2, or bag-mask ventilate.`,
+      targetPanel: 'airway',
+      priority: 95,
+      displayDuration: 20000,
+      eventType: 'user_idle',
+    };
+  }
+  if (ctx.vitals.sbp < 75) {
+    return {
+      type: 'direct_attention',
+      message: `⚠ SBP ${Math.round(ctx.vitals.sbp)} mmHg — severe hypotension without intervention! Stop sedative infusions, give fluid bolus, consider vasopressor from Emergency Drugs panel.`,
+      targetPanel: 'emergency_drugs',
+      priority: 95,
+      displayDuration: 20000,
+      eventType: 'user_idle',
+    };
+  }
+  if (ctx.emergencyState?.isArrest) {
+    return {
+      type: 'suggest_action',
+      message: `🚨 CARDIAC ARREST — immediate action required! Start CPR, open Emergency Drugs for epinephrine. Follow ACLS algorithm. Every second counts.`,
+      targetPanel: 'emergency_drugs',
+      priority: 100,
+      displayDuration: 25000,
+      eventType: 'user_idle',
+    };
+  }
+
+  return {
+    type: 'direct_attention',
+    message: `The patient's condition is critical and deteriorating. Review the monitor and take action.`,
+    targetPanel: 'monitor',
+    priority: 90,
+    displayDuration: 18000,
+    eventType: 'user_idle',
+  };
+}
+
 export default {
   generateObservation,
   assessAllVitals,
@@ -912,6 +1245,10 @@ export default {
   generateActions,
   resetDetectionState,
   shouldAskQuestion,
+  filterActionsByTeachingMode,
+  actionToOverlayAnnotation,
+  querySimMasterClaude,
+  checkIdleDuringCritical,
   SCREEN_REGIONS,
   CLINICAL_RANGES,
 };

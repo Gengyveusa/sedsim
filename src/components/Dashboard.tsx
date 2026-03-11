@@ -12,11 +12,14 @@ import useAIStore from '../store/useAIStore';
 import {
   assessAllVitals, ClinicalStatus, SimMasterAction, SimMasterContext,
   detectEvents, generateActions, shouldAskQuestion,
+  filterActionsByTeachingMode, actionToOverlayAnnotation,
+  checkIdleDuringCritical,
 } from '../ai/simMaster';
 import { getQuestionForEvent, SocraticQuestion } from '../ai/simMasterPrompt';
 import { streamClaude } from '../ai/claudeClient';
 import { buildSimMasterSystemPrompt } from '../ai/simMasterPrompt';
 import { DigitalTwin } from '../engine/digitalTwin';
+import type { SimMasterTeachingMode } from '../store/slices/aiSlice';
 
 type AITab = 'eeg' | 'mentor' | 'simmaster' | 'oxyhb' | 'frankstarling' | 'echosim' | 'learn';
 
@@ -121,6 +124,12 @@ interface SimMasterFeedProps {
   onToggle: () => void;
 }
 
+const TEACHING_MODE_LABELS: Record<SimMasterTeachingMode, { label: string; desc: string }> = {
+  observer:        { label: 'Observer',   desc: 'Safety alerts only (Arm A)' },
+  active_teaching: { label: 'Teaching',   desc: 'Full Socratic engagement (Arm B)' },
+  assessment:      { label: 'Assessment', desc: '"What would you do?" mode (Arm C)' },
+};
+
 const SimMasterFeed: React.FC<SimMasterFeedProps> = ({ enabled, onToggle }) => {
   const [commentaryLog, setCommentaryLog] = useState<CommentaryEntry[]>([]);
   const [overallStatus, setOverallStatus] = useState<ClinicalStatus>('normal');
@@ -131,7 +140,12 @@ const SimMasterFeed: React.FC<SimMasterFeedProps> = ({ enabled, onToggle }) => {
   const [isAskingQuestion, setIsAskingQuestion] = useState(false);
   const [isStreamingFeedback, setIsStreamingFeedback] = useState(false);
   const lastSocraticTimeRef = useRef(0);
+  const lastIdleAlertTimeRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+
+  const teachingMode = useAIStore(s => s.simMasterTeachingMode);
+  const setTeachingMode = useAIStore(s => s.setSimMasterTeachingMode);
+  const addOverlayAnnotation = useAIStore(s => s.addOverlayAnnotation);
 
   const simState = useSimStore(s => ({
     vitals: s.vitals, moass: s.moass, eegState: s.eegState, pkStates: s.pkStates,
@@ -182,22 +196,42 @@ const SimMasterFeed: React.FC<SimMasterFeedProps> = ({ enabled, onToggle }) => {
       // Run event detection
       const ctx = buildContext();
       const events = detectEvents(ctx);
+      const allActions: SimMasterAction[] = [];
       if (events.length > 0) {
-        const newActions = generateActions(events, ctx);
-        if (newActions.length > 0) {
-          const now = Date.now();
-          const entries: CommentaryEntry[] = newActions.map(a => ({ timestamp: now, action: a }));
-          setCommentaryLog(prev => [...entries, ...prev].slice(0, 50));
+        allActions.push(...generateActions(events, ctx));
+      }
+
+      // Check for idle-during-critical
+      const idleAction = checkIdleDuringCritical(ctx, lastIdleAlertTimeRef.current);
+      if (idleAction) {
+        allActions.push(idleAction);
+        lastIdleAlertTimeRef.current = Date.now();
+      }
+
+      // Apply teaching mode filter
+      const filteredActions = filterActionsByTeachingMode(allActions, teachingMode);
+
+      if (filteredActions.length > 0) {
+        const now = Date.now();
+        const entries: CommentaryEntry[] = filteredActions.map(a => ({ timestamp: now, action: a }));
+        setCommentaryLog(prev => [...entries, ...prev].slice(0, 50));
+
+        // Push overlay annotations for the top action
+        const topAction = filteredActions[0];
+        const overlayAnn = actionToOverlayAnnotation(topAction);
+        if (overlayAnn) {
+          addOverlayAnnotation(overlayAnn);
         }
       }
     };
     evaluate();
     const id = setInterval(evaluate, 3000);
     return () => clearInterval(id);
-  }, [enabled, simState, buildContext]);
+  }, [enabled, simState, buildContext, teachingMode, addOverlayAnnotation]);
 
   useEffect(() => {
-    if (!enabled || !simState.isRunning || isAskingQuestion) return;
+    // Observer mode: no Socratic questions
+    if (!enabled || !simState.isRunning || isAskingQuestion || teachingMode === 'observer') return;
     const id = setInterval(() => {
       const ctx = buildContext();
       if (shouldAskQuestion(ctx, lastSocraticTimeRef.current)) {
@@ -210,7 +244,7 @@ const SimMasterFeed: React.FC<SimMasterFeedProps> = ({ enabled, onToggle }) => {
       }
     }, 15000);
     return () => clearInterval(id);
-  }, [enabled, simState.isRunning, isAskingQuestion, buildContext, learnerLevel]);
+  }, [enabled, simState.isRunning, isAskingQuestion, buildContext, learnerLevel, teachingMode]);
 
   const handleSubmitAnswer = useCallback(async () => {
     if (!pendingQuestion || !userAnswer.trim()) return;
@@ -248,6 +282,24 @@ const SimMasterFeed: React.FC<SimMasterFeedProps> = ({ enabled, onToggle }) => {
         >
           {enabled ? 'Disable SimMaster' : 'Enable SimMaster'}
         </button>
+        {enabled && (
+          <div className="flex items-center gap-1">
+            {(Object.keys(TEACHING_MODE_LABELS) as SimMasterTeachingMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setTeachingMode(mode)}
+                title={TEACHING_MODE_LABELS[mode].desc}
+                className={`flex-1 text-[9px] px-1.5 py-1 rounded font-bold transition-colors ${
+                  teachingMode === mode
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200'
+                }`}
+              >
+                {TEACHING_MODE_LABELS[mode].label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Socratic Q&A */}

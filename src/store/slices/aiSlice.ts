@@ -8,6 +8,10 @@ import type { ScenarioQuestion } from '../../engine/ScenarioEngine';
 import type { SimMasterAnnotation } from '../../ai/simMaster';
 import type { StructuredMessage, VitalAnnotation } from '../../engine/conductor/types';
 import type { ScoringSummary } from '../../engine/scoringEngine';
+import type { OverlayAnnotation } from '../../components/SimMasterOverlay';
+
+/** SimMaster teaching mode matching study arms. */
+export type SimMasterTeachingMode = 'observer' | 'active_teaching' | 'assessment';
 
 export interface AISlice {
   // Orchestrator
@@ -61,6 +65,8 @@ export interface AISlice {
   // SimMaster
   simMasterEnabled: boolean;
   simMasterAnnotation: SimMasterAnnotation | null;
+  simMasterOverlayAnnotations: OverlayAnnotation[];
+  simMasterTeachingMode: SimMasterTeachingMode;
   requestOpenTab: string | null;
   requestGaugeMode: string | null;
 
@@ -98,6 +104,10 @@ export interface AISlice {
   setPendingContinue: (pending: { stepId: string; stepLabel: string } | null) => void;
   setSimMasterEnabled: (enabled: boolean) => void;
   setSimMasterAnnotation: (a: SimMasterAnnotation | null) => void;
+  addOverlayAnnotation: (ann: OverlayAnnotation) => void;
+  removeOverlayAnnotation: (id: string) => void;
+  clearOverlayAnnotations: () => void;
+  setSimMasterTeachingMode: (mode: SimMasterTeachingMode) => void;
   openSidebarTab: (tabId: string) => void;
   switchGaugeMode: (mode: string) => void;
   clearTabRequest: () => void;
@@ -136,6 +146,8 @@ export const createAISlice: StateCreator<AISlice, [], [], AISlice> = (set, get) 
   pendingContinue: null,
   simMasterEnabled: false,
   simMasterAnnotation: null,
+  simMasterOverlayAnnotations: [],
+  simMasterTeachingMode: 'active_teaching',
   requestOpenTab: null,
   requestGaugeMode: null,
   structuredMessages: [],
@@ -284,6 +296,26 @@ export const createAISlice: StateCreator<AISlice, [], [], AISlice> = (set, get) 
 
   setSimMasterAnnotation: (a) => {
     set({ simMasterAnnotation: a });
+  },
+
+  addOverlayAnnotation: (ann) => {
+    const { simMasterOverlayAnnotations: existing } = get();
+    // Replace if same target already highlighted, otherwise append (max 5)
+    const filtered = existing.filter(a => a.targetRegion !== ann.targetRegion);
+    set({ simMasterOverlayAnnotations: [...filtered, ann].slice(-5) });
+  },
+
+  removeOverlayAnnotation: (id) => {
+    const { simMasterOverlayAnnotations: existing } = get();
+    set({ simMasterOverlayAnnotations: existing.filter(a => a.id !== id) });
+  },
+
+  clearOverlayAnnotations: () => {
+    set({ simMasterOverlayAnnotations: [] });
+  },
+
+  setSimMasterTeachingMode: (mode) => {
+    set({ simMasterTeachingMode: mode });
   },
 
   openSidebarTab: (tabId) => {
