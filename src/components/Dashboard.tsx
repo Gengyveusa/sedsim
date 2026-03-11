@@ -12,11 +12,14 @@ import useAIStore from '../store/useAIStore';
 import {
   assessAllVitals, ClinicalStatus, SimMasterAction, SimMasterContext,
   detectEvents, generateActions, shouldAskQuestion,
+  evaluateV4Patterns, triggerToAnnotations, checkIdleAttention, postDrugAnnotation,
 } from '../ai/simMaster';
 import { getQuestionForEvent, SocraticQuestion } from '../ai/simMasterPrompt';
+import { checkProactiveTriggers, TriggerCooldowns } from '../ai/mentor';
 import { streamClaude } from '../ai/claudeClient';
 import { buildSimMasterSystemPrompt } from '../ai/simMasterPrompt';
 import { DigitalTwin } from '../engine/digitalTwin';
+import type { TeachingMode } from '../store/slices/aiSlice';
 
 type AITab = 'eeg' | 'mentor' | 'simmaster' | 'oxyhb' | 'frankstarling' | 'echosim' | 'learn';
 
@@ -121,6 +124,12 @@ interface SimMasterFeedProps {
   onToggle: () => void;
 }
 
+const TEACHING_MODE_LABELS: Record<TeachingMode, { label: string; desc: string }> = {
+  observer: { label: 'Observer', desc: 'Arm A: Safety alerts only' },
+  active_teaching: { label: 'Active', desc: 'Arm B: Full Socratic teaching' },
+  assessment: { label: 'Assess', desc: 'Arm C: Ask before revealing' },
+};
+
 const SimMasterFeed: React.FC<SimMasterFeedProps> = ({ enabled, onToggle }) => {
   const [commentaryLog, setCommentaryLog] = useState<CommentaryEntry[]>([]);
   const [overallStatus, setOverallStatus] = useState<ClinicalStatus>('normal');
@@ -132,6 +141,12 @@ const SimMasterFeed: React.FC<SimMasterFeedProps> = ({ enabled, onToggle }) => {
   const [isStreamingFeedback, setIsStreamingFeedback] = useState(false);
   const lastSocraticTimeRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const triggerCooldownsRef = useRef<TriggerCooldowns>({});
+  const prevDrugRef = useRef<string | null>(null);
+
+  const teachingMode = useAIStore(s => s.teachingMode);
+  const setTeachingMode = useAIStore(s => s.setTeachingMode);
+  const addV4Annotation = useAIStore(s => s.addSimMasterV4Annotation);
 
   const simState = useSimStore(s => ({
     vitals: s.vitals, moass: s.moass, eegState: s.eegState, pkStates: s.pkStates,
@@ -212,6 +227,62 @@ const SimMasterFeed: React.FC<SimMasterFeedProps> = ({ enabled, onToggle }) => {
     return () => clearInterval(id);
   }, [enabled, simState.isRunning, isAskingQuestion, buildContext, learnerLevel]);
 
+  // --- v4: Proactive trigger evaluation ---
+  useEffect(() => {
+    if (!enabled || !simState.isRunning) return;
+    const id = setInterval(() => {
+      const triggerCtx = {
+        vitals: simState.vitals,
+        moass: simState.moass,
+        pkStates: simState.pkStates,
+        eeg: simState.eegState ?? undefined,
+        eventLog: [],
+      };
+      const result = checkProactiveTriggers(triggerCtx, triggerCooldownsRef.current);
+      if (result) {
+        // Map the trigger type from the message content
+        const triggerTypes = ['oversedation', 'respiratory_depression', 'hemodynamic_instability',
+          'drug_interaction', 'airway_compromise', 'cardiac_arrest_delayed', 'incorrect_dosing', 'missed_reversal'] as const;
+        const matchedType = triggerTypes.find(t => {
+          const cd = triggerCooldownsRef.current[t];
+          return cd !== undefined && Date.now() - cd < 1000;
+        });
+        if (matchedType) {
+          const anns = triggerToAnnotations(matchedType, result.content, teachingMode);
+          for (const ann of anns) addV4Annotation(ann);
+        }
+      }
+    }, 5000);
+    return () => clearInterval(id);
+  }, [enabled, simState.isRunning, simState.vitals, simState.moass, simState.pkStates, simState.eegState, teachingMode, addV4Annotation]);
+
+  // --- v4: Clinical pattern evaluation ---
+  useEffect(() => {
+    if (!enabled || !simState.isRunning) return;
+    const id = setInterval(() => {
+      const ctx = buildContext();
+      const anns = evaluateV4Patterns(ctx, teachingMode);
+      for (const ann of anns) addV4Annotation(ann);
+
+      // Idle attention check
+      const idleAnn = checkIdleAttention(ctx, teachingMode);
+      if (idleAnn) addV4Annotation(idleAnn);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [enabled, simState.isRunning, buildContext, teachingMode, addV4Annotation]);
+
+  // --- v4: Post-drug administration teaching ---
+  useEffect(() => {
+    if (!enabled) return;
+    const drug = simState.lastDrugAdministered;
+    if (!drug) return;
+    const drugKey = `${drug.name}-${drug.timestamp}`;
+    if (drugKey === prevDrugRef.current) return;
+    prevDrugRef.current = drugKey;
+    const ann = postDrugAnnotation(drug.name.toLowerCase(), drug.dose, teachingMode);
+    if (ann) addV4Annotation(ann);
+  }, [enabled, simState.lastDrugAdministered, teachingMode, addV4Annotation]);
+
   const handleSubmitAnswer = useCallback(async () => {
     if (!pendingQuestion || !userAnswer.trim()) return;
     setIsStreamingFeedback(true); setClaudeFeedback('');
@@ -248,6 +319,25 @@ const SimMasterFeed: React.FC<SimMasterFeedProps> = ({ enabled, onToggle }) => {
         >
           {enabled ? 'Disable SimMaster' : 'Enable SimMaster'}
         </button>
+        {/* Teaching mode selector */}
+        {enabled && (
+          <div className="flex gap-1">
+            {(Object.keys(TEACHING_MODE_LABELS) as TeachingMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setTeachingMode(mode)}
+                className={`flex-1 px-1.5 py-1 rounded text-[9px] font-semibold transition-colors ${
+                  teachingMode === mode
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+                title={TEACHING_MODE_LABELS[mode].desc}
+              >
+                {TEACHING_MODE_LABELS[mode].label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Socratic Q&A */}

@@ -9,6 +9,25 @@ import type { SimMasterAnnotation } from '../../ai/simMaster';
 import type { StructuredMessage, VitalAnnotation } from '../../engine/conductor/types';
 import type { ScoringSummary } from '../../engine/scoringEngine';
 
+// SimMaster v4 — Teaching modes matching study arms
+export type TeachingMode = 'observer' | 'active_teaching' | 'assessment';
+
+// SimMaster v4 — Visual annotation for overlay
+export interface SimMasterV4Annotation {
+  id: string;
+  message: string;
+  targetPanel: string;          // data-region value to highlight
+  severity: 'info' | 'warning' | 'critical';
+  action: 'highlight' | 'point' | 'pulse';
+  teachingPoint?: string;
+  socraticQuestion?: string;
+  patternId?: string;           // which ClinicalPattern triggered this
+  triggerType?: string;         // which ProactiveTriggerType triggered this
+  timestamp: number;
+  autoDismissMs: number;        // ms until auto-dismiss (0 = manual dismiss)
+  dismissed: boolean;
+}
+
 export interface AISlice {
   // Orchestrator
   orchestrator: MultiAgentOrchestrator | null;
@@ -64,6 +83,11 @@ export interface AISlice {
   requestOpenTab: string | null;
   requestGaugeMode: string | null;
 
+  // SimMaster v4
+  teachingMode: TeachingMode;
+  simMasterAnnotations: SimMasterV4Annotation[];
+  simMasterStreaming: boolean;
+
   // Conductor beat system
   structuredMessages: StructuredMessage[];
   vitalAnnotations: VitalAnnotation[];
@@ -102,6 +126,13 @@ export interface AISlice {
   switchGaugeMode: (mode: string) => void;
   clearTabRequest: () => void;
   clearGaugeModeRequest: () => void;
+
+  // SimMaster v4 actions
+  setTeachingMode: (mode: TeachingMode) => void;
+  addSimMasterV4Annotation: (ann: SimMasterV4Annotation) => void;
+  dismissSimMasterAnnotation: (id: string) => void;
+  clearSimMasterAnnotations: () => void;
+  setSimMasterStreaming: (streaming: boolean) => void;
   addStructuredMessage: (msg: StructuredMessage) => void;
   clearStructuredMessages: () => void;
   addVitalAnnotation: (ann: VitalAnnotation) => void;
@@ -138,6 +169,9 @@ export const createAISlice: StateCreator<AISlice, [], [], AISlice> = (set, get) 
   simMasterAnnotation: null,
   requestOpenTab: null,
   requestGaugeMode: null,
+  teachingMode: 'active_teaching' as TeachingMode,
+  simMasterAnnotations: [],
+  simMasterStreaming: false,
   structuredMessages: [],
   vitalAnnotations: [],
   conductorPhase: null,
@@ -300,6 +334,37 @@ export const createAISlice: StateCreator<AISlice, [], [], AISlice> = (set, get) 
 
   clearGaugeModeRequest: () => {
     set({ requestGaugeMode: null });
+  },
+
+  setTeachingMode: (mode) => {
+    set({ teachingMode: mode });
+  },
+
+  addSimMasterV4Annotation: (ann) => {
+    const { simMasterAnnotations } = get();
+    // Deduplicate: don't add if same targetPanel + patternId already active
+    const isDup = simMasterAnnotations.some(
+      a => !a.dismissed && a.targetPanel === ann.targetPanel && a.patternId === ann.patternId && ann.patternId
+    );
+    if (isDup) return;
+    set({ simMasterAnnotations: [...simMasterAnnotations, ann].slice(-20) });
+  },
+
+  dismissSimMasterAnnotation: (id) => {
+    const { simMasterAnnotations } = get();
+    set({
+      simMasterAnnotations: simMasterAnnotations.map(a =>
+        a.id === id ? { ...a, dismissed: true } : a
+      ),
+    });
+  },
+
+  clearSimMasterAnnotations: () => {
+    set({ simMasterAnnotations: [] });
+  },
+
+  setSimMasterStreaming: (streaming) => {
+    set({ simMasterStreaming: streaming });
   },
 
   addStructuredMessage: (msg) => {

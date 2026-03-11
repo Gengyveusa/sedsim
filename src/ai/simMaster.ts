@@ -903,6 +903,405 @@ export function fallbackAnnotation(): SimMasterAnnotation {
   return { message: 'Observing...', target: 'moass_gauge', severity: 'info', action: 'highlight', timestamp: Date.now() };
 }
 
+// ---------------------------------------------------------------------------
+// SimMaster v4 — Enhanced Claude Integration & Teaching Mode Support
+// ---------------------------------------------------------------------------
+
+import { matchPatterns, CLINICAL_STATE_DEFINITIONS } from './simMasterKnowledge';
+import type { ClinicalPattern } from './simMasterKnowledge';
+import type { SimMasterV4Annotation, TeachingMode } from '../store/slices/aiSlice';
+import type { ProactiveTriggerType } from './mentor';
+import { streamClaude, offlineFallback, ClaudeContext } from './claudeClient';
+import { buildSimMasterSystemPrompt } from './simMasterPrompt';
+
+/** Map data-region IDs used in patterns to actual DOM selectors */
+const REGION_SELECTORS: Record<string, string> = {
+  hr: '[data-region="hr"]',
+  spo2: '[data-region="spo2"]',
+  bp: '[data-region="bp"]',
+  rr: '[data-region="rr"]',
+  etco2: '[data-region="etco2"]',
+  'ecg-wave': '[data-region="ecg-wave"]',
+  'pleth-wave': '[data-region="pleth-wave"]',
+  'capno-wave': '[data-region="capno-wave"]',
+  'drug-panel': '[data-region="drug-panel"]',
+  'moass-gauge': '[data-region="moass-gauge"]',
+  avatar: '[data-region="avatar"]',
+  radar: '[data-region="radar"]',
+  eeg: '[data-region="eeg"]',
+  eventlog: '[data-region="eventlog"]',
+  'trend-graph': '[data-region="trend-graph"]',
+  'intervention-panel': '[data-region="intervention-panel"]',
+  'airway-controls': '[data-region="airway-controls"]',
+};
+
+export { REGION_SELECTORS };
+
+let v4AnnotationCounter = 0;
+
+function makeAnnotationId(): string {
+  return `sm4-${++v4AnnotationCounter}-${Date.now()}`;
+}
+
+/**
+ * Severity mapping from pattern detection to annotation severity.
+ */
+function patternSeverity(pattern: ClinicalPattern): 'info' | 'warning' | 'critical' {
+  const criticalPatterns = ['respiratory_depression_cascade', 'malignant_hyperthermia', 'airway_obstruction_sequence'];
+  const warningPatterns = ['hemodynamic_compromise', 'oversedation_trajectory', 'drug_synergy_effects'];
+  if (criticalPatterns.includes(pattern.id)) return 'critical';
+  if (warningPatterns.includes(pattern.id)) return 'warning';
+  return 'info';
+}
+
+/**
+ * Map a ProactiveTriggerType to the most relevant data-region panels for highlighting.
+ */
+const TRIGGER_TO_PANELS: Record<ProactiveTriggerType, string[]> = {
+  oversedation: ['moass-gauge', 'eeg', 'drug-panel'],
+  respiratory_depression: ['rr', 'spo2', 'etco2', 'capno-wave', 'airway-controls'],
+  hemodynamic_instability: ['bp', 'hr', 'trend-graph', 'intervention-panel'],
+  drug_interaction: ['drug-panel', 'radar', 'moass-gauge'],
+  airway_compromise: ['airway-controls', 'spo2', 'capno-wave', 'avatar'],
+  cardiac_arrest_delayed: ['ecg-wave', 'hr', 'intervention-panel'],
+  incorrect_dosing: ['drug-panel', 'moass-gauge'],
+  missed_reversal: ['drug-panel', 'rr', 'spo2'],
+};
+
+/**
+ * Evaluate the current simulation state for matching clinical patterns
+ * and generate v4 annotations based on teaching mode.
+ */
+export function evaluateV4Patterns(
+  ctx: SimMasterContext,
+  teachingMode: TeachingMode,
+): SimMasterV4Annotation[] {
+  // Build parameter map for pattern matching
+  const params: Record<string, number> = {
+    hr: ctx.vitals.hr,
+    spo2: ctx.vitals.spo2,
+    sbp: ctx.vitals.sbp,
+    rr: ctx.vitals.rr,
+    etco2: ctx.vitals.etco2,
+    moass: ctx.moass,
+    combinedEff: ctx.combinedEff,
+  };
+  if (ctx.eegState) {
+    params['bis'] = ctx.eegState.bisIndex;
+  }
+
+  const matches = matchPatterns(params);
+  if (matches.length === 0) return [];
+
+  const annotations: SimMasterV4Annotation[] = [];
+
+  for (const { pattern } of matches) {
+    const severity = patternSeverity(pattern);
+
+    // Observer mode: only safety-critical alerts
+    if (teachingMode === 'observer' && severity !== 'critical') continue;
+
+    // Pick primary panel to highlight (first one from pattern)
+    const primaryPanel = pattern.panelsToHighlight[0] || 'moass-gauge';
+
+    // Pick action based on severity
+    const action: 'highlight' | 'point' | 'pulse' =
+      severity === 'critical' ? 'pulse' : severity === 'warning' ? 'point' : 'highlight';
+
+    // Build message based on teaching mode
+    let message: string;
+    let socraticQuestion: string | undefined;
+    let teachingPoint: string | undefined;
+
+    if (teachingMode === 'assessment') {
+      // Assessment mode: ask what they'd do before revealing
+      const q = pattern.socraticQuestions[Math.floor(Math.random() * pattern.socraticQuestions.length)];
+      message = `What do you notice? ${pattern.name} pattern is developing.`;
+      socraticQuestion = q;
+    } else if (teachingMode === 'active_teaching') {
+      // Active teaching: full explanation + Socratic question
+      message = pattern.explanation.substring(0, 200) + '...';
+      teachingPoint = pattern.expectedLearnerAction;
+      socraticQuestion = pattern.socraticQuestions[Math.floor(Math.random() * pattern.socraticQuestions.length)];
+    } else {
+      // Observer: brief alert only
+      message = `${pattern.name} detected. Monitor closely.`;
+    }
+
+    annotations.push({
+      id: makeAnnotationId(),
+      message,
+      targetPanel: primaryPanel,
+      severity,
+      action,
+      teachingPoint,
+      socraticQuestion,
+      patternId: pattern.id,
+      timestamp: Date.now(),
+      autoDismissMs: severity === 'critical' ? 0 : 15000,
+      dismissed: false,
+    });
+
+    // Also highlight secondary panels in active_teaching mode
+    if (teachingMode === 'active_teaching' && pattern.panelsToHighlight.length > 1) {
+      for (const panel of pattern.panelsToHighlight.slice(1, 3)) {
+        annotations.push({
+          id: makeAnnotationId(),
+          message: `Related: check ${panel.replace(/-/g, ' ')}`,
+          targetPanel: panel,
+          severity: 'info',
+          action: 'highlight',
+          patternId: pattern.id,
+          timestamp: Date.now(),
+          autoDismissMs: 10000,
+          dismissed: false,
+        });
+      }
+    }
+  }
+
+  return annotations;
+}
+
+/**
+ * Generate v4 annotations from a proactive mentor trigger.
+ * Called when `checkProactiveTriggers` fires.
+ */
+export function triggerToAnnotations(
+  triggerType: ProactiveTriggerType,
+  mentorMessage: string,
+  teachingMode: TeachingMode,
+): SimMasterV4Annotation[] {
+  // Observer mode: only fire for critical triggers
+  const criticalTriggers: ProactiveTriggerType[] = ['cardiac_arrest_delayed', 'respiratory_depression', 'airway_compromise'];
+  if (teachingMode === 'observer' && !criticalTriggers.includes(triggerType)) return [];
+
+  const panels = TRIGGER_TO_PANELS[triggerType] || ['moass-gauge'];
+  const primaryPanel = panels[0];
+
+  const severity: 'info' | 'warning' | 'critical' =
+    criticalTriggers.includes(triggerType) ? 'critical' : 'warning';
+
+  const annotations: SimMasterV4Annotation[] = [{
+    id: makeAnnotationId(),
+    message: mentorMessage,
+    targetPanel: primaryPanel,
+    severity,
+    action: severity === 'critical' ? 'pulse' : 'point',
+    triggerType,
+    timestamp: Date.now(),
+    autoDismissMs: severity === 'critical' ? 0 : 20000,
+    dismissed: false,
+  }];
+
+  // Active teaching: also highlight secondary panels
+  if (teachingMode === 'active_teaching') {
+    for (const panel of panels.slice(1, 3)) {
+      annotations.push({
+        id: makeAnnotationId(),
+        message: `Watch: ${panel.replace(/-/g, ' ')}`,
+        targetPanel: panel,
+        severity: 'info',
+        action: 'highlight',
+        triggerType,
+        timestamp: Date.now(),
+        autoDismissMs: 10000,
+        dismissed: false,
+      });
+    }
+  }
+
+  return annotations;
+}
+
+/**
+ * Build a rich context and send to Claude for a teaching-aware response.
+ * Returns a parsed response or falls back to offline generation.
+ */
+export async function querySimMasterV4(
+  ctx: SimMasterContext,
+  teachingMode: TeachingMode,
+  recentEvents: string[],
+  onChunk?: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<{
+  message: string;
+  targetPanel: string;
+  severity: 'info' | 'warning' | 'critical';
+  teachingPoint?: string;
+  socraticQuestion?: string;
+}> {
+  const claudeCtx: ClaudeContext = {
+    patient: ctx.patient ? {
+      age: ctx.patient.age,
+      weight: ctx.patient.weight,
+      sex: ctx.patient.sex ?? 'unknown',
+      asa: ctx.patient.asa,
+      comorbidities: [],
+    } : undefined,
+    vitals: ctx.vitals,
+    moass: ctx.moass,
+    eeg: ctx.eegState ?? undefined,
+    pkStates: ctx.pkStates,
+    elapsedSeconds: ctx.elapsedSeconds,
+    recentEvents,
+    activeTab: ctx.activeTab,
+    activeGaugeMode: ctx.activeGaugeMode,
+  };
+
+  // Build a teaching-mode-aware query
+  const modeInstruction =
+    teachingMode === 'observer'
+      ? 'Keep your response brief and clinical — only safety alerts.'
+      : teachingMode === 'assessment'
+      ? 'Ask the learner what they would do BEFORE revealing the answer. Frame it as a question.'
+      : 'Teach actively: explain the physiology, point to a specific panel, and ask a follow-up Socratic question.';
+
+  const query = `${modeInstruction}\n\nCurrent events: ${recentEvents.join('; ') || 'none'}.\nUser idle: ${ctx.userIdleSeconds}s. Elapsed: ${ctx.elapsedSeconds}s.`;
+
+  // Determine most relevant panel from current state
+  let targetPanel = 'moass-gauge';
+  let severity: 'info' | 'warning' | 'critical' = 'info';
+
+  if (ctx.vitals.spo2 < 90) { targetPanel = 'spo2'; severity = 'critical'; }
+  else if (ctx.vitals.rr < 8) { targetPanel = 'rr'; severity = 'critical'; }
+  else if (ctx.vitals.sbp < 80) { targetPanel = 'bp'; severity = 'critical'; }
+  else if (ctx.moass <= 1) { targetPanel = 'moass-gauge'; severity = 'warning'; }
+  else if (ctx.vitals.spo2 < 94) { targetPanel = 'spo2'; severity = 'warning'; }
+  else if (ctx.vitals.etco2 > 50) { targetPanel = 'etco2'; severity = 'warning'; }
+
+  try {
+    const systemPrompt = buildSimMasterSystemPrompt({
+      ...claudeCtx,
+      learnerLevel: 'intermediate',
+      recentEvents,
+    });
+
+    let fullText = '';
+    await streamClaude(query, { ...claudeCtx, _systemOverride: systemPrompt }, (chunk) => {
+      fullText += chunk;
+      onChunk?.(chunk);
+    }, signal);
+
+    // Try to extract a Socratic question from the response (ends with ?)
+    let socraticQuestion: string | undefined;
+    let teachingPoint: string | undefined;
+    const sentences = fullText.split(/[.!?]+/).filter(s => s.trim());
+    const questionSentence = sentences.find(s => fullText.includes(s + '?'));
+    if (questionSentence) socraticQuestion = questionSentence.trim() + '?';
+
+    // Teaching point: extract the last sentence if it has action-oriented language
+    const actionKeywords = ['consider', 'watch', 'look', 'open', 'check', 'monitor', 'switch', 'titrate'];
+    const actionSentence = sentences.find(s => actionKeywords.some(k => s.toLowerCase().includes(k)));
+    if (actionSentence) teachingPoint = actionSentence.trim();
+
+    return { message: fullText, targetPanel, severity, teachingPoint, socraticQuestion };
+  } catch {
+    // Offline fallback
+    const fb = offlineFallback(query, claudeCtx);
+    return { message: fb.text, targetPanel, severity };
+  }
+}
+
+/**
+ * Detect idle learner during a critical event and generate an urgent attention annotation.
+ */
+export function checkIdleAttention(
+  ctx: SimMasterContext,
+  teachingMode: TeachingMode,
+): SimMasterV4Annotation | null {
+  if (teachingMode === 'observer') return null;
+  if (ctx.userIdleSeconds < 15) return null;
+
+  // Only fire if there's an active critical state
+  const hasCritical =
+    ctx.vitals.spo2 < 90 ||
+    ctx.vitals.rr < 6 ||
+    ctx.vitals.sbp < 75 ||
+    ctx.vitals.hr < 40 ||
+    (ctx.emergencyState && ctx.emergencyState.level === 'critical');
+
+  if (!hasCritical) return null;
+
+  // Pick the most critical panel
+  let panel = 'moass-gauge';
+  if (ctx.vitals.spo2 < 90) panel = 'spo2';
+  else if (ctx.vitals.rr < 6) panel = 'rr';
+  else if (ctx.vitals.sbp < 75) panel = 'bp';
+  else if (ctx.vitals.hr < 40) panel = 'hr';
+
+  const paramDef = CLINICAL_STATE_DEFINITIONS[panel === 'bp' ? 'sbp' : panel];
+  const teachingPoint = paramDef?.teachingPoints[0];
+
+  return {
+    id: makeAnnotationId(),
+    message: `The patient needs attention NOW. ${ctx.userIdleSeconds}s without intervention during a critical event.`,
+    targetPanel: panel,
+    severity: 'critical',
+    action: 'pulse',
+    teachingPoint,
+    socraticQuestion: teachingMode === 'assessment'
+      ? 'What would you do right now to stabilize this patient?'
+      : undefined,
+    timestamp: Date.now(),
+    autoDismissMs: 0,
+    dismissed: false,
+  };
+}
+
+/**
+ * Generate a post-drug-administration teaching annotation.
+ */
+export function postDrugAnnotation(
+  drugName: string,
+  dose: number,
+  teachingMode: TeachingMode,
+): SimMasterV4Annotation | null {
+  if (teachingMode === 'observer') return null;
+
+  const panelMap: Record<string, string> = {
+    propofol: 'eeg',
+    fentanyl: 'rr',
+    midazolam: 'moass-gauge',
+    ketamine: 'hr',
+    dexmedetomidine: 'hr',
+  };
+  const panel = panelMap[drugName] || 'drug-panel';
+
+  const teachingMessages: Record<string, string> = {
+    propofol: `Propofol ${dose} mg administered. Watch the EEG for BIS to drop and alpha spindles to appear. Expect BP to decrease from vasodilation + myocardial depression.`,
+    fentanyl: `Fentanyl ${dose} mcg administered. Watch RR and EtCO2 — opioids depress brainstem respiratory center. Peak effect in 3-5 min.`,
+    midazolam: `Midazolam ${dose} mg administered. Synergy with propofol: benzodiazepines reduce propofol EC50 by 20-30%. Watch MOASS for deeper sedation than expected.`,
+    ketamine: `Ketamine ${dose} mg administered. Unlike propofol, expect sympathetic stimulation: HR and BP will increase. EEG shows excitatory patterns, not slow waves.`,
+    dexmedetomidine: `Dexmedetomidine ${dose} mcg administered. Alpha-2 agonist: expect bradycardia and mild hypotension. Unique "cooperative sedation" — patient remains arousable.`,
+  };
+
+  const message = teachingMessages[drugName] || `${drugName} ${dose} administered. Monitor for effect.`;
+
+  const questions: Record<string, string> = {
+    propofol: 'What Ce do you expect at peak, and what MOASS level should this produce?',
+    fentanyl: 'How does fentanyl affect the propofol dose requirement through synergy?',
+    midazolam: 'Why might adding midazolam cause a disproportionate increase in sedation depth?',
+    ketamine: 'Which patients benefit most from ketamine\'s sympathetic-preserving properties?',
+    dexmedetomidine: 'Why is dexmedetomidine-induced bradycardia usually well-tolerated?',
+  };
+
+  return {
+    id: makeAnnotationId(),
+    message: teachingMode === 'assessment'
+      ? `${drugName} ${dose} given. What effects do you expect to see, and which vital signs will change first?`
+      : message,
+    targetPanel: panel,
+    severity: 'info',
+    action: 'point',
+    teachingPoint: teachingMode === 'active_teaching' ? message : undefined,
+    socraticQuestion: questions[drugName],
+    timestamp: Date.now(),
+    autoDismissMs: 20000,
+    dismissed: false,
+  };
+}
+
 export default {
   generateObservation,
   assessAllVitals,
@@ -912,6 +1311,12 @@ export default {
   generateActions,
   resetDetectionState,
   shouldAskQuestion,
+  evaluateV4Patterns,
+  triggerToAnnotations,
+  querySimMasterV4,
+  checkIdleAttention,
+  postDrugAnnotation,
   SCREEN_REGIONS,
   CLINICAL_RANGES,
+  REGION_SELECTORS,
 };
