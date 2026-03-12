@@ -26,6 +26,7 @@ import { usePerformanceObserver } from './hooks/usePerformanceObserver';
 import { useStudyAnalytics } from './hooks/useStudyAnalytics';
 import useStudyStore from './store/useStudyStore';
 import StudyOverlay from './components/StudyOverlay';
+import QuantumPanel from './components/QuantumPanel';
 
 export default function App() {
   const { t } = useTranslation();
@@ -319,6 +320,11 @@ export default function App() {
             <div className="w-72 border-l border-gray-700 overflow-y-auto">
               <EventLog />
             </div>
+          </div>
+
+          {/* Quantum Contextuality Panel — right sidebar */}
+          <div className="hidden lg:block">
+            <QuantumPanel />
           </div>
         </div>
 

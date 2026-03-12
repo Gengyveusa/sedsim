@@ -10,6 +10,7 @@ import { createDigitalTwin, updateTwin } from '../../engine/digitalTwin';
 import { sessionRecorderInstance } from '../../engine/sessionRecorderInstance';
 import { computeVisualizationState, DEFAULT_VIZ_STATE } from './vitalsSlice';
 import { INITIAL_PK_STATES } from './drugSlice';
+import { useQuantumStore } from '../useQuantumStore';
 import type { SimStore } from '../storeTypes';
 
 export interface UiSlice {
@@ -69,11 +70,38 @@ export const createUiSlice: StateCreator<SimStore, [], [], UiSlice> = (set, get)
       );
     });
 
+    // --- Quantum Contextuality Layer ---
+    // When enabled, modulate PK/PD values by quantum interference multipliers.
+    // ke0 multiplier: scale effect-site concentration (faster/slower equilibration)
+    // emax multiplier: scale combined effect magnitude
+    // synergy multiplier: further modulate combined effect (interaction strength)
+    const quantum = useQuantumStore.getState();
+    if (quantum.isEnabled) {
+      const qKe0 = quantum.multipliers.ke0;
+      for (const drugName of Object.keys(newPkStates)) {
+        // Scale ce toward c1 by the ke0 multiplier offset
+        // A multiplier >1 means faster equilibration (ce closer to c1)
+        // A multiplier <1 means slower equilibration (ce lags c1 more)
+        const s = newPkStates[drugName];
+        const delta = s.ce - s.c1;
+        newPkStates[drugName] = {
+          ...s,
+          ce: s.c1 + delta * (2 - qKe0),
+        };
+      }
+    }
+
     // Calculate combined drug effect
     const drugEffects: { drug: DrugParams; ce: number }[] = Object.entries(newPkStates).map(
       ([name, s]) => ({ drug: DRUG_DATABASE[name], ce: s.ce })
     );
-    const combinedEff = combinedEffect(drugEffects);
+    let combinedEff = combinedEffect(drugEffects);
+
+    // Apply quantum emax and synergy multipliers to combined effect
+    if (quantum.isEnabled) {
+      combinedEff = Math.min(1, combinedEff * quantum.multipliers.emax * quantum.multipliers.synergy);
+    }
+
     const moass = effectToMOASS(combinedEff);
 
     // Calculate new vitals using physiology engine
